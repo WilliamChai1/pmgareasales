@@ -4,6 +4,7 @@ const WEBAPP_LINK = "https://williamchai1.github.io/pmgareasales/";
 let currentUser = null;
 let currentData = null;
 let selectedBranch = null;
+let currentReportType = null;
 
 async function executeLogin() {
   const user = document.getElementById("username").value.trim();
@@ -90,6 +91,7 @@ function renderDashboard() {
   const summary = currentData.summary[selectedBranch] || {};
   const targets = currentData.targets[selectedBranch] || {};
   const staff = currentData.staff || [];
+  const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
   
   document.getElementById("branchNameHeader").innerText = `🏥 ${selectedBranch} Performance`;
   
@@ -124,7 +126,20 @@ function renderDashboard() {
   };
   updateTier(1, targets.t1); updateTier(2, targets.t2); updateTier(3, targets.t3);
 
-  document.getElementById("aiRecommendationText").innerText = summary.recommendation || "Focus on House Brand pairings today.";
+  // Action Plan Display
+  let apHtml = `
+    <b>Week 1:</b> ${ap.w1 || '-'}<br>
+    <b>Week 2:</b> ${ap.w2 || '-'}<br>
+    <b>Week 3:</b> ${ap.w3 || '-'}<br>
+    <b>Week 4:</b> ${ap.w4 || '-'}
+  `;
+  document.getElementById("aiRecommendationText").innerHTML = apHtml;
+
+  // Show Edit button for Managers/Pharmacists
+  const role = currentUser.role.toLowerCase();
+  if (role.includes('manager') || role.includes('pharmacist')) {
+    document.getElementById("editActionPlanBtn").style.display = "block";
+  }
 
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
@@ -141,10 +156,56 @@ function renderDashboard() {
   });
 }
 
+// --- ACTION PLAN LOGIC ---
+function openActionPlanModal() {
+  const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
+  document.getElementById("apWeek1").value = ap.w1;
+  document.getElementById("apWeek2").value = ap.w2;
+  document.getElementById("apWeek3").value = ap.w3;
+  document.getElementById("apWeek4").value = ap.w4;
+  document.getElementById("actionPlanModal").style.display = "flex";
+}
+
+function closeActionPlanModal() {
+  document.getElementById("actionPlanModal").style.display = "none";
+}
+
+async function saveActionPlan() {
+  const btn = document.getElementById("saveApBtn");
+  btn.innerText = "Saving...";
+  
+  const plans = {
+    w1: document.getElementById("apWeek1").value,
+    w2: document.getElementById("apWeek2").value,
+    w3: document.getElementById("apWeek3").value,
+    w4: document.getElementById("apWeek4").value
+  };
+
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans })
+    });
+    
+    // Update local data immediately
+    currentData.actionPlan = plans;
+    renderDashboard();
+    closeActionPlanModal();
+    btn.innerText = "Save Action Plan";
+  } catch (e) {
+    alert("Failed to save. Check connection.");
+    btn.innerText = "Save Action Plan";
+  }
+}
+
+// --- WHATSAPP BRIEFING ---
 function copyWhatsAppBriefing() {
   if (!currentData || !selectedBranch) return;
   const summary = currentData.summary[selectedBranch] || {};
   const targets = currentData.targets[selectedBranch] || {};
+  const ap = currentData.actionPlan || {};
   
   const tsPct = (((summary.mtdTs || 0) / (targets.ts || 1)) * 100).toFixed(1);
   const hbPct = (((summary.mtdHb || 0) / (targets.hb || 1)) * 100).toFixed(1);
@@ -158,7 +219,7 @@ function copyWhatsAppBriefing() {
   text += `📱 PMG App Installs Today: ${summary.pmgApp || 0}\n\n`;
   
   text += `*🎯 Strategy Plan:*\n`;
-  text += `${summary.recommendation || "Proactively pair localized joint pain queries with House Brand supplements."}\n\n`;
+  text += `W1: ${ap.w1 || '-'}\nW2: ${ap.w2 || '-'}\nW3: ${ap.w3 || '-'}\nW4: ${ap.w4 || '-'}\n\n`;
   
   text += `*🏆 Congratulation Board:*\n`;
   let achievers = 0;
@@ -177,17 +238,18 @@ function copyWhatsAppBriefing() {
 
 // --- EXACT EXCEL REPLICA GENERATORS ---
 function openReportModal(type) {
+  currentReportType = type;
   document.getElementById("reportModal").style.display = "flex";
   const content = document.getElementById("reportContent");
   const summary = currentData.summary[selectedBranch] || {};
   const targets = currentData.targets[selectedBranch] || {};
   const history = currentData.history || [];
   const staff = currentData.staff || [];
+  const ap = currentData.actionPlan || {};
   
   let reportDate = history.length > 0 ? new Date(history[history.length-1].date).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}).toUpperCase().replace(/ /g, '-') : new Date().toLocaleDateString();
 
   if (type === 'director') {
-    // Calculations for Left Panel
     let tsGap = summary.mtdTs - targets.ts;
     let tsPct = ((summary.mtdTs / targets.ts) * 100).toFixed(0);
     let tsLyGap = summary.mtdTs - summary.lyMtd;
@@ -200,11 +262,10 @@ function openReportModal(type) {
     let hmPct = ((summary.mtdHm / targets.hm) * 100).toFixed(0);
 
     let html = `
-    <div class="excel-report">
+    <div class="excel-report" id="captureArea">
       <div class="excel-title">PMG PHARMACY ${selectedBranch.toUpperCase()} - DIRECTORS' DAILY SALES REPORT (${reportDate})</div>
       
       <div class="excel-grid">
-        <!-- LEFT COLUMN -->
         <div class="excel-col-left">
           <table class="excel-table">
             <tr class="header-blue"><th>Monthly Sales</th><th>Amount</th><th>%</th></tr>
@@ -224,12 +285,14 @@ function openReportModal(type) {
           </table>
 
           <div class="action-plan-box">
-            <b>Action Plan:</b><br>
-            ${summary.recommendation || "Maintain strong HB ratio by pairing acute consults with supplements. Checkout PWP Conversion on transactions exceeding RM 30."}
+            <b>Action Plan (${new Date().toLocaleString('default', { month: 'short' })}):</b><br>
+            <b>Week 1:</b> ${ap.w1 || '-'}<br>
+            <b>Week 2:</b> ${ap.w2 || '-'}<br>
+            <b>Week 3:</b> ${ap.w3 || '-'}<br>
+            <b>Week 4:</b> ${ap.w4 || '-'}
           </div>
         </div>
 
-        <!-- RIGHT COLUMN (7-DAY GRID) -->
         <div class="excel-col-right">
           <table class="excel-table">
             <tr class="header-blue">
@@ -254,7 +317,7 @@ function openReportModal(type) {
   } 
   else if (type === 'teammates') {
     let html = `
-    <div class="excel-report" style="width: 100%; max-width: 800px;">
+    <div class="excel-report" id="captureArea" style="width: 100%; max-width: 800px;">
       <div class="excel-title">PMG ${selectedBranch.toUpperCase()} - TEAMMATE PERFORMANCE & TARGET GAP (${reportDate} MTD)</div>
       <table class="excel-table">
         <tr class="header-red">
@@ -275,7 +338,7 @@ function openReportModal(type) {
       let hbGap = s.mtdHb - s.mtdTargetHb;
       let hbPct = s.mtdTs > 0 ? ((s.mtdHb / s.mtdTs) * 100).toFixed(1) : 0;
       
-      totalCust += s.dailyCust; // Note: MTD Cust requires backend update, using daily for now or estimate
+      totalCust += s.dailyCust; 
       totalTs += s.mtdTs; totalHb += s.mtdHb; totalHm += s.mtdHm;
       totalTsGap += tsGap; totalHbGap += hbGap;
 
@@ -314,4 +377,25 @@ function formatRM(num) {
 
 function closeReportModal() {
   document.getElementById("reportModal").style.display = "none";
+}
+
+// --- ULTRA HD DOWNLOAD LOGIC ---
+function downloadReportAsImage() {
+  const element = document.getElementById('captureArea');
+  
+  // Use html2canvas to capture the div
+  html2canvas(element, {
+    scale: 3, // Ultra HD resolution
+    backgroundColor: "#ffffff",
+    useCORS: true
+  }).then(canvas => {
+    // Convert canvas to image data URL
+    const imgData = canvas.toDataURL('image/png');
+    
+    // Create a temporary link to trigger download
+    const link = document.createElement('a');
+    link.download = `PMG_${selectedBranch}_${currentReportType}_Report.png`;
+    link.href = imgData;
+    link.click();
+  });
 }
