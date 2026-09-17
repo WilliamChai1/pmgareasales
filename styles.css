@@ -1,9 +1,9 @@
 :root { 
-  --primary: #1565c0; 
-  --primary-dark: #0d47a1; 
-  --primary-gradient: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+  --primary: #d32f2f; 
+  --primary-dark: #b71c1c; 
+  --primary-gradient: linear-gradient(135deg, #e53935 0%, #ef5350 100%);
   --gold-gradient: linear-gradient(135deg, #f57f17 0%, #fbc02d 100%);
-  --bg: #f4f6f8; 
+  --bg: #f9f9f9; 
   --card: #ffffff; 
   --text: #2c3e50; 
 }
@@ -17,7 +17,7 @@ body {
 }
 
 .overlay { 
-  position: fixed; inset: 0; background: rgba(13, 71, 161, 0.95); 
+  position: fixed; inset: 0; background: rgba(183, 28, 28, 0.95); 
   backdrop-filter: blur(6px); display: flex; align-items: center; 
   justify-content: center; z-index: 2000; 
 }
@@ -27,8 +27,6 @@ body {
   text-align: center; width: 90%; max-width: 340px; 
   box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
 }
-
-.login-box h2 { color: var(--primary); margin-top: 0; }
 
 .input-field { 
   width: 100%; padding: 12px; margin: 8px 0; 
@@ -40,12 +38,14 @@ body {
   background: var(--primary-gradient); color: white; border: none; 
   border-radius: 8px; padding: 12px; font-size: 1rem; font-weight: bold; 
   cursor: pointer; width: 100%; margin-top: 10px; 
+  box-shadow: 0 4px 6px rgba(211, 47, 47, 0.2);
 }
 
 .btn-copy { background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%); }
+.btn-image { background: linear-gradient(135deg, #f57c00 0%, #ffb74d 100%); }
 
 .btn-logout { 
-  background: #e53935; color: white; border: none; 
+  background: #757575; color: white; border: none; 
   border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; 
 }
 
@@ -58,24 +58,35 @@ body {
 .card { 
   background: var(--card); border-radius: 12px; padding: 16px; 
   box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; 
-  border: 1px solid #e0e0e0;
+  border: 1px solid #eeeeee;
 }
 
 .card h2 { font-size: 1.1rem; margin: 0 0 15px 0; }
 
 .progress-section { margin-bottom: 15px; }
 .progress-label { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; }
-.progress-bar-bg { background: #e0e0e0; border-radius: 6px; height: 12px; overflow: hidden; }
+.progress-bar-bg { background: #eeeeee; border-radius: 6px; height: 12px; overflow: hidden; }
 .progress-bar-fill { background: var(--primary-gradient); height: 100%; width: 0%; transition: width 0.6s ease; }
 .progress-bar-fill.gold { background: var(--gold-gradient); }
 
+/* Tier Rewards */
+.reward-ladder { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+.tier-box { background: #fafafa; border: 2px solid #e0e0e0; border-radius: 10px; padding: 8px 4px; text-align: center; transition: all 0.3s ease; }
+.tier-box.unlocked { border-color: #2e7d32; background: #e8f5e9; box-shadow: 0 2px 8px rgba(46,125,50,0.2); }
+.tier-title { font-size: 0.72rem; font-weight: 800; color: #424242; }
+.tier-reward { font-size: 0.95rem; font-weight: 800; color: var(--primary-dark); margin: 3px 0; }
+.tier-target { font-size: 0.65rem; color: #616161; }
+.tier-badge { display: inline-block; font-size: 0.58rem; font-weight: 800; padding: 2px 6px; border-radius: 10px; margin-top: 4px; }
+.badge-locked { background: #eeeeee; color: #757575; }
+.badge-unlocked { background: #2e7d32; color: white; }
+
 .ai-recommendation { 
-  background: #e8f5e9; border-left: 4px solid #2e7d32; 
+  background: #ffebee; border-left: 4px solid var(--primary); 
   padding: 12px; border-radius: 8px; font-size: 0.85rem; 
-  line-height: 1.5; color: #1b5e20; margin-top: 15px; 
+  line-height: 1.5; color: var(--primary-dark); margin-top: 15px; 
 }
 
 table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 th, td { padding: 10px 6px; text-align: right; border-bottom: 1px solid #eee; }
 th:first-child, td:first-child { text-align: left; }
-th { background: #f5f5f5; color: #555; }
+th { background: #ffebee; color: var(--primary-dark); }
