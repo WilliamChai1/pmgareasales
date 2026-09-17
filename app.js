@@ -5,7 +5,28 @@ let currentUser = null;
 let currentData = null;
 let selectedBranch = null;
 let currentReportType = null;
+let deferredPrompt;
 
+// --- PWA INSTALLATION ---
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installAppBtn').style.display = 'block';
+});
+
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        document.getElementById('installAppBtn').style.display = 'none';
+      }
+      deferredPrompt = null;
+    });
+  }
+}
+
+// --- AUTHENTICATION ---
 async function executeLogin() {
   const user = document.getElementById("username").value.trim();
   const pass = document.getElementById("password").value.trim();
@@ -135,7 +156,6 @@ function renderDashboard() {
   `;
   document.getElementById("aiRecommendationText").innerHTML = apHtml;
 
-  // Show Edit button for Managers/Pharmacists
   const role = currentUser.role.toLowerCase();
   if (role.includes('manager') || role.includes('pharmacist')) {
     document.getElementById("editActionPlanBtn").style.display = "block";
@@ -189,7 +209,6 @@ async function saveActionPlan() {
       body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans })
     });
     
-    // Update local data immediately
     currentData.actionPlan = plans;
     renderDashboard();
     closeActionPlanModal();
@@ -247,7 +266,6 @@ function openReportModal(type) {
   const staff = currentData.staff || [];
   const ap = currentData.actionPlan || {};
   
-  // Helper to format date as "17-Sep"
   const formatShortDate = (dateString) => {
     const d = new Date(dateString);
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -376,6 +394,7 @@ function openReportModal(type) {
     html += `</table></div>`;
     content.innerHTML = html;
   }
+}
 
 function formatRM(num) {
   return "RM " + Number(num).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
@@ -389,16 +408,12 @@ function closeReportModal() {
 function downloadReportAsImage() {
   const element = document.getElementById('captureArea');
   
-  // Use html2canvas to capture the div
   html2canvas(element, {
-    scale: 3, // Ultra HD resolution
+    scale: 3, 
     backgroundColor: "#ffffff",
     useCORS: true
   }).then(canvas => {
-    // Convert canvas to image data URL
     const imgData = canvas.toDataURL('image/png');
-    
-    // Create a temporary link to trigger download
     const link = document.createElement('a');
     link.download = `PMG_${selectedBranch}_${currentReportType}_Report.png`;
     link.href = imgData;
