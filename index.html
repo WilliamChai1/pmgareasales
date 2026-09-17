@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css">
+  <!-- The ?v=3.0 forces GitHub to bypass the cache and load the new CSS -->
+  <link rel="stylesheet" href="./styles.css?v=3.0">
 </head>
 <body>
 
@@ -67,19 +68,19 @@
       <div class="reward-ladder">
         <div class="tier-box" id="tier1Box">
           <div class="tier-title">TIER 1</div>
-          <div class="tier-reward">+RM 250</div>
+          <div class="tier-reward" id="r1Reward">+RM 0</div>
           <div class="tier-target" id="t1Target">Target: RM 0</div>
           <span class="tier-badge badge-locked" id="tier1Badge">LOCKED</span>
         </div>
         <div class="tier-box" id="tier2Box">
           <div class="tier-title">TIER 2</div>
-          <div class="tier-reward">+RM 375</div>
+          <div class="tier-reward" id="r2Reward">+RM 0</div>
           <div class="tier-target" id="t2Target">Target: RM 0</div>
           <span class="tier-badge badge-locked" id="tier2Badge">LOCKED</span>
         </div>
         <div class="tier-box" id="tier3Box">
           <div class="tier-title">TIER 3 (MAX)</div>
-          <div class="tier-reward">+RM 500</div>
+          <div class="tier-reward" id="r3Reward">+RM 0</div>
           <div class="tier-target" id="t3Target">Target: RM 0</div>
           <span class="tier-badge badge-locked" id="tier3Badge">LOCKED</span>
         </div>
@@ -116,7 +117,8 @@
     </div>
   </div>
 
-  <script src="./app.js"></script>
+  <!-- The ?v=3.0 forces GitHub to bypass the cache and load the new JS -->
+  <script src="./app.js?v=3.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js');
