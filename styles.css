@@ -96,3 +96,58 @@ th { background: #ffebee; color: var(--primary-dark); }
 .report-table th { background: var(--primary); color: white; padding: 8px 4px; text-align: center; }
 .report-table td { padding: 8px 4px; text-align: center; border-bottom: 1px solid #eee; }
 .report-table td:first-child, .report-table th:first-child { text-align: left; }
+
+/* EXCEL REPLICA STYLES */
+.excel-report {
+  background: white;
+  padding: 10px;
+  font-family: Arial, sans-serif;
+  width: max-content; /* Forces it to stretch so user can scroll horizontally */
+  min-width: 100%;
+}
+.excel-title {
+  font-size: 1rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 15px;
+  color: black;
+}
+.excel-grid {
+  display: flex;
+  gap: 15px;
+}
+.excel-col-left {
+  width: 320px;
+  flex-shrink: 0;
+}
+.excel-col-right {
+  flex-grow: 1;
+}
+.excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  color: black;
+  border: 1px solid #ccc;
+}
+.excel-table th, .excel-table td {
+  border: 1px solid #ccc;
+  padding: 6px 4px;
+  text-align: center;
+}
+.excel-table td:first-child {
+  text-align: left;
+}
+.header-blue th { background-color: #c9daf8; color: black; }
+.header-yellow th, .header-yellow td { background-color: #fff2cc; color: black; }
+.header-orange { background-color: #fce5cd !important; color: #c62828 !important; }
+.header-red th { background-color: #8e24aa; color: white; } /* Purple/Red header for teammates */
+
+.action-plan-box {
+  background-color: #d9ead3;
+  border: 1px solid #93c47d;
+  padding: 10px;
+  font-size: 0.75rem;
+  margin-top: 10px;
+  color: #274e13;
+}
