@@ -31,15 +31,26 @@ async function executeLogin() {
   const pass = document.getElementById("password").value.trim();
   const btn = document.getElementById("loginBtn");
   
-  if(!user || !pass) return alert("Enter username and password");
+  if(!user || !pass) {
+    alert("Please enter username and password");
+    return;
+  }
+  
+  // This alert proves the new code is actually running on your phone
+  // alert("Connecting to server..."); 
   
   btn.innerText = "Authenticating...";
   
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
+      redirect: 'follow', // CRITICAL FOR MOBILE: Tells phone to follow Google's redirect
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8", // CRITICAL: Bypasses strict mobile CORS
+      },
       body: JSON.stringify({ action: 'login', username: user, password: pass })
     });
+    
     const data = await res.json();
     
     if (data.success) {
@@ -57,11 +68,10 @@ async function executeLogin() {
       btn.innerText = "Secure Login";
     }
   } catch (e) {
-    alert("Error details: " + e.message + "\n\nCheck if API_URL is correct.");
-    console.error(e);
+    alert("Mobile Error: " + e.message + "\n\nPlease check your internet or clear cache.");
     btn.innerText = "Secure Login";
   }
-
+}
 function logout() {
   currentUser = null;
   document.getElementById("loginOverlay").style.display = "flex";
