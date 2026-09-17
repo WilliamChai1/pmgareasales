@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=7.0">
+  <link rel="stylesheet" href="./styles.css?v=9.0">
   <!-- HTML2CANVAS FOR ULTRA HD SCREENSHOTS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -54,6 +54,7 @@
     <div id="lastUpdated" class="sync-status">Waiting for login...</div>
     <div style="display: flex; justify-content: center; gap: 10px;">
       <button class="btn-logout" onclick="logout()">Logout</button>
+      <button class="btn-logout" id="installAppBtn" style="display:none; background:#2e7d32;" onclick="installPWA()">📲 Install App</button>
     </div>
   </div>
 
@@ -143,7 +144,6 @@
     </div>
   </div>
 
-  <!-- Change v=7.0 to v=8.0 -->
-  <script src="./app.js?v=8.0"></script>
+  <script src="./app.js?v=9.0"></script>
 </body>
 </html>
