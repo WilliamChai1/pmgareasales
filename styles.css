@@ -90,3 +90,9 @@ table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 th, td { padding: 10px 6px; text-align: right; border-bottom: 1px solid #eee; }
 th:first-child, td:first-child { text-align: left; }
 th { background: #ffebee; color: var(--primary-dark); }
+
+/* Report Table Styles */
+.report-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 10px; }
+.report-table th { background: var(--primary); color: white; padding: 8px 4px; text-align: center; }
+.report-table td { padding: 8px 4px; text-align: center; border-bottom: 1px solid #eee; }
+.report-table td:first-child, .report-table th:first-child { text-align: left; }
