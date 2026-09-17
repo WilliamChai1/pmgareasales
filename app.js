@@ -60,7 +60,6 @@ async function executeLogin() {
     alert("Connection error. Please try again.");
     btn.innerText = "Secure Login";
   }
-}
 
 function logout() {
   currentUser = null;
