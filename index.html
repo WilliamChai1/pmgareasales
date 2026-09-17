@@ -6,8 +6,7 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <!-- The ?v=3.0 forces GitHub to bypass the cache and load the new CSS -->
-  <link rel="stylesheet" href="./styles.css?v=3.0">
+  <link rel="stylesheet" href="./styles.css?v=5.0">
 </head>
 <body>
 
@@ -23,13 +22,20 @@
     </div>
   </div>
 
+  <!-- Report Modal (For Screenshots) -->
+  <div id="reportModal" class="overlay" style="display:none; z-index: 3000;">
+    <div class="login-box" style="width: 95%; max-width: 600px; padding: 15px;">
+      <div id="reportContent" style="overflow-x: auto;"></div>
+      <button class="btn-logout" style="width: 100%; margin-top: 15px; padding: 10px;" onclick="closeReportModal()">Close Report</button>
+    </div>
+  </div>
+
   <!-- Header -->
   <div class="header">
     <h1>⚡ PMG Performance Hub</h1>
     <div id="lastUpdated" class="sync-status">Waiting for login...</div>
     <div style="display: flex; justify-content: center; gap: 10px;">
       <button class="btn-logout" onclick="logout()">Logout</button>
-      <button class="btn-logout" id="installAppBtn" style="display:none; background:#2e7d32;" onclick="installPWA()">📲 Install App</button>
     </div>
   </div>
 
@@ -87,7 +93,7 @@
       </div>
       
       <div class="ai-recommendation">
-        <b>🤖 Gemini AI Daily Strategy:</b>
+        <b>🎯 Strategy Plan:</b>
         <div id="aiRecommendationText" style="margin-top:4px;">Loading AI insights...</div>
       </div>
     </div>
@@ -96,8 +102,8 @@
     <div class="card">
       <h2>📋 Reports & Actions</h2>
       <button class="btn btn-copy" onclick="copyWhatsAppBriefing()">📱 Copy WhatsApp Briefing</button>
-      <button class="btn btn-image" onclick="openReport('director')">📸 Download Directors 7-Day Screenshot</button>
-      <button class="btn btn-image" style="background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);" onclick="openReport('teammates')">📸 Download Teammates Gap Screenshot</button>
+      <button class="btn btn-image" onclick="openReportModal('director')">📊 View Director 7-Day Report</button>
+      <button class="btn btn-image" style="background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);" onclick="openReportModal('teammates')">📊 View Teammates Gap Report</button>
       
       <h3 style="margin-top: 20px; font-size: 0.9rem; color: var(--primary-dark);">Today's Staff Performance</h3>
       <div style="overflow-x:auto;">
@@ -117,12 +123,6 @@
     </div>
   </div>
 
-  <!-- Change v=3.0 to v=4.0 -->
-  <script src="./app.js?v=4.0"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js');
-    }
-  </script>
+  <script src="./app.js?v=5.0"></script>
 </body>
 </html>
