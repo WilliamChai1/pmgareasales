@@ -6,7 +6,9 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=5.0">
+  <link rel="stylesheet" href="./styles.css?v=7.0">
+  <!-- HTML2CANVAS FOR ULTRA HD SCREENSHOTS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -22,11 +24,27 @@
     </div>
   </div>
 
+  <!-- Action Plan Edit Modal -->
+  <div id="actionPlanModal" class="overlay" style="display:none; z-index: 3000;">
+    <div class="login-box" style="width: 90%; max-width: 400px;">
+      <h3 style="color: var(--primary-dark); margin-top:0;">📝 Edit Action Plan</h3>
+      <textarea id="apWeek1" class="input-field" rows="2" placeholder="Week 1 Plan..."></textarea>
+      <textarea id="apWeek2" class="input-field" rows="2" placeholder="Week 2 Plan..."></textarea>
+      <textarea id="apWeek3" class="input-field" rows="2" placeholder="Week 3 Plan..."></textarea>
+      <textarea id="apWeek4" class="input-field" rows="2" placeholder="Week 4 Plan..."></textarea>
+      <button class="btn" id="saveApBtn" onclick="saveActionPlan()">Save Action Plan</button>
+      <button class="btn-logout" style="width: 100%; margin-top: 10px; padding: 10px;" onclick="closeActionPlanModal()">Cancel</button>
+    </div>
+  </div>
+
   <!-- Report Modal (For Screenshots) -->
   <div id="reportModal" class="overlay" style="display:none; z-index: 3000;">
-    <div class="login-box" style="width: 95%; max-width: 600px; padding: 15px;">
-      <div id="reportContent" style="overflow-x: auto;"></div>
-      <button class="btn-logout" style="width: 100%; margin-top: 15px; padding: 10px;" onclick="closeReportModal()">Close Report</button>
+    <div class="login-box" style="width: 95%; max-width: 900px; padding: 15px; overflow-y: auto; max-height: 90vh;">
+      <div id="reportContent" style="overflow-x: auto; background: white; padding: 10px;"></div>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button class="btn" style="background: #2e7d32;" onclick="downloadReportAsImage()">📸 Download Ultra-HD PNG</button>
+        <button class="btn-logout" style="padding: 12px;" onclick="closeReportModal()">Close</button>
+      </div>
     </div>
   </div>
 
@@ -67,7 +85,6 @@
         <div class="progress-bar-bg"><div class="progress-bar-fill gold" id="outletHbBar"></div></div>
       </div>
 
-      <!-- TIER REWARDS LADDER -->
       <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-dark); margin-top: 15px;">
         🎁 HQ TEAM INCENTIVE REWARD TIERS:
       </div>
@@ -93,8 +110,11 @@
       </div>
       
       <div class="ai-recommendation">
-        <b>🎯 Strategy Plan:</b>
-        <div id="aiRecommendationText" style="margin-top:4px;">Loading AI insights...</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <b>🎯 Strategy Plan:</b>
+          <button id="editActionPlanBtn" class="btn-logout" style="display:none; background: #1976d2;" onclick="openActionPlanModal()">Edit Plan</button>
+        </div>
+        <div id="aiRecommendationText" style="margin-top:8px; font-size: 0.8rem;">Loading insights...</div>
       </div>
     </div>
 
@@ -123,8 +143,6 @@
     </div>
   </div>
 
-  <!-- Change v=5.0 to v=6.0 -->
-  <script src="./app.js?v=6.0"></script>
-  <link rel="stylesheet" href="./styles.css?v=6.0">
+  <script src="./app.js?v=7.0"></script>
 </body>
 </html>
