@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PMG Enterprise Performance Hub</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+  <!-- Secure Login Overlay -->
+  <div id="loginOverlay" class="overlay">
+    <div class="login-box">
+      <h2>PMG Performance Hub</h2>
+      <p>Enter your credentials to access your branch.</p>
+      <input type="text" id="username" class="input-field" placeholder="Username">
+      <input type="password" id="password" class="input-field" placeholder="Password" onkeydown="if(event.key==='Enter') executeLogin()">
+      <button class="btn" id="loginBtn" onclick="executeLogin()">Secure Login</button>
+      <p id="loginError" class="error-text">Invalid credentials. Please try again.</p>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>⚡ PMG Performance Hub</h1>
+    <div id="lastUpdated" class="sync-status">Waiting for login...</div>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- Area Manager Controls -->
+  <div id="areaManagerControls" class="card" style="display:none; background: #e3f2fd; border: 1px solid #1976d2;">
+    <h3 style="margin-top:0; color: #1565c0;">🌐 Area Manager View</h3>
+    <label style="font-size: 0.8rem; font-weight: bold;">Select Branch:</label>
+    <select id="branchSelector" class="input-field" onchange="changeBranch()"></select>
+  </div>
+
+  <!-- Main Dashboard -->
+  <div id="dashboardView">
+    <div class="card">
+      <h2 id="branchNameHeader" style="color: var(--primary);">🏥 Branch Performance</h2>
+
+      <div class="progress-section">
+        <div class="progress-label">
+          <span>TOTAL SALES (MTD)</span>
+          <span id="outletTsProgressText">Loading...</span>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="outletTsBar"></div></div>
+      </div>
+
+      <div class="progress-section">
+        <div class="progress-label">
+          <span>HOUSE BRAND (MTD)</span>
+          <span id="outletHbProgressText">Loading...</span>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill gold" id="outletHbBar"></div></div>
+      </div>
+      
+      <div class="ai-recommendation">
+        <b>🤖 Gemini AI Daily Strategy:</b>
+        <div id="aiRecommendationText" style="margin-top:4px;">Loading AI insights...</div>
+      </div>
+    </div>
+
+    <!-- Reports & Actions -->
+    <div class="card">
+      <h2>📋 Reports & Actions</h2>
+      <button class="btn btn-copy" onclick="copyWhatsAppBriefing()">📱 Copy WhatsApp Briefing</button>
+      
+      <h3 style="margin-top: 15px; font-size: 0.9rem;">Today's Staff Performance</h3>
+      <div style="overflow-x:auto;">
+        <table id="teammatesTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Today TS</th>
+              <th>Today HB</th>
+              <th>Today HM</th>
+              <th>Cust</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
