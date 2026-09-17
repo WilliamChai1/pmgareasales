@@ -57,7 +57,8 @@ async function executeLogin() {
       btn.innerText = "Secure Login";
     }
   } catch (e) {
-    alert("Connection error. Please try again.");
+    alert("Error details: " + e.message + "\n\nCheck if API_URL is correct.");
+    console.error(e);
     btn.innerText = "Secure Login";
   }
 
