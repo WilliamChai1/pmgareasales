@@ -247,7 +247,14 @@ function openReportModal(type) {
   const staff = currentData.staff || [];
   const ap = currentData.actionPlan || {};
   
-  let reportDate = history.length > 0 ? new Date(history[history.length-1].date).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}).toUpperCase().replace(/ /g, '-') : new Date().toLocaleDateString();
+  // Helper to format date as "17-Sep"
+  const formatShortDate = (dateString) => {
+    const d = new Date(dateString);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return d.getDate() + "-" + months[d.getMonth()];
+  };
+
+  let reportDate = history.length > 0 ? formatShortDate(history[history.length-1].date).toUpperCase() + "-2026" : new Date().toLocaleDateString();
 
   if (type === 'director') {
     let tsGap = summary.mtdTs - targets.ts;
@@ -297,7 +304,7 @@ function openReportModal(type) {
           <table class="excel-table">
             <tr class="header-blue">
               <th>Metric</th>
-              ${history.map((h, i) => `<th class="${i === history.length-1 ? 'header-orange' : ''}">${new Date(h.date).toLocaleDateString('en-GB', {day:'numeric', month:'short'})}</th>`).join('')}
+              ${history.map((h, i) => `<th class="${i === history.length-1 ? 'header-orange' : ''}">${formatShortDate(h.date)}${i === history.length-1 ? ' *' : ''}</th>`).join('')}
             </tr>
             <tr><td><b>Total Sales</b></td>${history.map(h => `<td>${formatRM(h.ts)}</td>`).join('')}</tr>
             <tr><td><b>HB</b></td>${history.map(h => `<td>${formatRM(h.hb)}</td>`).join('')}</tr>
@@ -369,7 +376,6 @@ function openReportModal(type) {
     html += `</table></div>`;
     content.innerHTML = html;
   }
-}
 
 function formatRM(num) {
   return "RM " + Number(num).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
