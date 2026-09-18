@@ -45,7 +45,9 @@ async function executeLogin() {
     
     if (data.success) {
       currentUser = data.user;
-      selectedBranch = currentUser.branch === 'ALL' ? null : currentUser.branch;
+      // FIX: Make the "ALL" check case-insensitive
+      selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
+      
       document.getElementById("loginOverlay").style.display = "none";
       
       if (currentUser.role.toLowerCase() === 'area manager') {
