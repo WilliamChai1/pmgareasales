@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=13.0">
+  <link rel="stylesheet" href="./styles.css?v=14.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
@@ -24,12 +24,16 @@
 
   <div id="actionPlanModal" class="overlay" style="display:none; z-index: 3000;">
     <div class="login-box" style="width: 90%; max-width: 400px;">
-      <h3 style="color: var(--primary-dark); margin-top:0;">📝 Edit Action Plan</h3>
+      <h3 style="color: var(--primary-dark); margin-top:0;">📝 Update Branch Info</h3>
       <textarea id="apWeek1" class="input-field" rows="2" placeholder="Week 1 Plan..."></textarea>
       <textarea id="apWeek2" class="input-field" rows="2" placeholder="Week 2 Plan..."></textarea>
       <textarea id="apWeek3" class="input-field" rows="2" placeholder="Week 3 Plan..."></textarea>
       <textarea id="apWeek4" class="input-field" rows="2" placeholder="Week 4 Plan..."></textarea>
-      <button class="btn" id="saveApBtn" onclick="saveActionPlan()">Save Action Plan</button>
+      
+      <label style="font-size: 0.85rem; font-weight: bold; color: #c62828; margin-top: 10px; display: block;">📱 Today's PMG App Installs:</label>
+      <input type="number" id="apPmgApp" class="input-field" placeholder="0" min="0">
+      
+      <button class="btn" id="saveApBtn" onclick="saveActionPlan()">Save Updates</button>
       <button class="btn-logout" style="width: 100%; margin-top: 10px; padding: 10px;" onclick="closeActionPlanModal()">Cancel</button>
     </div>
   </div>
@@ -53,38 +57,32 @@
     </div>
   </div>
 
-  <!-- AREA MANAGER CONTROLS & OVERVIEW -->
   <div id="areaManagerControls" class="card" style="display:none; background: #ffebee; border: 1px solid #ef5350;">
     <h3 style="margin-top:0; color: #c62828;">🌐 Area Manager Overview</h3>
     
-    <div style="overflow-x:auto; margin-bottom: 15px;">
-      <table id="allBranchesTable" style="background: white; border-radius: 8px;">
-        <thead>
-          <tr>
-            <th>Branch</th>
-            <th>MTD TS</th>
-            <th>MTD HB</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+    <table id="amOverviewTable" style="width: 100%; margin-bottom: 15px; font-size: 0.8rem; border-collapse: collapse;">
+      <thead>
+        <tr style="border-bottom: 2px solid #ef5350; color: #c62828;">
+          <th style="text-align: left; padding: 5px;">Branch</th>
+          <th style="text-align: right; padding: 5px;">MTD TS</th>
+          <th style="text-align: right; padding: 5px;">MTD HB</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
     <div style="margin-bottom: 15px;">
       <label style="font-size: 0.8rem; font-weight: bold; color: #c62828;">📝 My Personal Reminders:</label>
       <textarea id="amNoteInput" class="input-field" rows="3" placeholder="Type your notes here..."></textarea>
-      <button class="btn" id="saveAmNoteBtn" style="background: #c62828; padding: 8px;" onclick="saveAreaManagerNote()">Save Note</button>
+      <button class="btn" id="saveAmNoteBtn" style="background: #c62828;" onclick="saveAmNote()">Save Note</button>
     </div>
 
-    <hr style="border: 0; border-top: 1px solid #ef9a9a; margin: 15px 0;">
-    
-    <label style="font-size: 0.8rem; font-weight: bold;">Select Branch to View Details:</label>
+    <label style="font-size: 0.8rem; font-weight: bold; color: #c62828;">Select Branch to View Details:</label>
     <select id="branchSelector" class="input-field" onchange="changeBranch()"></select>
   </div>
 
   <div id="dashboardView">
     
-    <!-- PERSONAL DASHBOARD -->
     <div class="card" id="personalDashboard" style="display:none; border-top: 4px solid #8e24aa;">
       <h2 id="userNameHeader" style="color: #8e24aa;">👤 Personal Profile</h2>
       
@@ -126,7 +124,6 @@
       </div>
     </div>
 
-    <!-- OUTLET DASHBOARD -->
     <div class="card" style="border-top: 4px solid var(--primary);">
       <h2 id="branchNameHeader" style="color: var(--primary);">🏥 Branch Performance</h2>
 
@@ -173,13 +170,12 @@
       <div class="ai-recommendation">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <b>🎯 Strategy Plan:</b>
-          <button id="editActionPlanBtn" class="btn-logout" style="display:none; background: #1976d2;" onclick="openActionPlanModal()">Edit Plan</button>
+          <button id="editActionPlanBtn" class="btn-logout" style="display:none; background: #1976d2;" onclick="openActionPlanModal()">Update Info</button>
         </div>
         <div id="aiRecommendationText" style="margin-top:8px; font-size: 0.8rem;">Loading insights...</div>
       </div>
     </div>
 
-    <!-- MANAGER REPORTS (Hidden from Staff) -->
     <div class="card" id="managerReportsSection" style="display:none;">
       <h2>📋 Reports & Actions</h2>
       <button class="btn btn-copy" onclick="copyWhatsAppBriefing()">📱 Copy WhatsApp Briefing</button>
@@ -187,8 +183,7 @@
       <button class="btn btn-image" style="background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);" onclick="openReportModal('teammates')">📊 View Teammates Gap Report</button>
     </div>
 
-    <!-- STAFF TABLE (Hidden from Staff) -->
-    <div class="card" id="staffTableSection" style="display:none;">
+    <div class="card">
       <h3 style="margin-top: 0; font-size: 0.9rem; color: var(--primary-dark);">Today's Staff Performance</h3>
       <div style="overflow-x:auto;">
         <table id="teammatesTable">
@@ -207,8 +202,6 @@
     </div>
   </div>
 
-  <!-- Change v=12.0 to v=13.0 -->
-  <link rel="stylesheet" href="./styles.css?v=13.0">
-  <script src="./app.js?v=13.0"></script>
+  <script src="./app.js?v=14.0"></script>
 </body>
 </html>
