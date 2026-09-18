@@ -69,7 +69,6 @@ body {
 .progress-bar-fill { background: var(--primary-gradient); height: 100%; width: 0%; transition: width 0.6s ease; }
 .progress-bar-fill.gold { background: var(--gold-gradient); }
 
-/* Tier Rewards */
 .reward-ladder { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
 .tier-box { background: #fafafa; border: 2px solid #e0e0e0; border-radius: 10px; padding: 8px 4px; text-align: center; transition: all 0.3s ease; }
 .tier-box.unlocked { border-color: #2e7d32; background: #e8f5e9; box-shadow: 0 2px 8px rgba(46,125,50,0.2); }
@@ -91,18 +90,20 @@ th, td { padding: 10px 6px; text-align: right; border-bottom: 1px solid #eee; }
 th:first-child, td:first-child { text-align: left; }
 th { background: #ffebee; color: var(--primary-dark); }
 
-/* Report Table Styles */
-.report-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 10px; }
-.report-table th { background: var(--primary); color: white; padding: 8px 4px; text-align: center; }
-.report-table td { padding: 8px 4px; text-align: center; border-bottom: 1px solid #eee; }
-.report-table td:first-child, .report-table th:first-child { text-align: left; }
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.metric-box { background: #fbf9fd; padding: 10px; border-radius: 10px; text-align: center; border: 1px solid #f3e5f5; }
+.metric-box .label { font-size: 0.68rem; color: #7b1fa2; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+.metric-box .val { font-size: 1.08rem; font-weight: 800; color: var(--text); margin-top: 2px; }
+
+.gap-banner { background: #fff8e1; border-left: 4px solid #ffa000; padding: 10px; border-radius: 8px; font-size: 0.82rem; line-height: 1.5; margin-top: 8px; }
+.commission-banner { background: #f3e5f5; border-left: 4px solid var(--primary); padding: 10px; border-radius: 8px; font-size: 0.85rem; line-height: 1.4; margin-top: 8px; color: var(--primary-dark); }
 
 /* EXCEL REPLICA STYLES */
 .excel-report {
   background: white;
   padding: 10px;
   font-family: Arial, sans-serif;
-  width: max-content; /* Forces it to stretch so user can scroll horizontally */
+  width: max-content; 
   min-width: 100%;
 }
 .excel-title {
@@ -141,7 +142,7 @@ th { background: #ffebee; color: var(--primary-dark); }
 .header-blue th { background-color: #c9daf8; color: black; }
 .header-yellow th, .header-yellow td { background-color: #fff2cc; color: black; }
 .header-orange { background-color: #fce5cd !important; color: #c62828 !important; }
-.header-red th { background-color: #8e24aa; color: white; } /* Purple/Red header for teammates */
+.header-red th { background-color: #8e24aa; color: white; } 
 
 .action-plan-box {
   background-color: #d9ead3;
@@ -150,18 +151,9 @@ th { background: #ffebee; color: var(--primary-dark); }
   font-size: 0.75rem;
   margin-top: 10px;
   color: #274e13;
+  text-align: left;
 }
 
-/* Add this anywhere in your styles.css */
-.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-.metric-box { background: #fbf9fd; padding: 10px; border-radius: 10px; text-align: center; border: 1px solid #f3e5f5; }
-.metric-box .label { font-size: 0.68rem; color: #7b1fa2; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
-.metric-box .val { font-size: 1.08rem; font-weight: 800; color: var(--text); margin-top: 2px; }
-
-.gap-banner { background: #fff8e1; border-left: 4px solid #ffa000; padding: 10px; border-radius: 8px; font-size: 0.82rem; line-height: 1.5; margin-top: 8px; }
-.commission-banner { background: #f3e5f5; border-left: 4px solid var(--primary); padding: 10px; border-radius: 8px; font-size: 0.85rem; line-height: 1.4; margin-top: 8px; color: var(--primary-dark); }
-
-/* Force the 7-Day columns to stay uniform and wrap long text */
 .excel-col-right .excel-table th,
 .excel-col-right .excel-table td {
   min-width: 85px;
@@ -170,7 +162,6 @@ th { background: #ffebee; color: var(--primary-dark); }
   white-space: normal;
 }
 
-/* Ensure the comment cell aligns to the top so it looks neat */
 .excel-col-right .header-yellow td {
   vertical-align: top;
 }
