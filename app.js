@@ -45,9 +45,7 @@ async function executeLogin() {
     
     if (data.success) {
       currentUser = data.user;
-      // FIX: Make the "ALL" check case-insensitive
       selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
-      
       document.getElementById("loginOverlay").style.display = "none";
       
       if (currentUser.role.toLowerCase() === 'area manager') {
@@ -118,6 +116,33 @@ function renderDashboard() {
   
   document.getElementById("branchNameHeader").innerText = `🏥 ${selectedBranch} Performance`;
   
+  // --- AREA MANAGER OVERVIEW ---
+  if (role === 'area manager') {
+    const amTbody = document.querySelector("#allBranchesTable tbody");
+    amTbody.innerHTML = "";
+    let totalTs = 0, totalHb = 0;
+    
+    (currentData.allSummaries || []).forEach(b => {
+      if(b.branch !== 'ALL' && b.branch !== 'AREA_MANAGER') {
+        totalTs += b.mtdTs;
+        totalHb += b.mtdHb;
+        amTbody.innerHTML += `<tr>
+          <td style="text-align:left;"><b>${b.branch}</b></td>
+          <td>${formatRM(b.mtdTs)}</td>
+          <td>${formatRM(b.mtdHb)}</td>
+        </tr>`;
+      }
+    });
+    
+    amTbody.innerHTML += `<tr style="background:#ffebee; font-weight:bold;">
+      <td style="text-align:left;">TOTAL</td>
+      <td>${formatRM(totalTs)}</td>
+      <td>${formatRM(totalHb)}</td>
+    </tr>`;
+
+    document.getElementById("amNoteInput").value = currentData.amNote || "";
+  }
+
   // --- PERSONAL DASHBOARD LOGIC ---
   const myStats = staff.find(s => s.name === currentUser.name);
   if (myStats) {
@@ -133,7 +158,7 @@ function renderDashboard() {
     let myHbPct = myStats.mtdTs > 0 ? ((myStats.mtdHb / myStats.mtdTs) * 100).toFixed(1) : 0;
     document.getElementById("valMtdHB").innerText = `${formatRM(myStats.mtdHb)} (${myHbPct}%)`;
     document.getElementById("valMtdHM").innerText = formatRM(myStats.mtdHm);
-    document.getElementById("valMtdCust").innerText = myStats.dailyCust; // Note: MTD Cust requires backend update, using daily for now
+    document.getElementById("valMtdCust").innerText = myStats.dailyCust;
 
     let tsRem = Math.max(0, (myStats.mtdTargetTs * (30/currentData.currentDay)) - myStats.mtdTs);
     let hbRem = Math.max(0, (myStats.mtdTargetHb * (30/currentData.currentDay)) - myStats.mtdHb);
@@ -196,6 +221,9 @@ function renderDashboard() {
   // --- ROLE BASED ACCESS CONTROL ---
   document.getElementById("editActionPlanBtn").style.display = isManager ? "block" : "none";
   document.getElementById("managerReportsSection").style.display = isManager ? "block" : "none";
+  
+  // Hide Staff Table if user is just 'Staff'
+  document.getElementById("staffTableSection").style.display = role === 'staff' ? "none" : "block";
 
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
@@ -212,6 +240,7 @@ function renderDashboard() {
   });
 }
 
+// --- ACTION PLAN LOGIC ---
 function openActionPlanModal() {
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
   document.getElementById("apWeek1").value = ap.w1;
@@ -254,6 +283,28 @@ async function saveActionPlan() {
   }
 }
 
+async function saveAreaManagerNote() {
+  const btn = document.getElementById("saveAmNoteBtn");
+  btn.innerText = "Saving...";
+  const note = document.getElementById("amNoteInput").value;
+  
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: 'saveActionPlan', branch: 'AREA_MANAGER', plans: {w1: note, w2: "", w3: "", w4: ""} })
+    });
+    
+    currentData.amNote = note;
+    btn.innerText = "Save Note";
+    alert("Note saved successfully!");
+  } catch (e) {
+    alert("Failed to save note.");
+    btn.innerText = "Save Note";
+  }
+}
+
 function copyWhatsAppBriefing() {
   if (!currentData || !selectedBranch) return;
   const summary = currentData.summary[selectedBranch] || {};
@@ -289,7 +340,6 @@ function copyWhatsAppBriefing() {
   alert("WhatsApp Daily Briefing copied to clipboard!");
 }
 
-// Helper for constructive comments
 function getConstructiveComment(ts, hb) {
   if (ts === 0) return "Store closed or no data.";
   let hbPct = (hb / ts) * 100;
