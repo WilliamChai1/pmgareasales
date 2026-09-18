@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=10.0">
+  <link rel="stylesheet" href="./styles.css?v=13.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
@@ -53,15 +53,38 @@
     </div>
   </div>
 
+  <!-- AREA MANAGER CONTROLS & OVERVIEW -->
   <div id="areaManagerControls" class="card" style="display:none; background: #ffebee; border: 1px solid #ef5350;">
-    <h3 style="margin-top:0; color: #c62828;">🌐 Area Manager View</h3>
-    <label style="font-size: 0.8rem; font-weight: bold;">Select Branch:</label>
+    <h3 style="margin-top:0; color: #c62828;">🌐 Area Manager Overview</h3>
+    
+    <div style="overflow-x:auto; margin-bottom: 15px;">
+      <table id="allBranchesTable" style="background: white; border-radius: 8px;">
+        <thead>
+          <tr>
+            <th>Branch</th>
+            <th>MTD TS</th>
+            <th>MTD HB</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div style="margin-bottom: 15px;">
+      <label style="font-size: 0.8rem; font-weight: bold; color: #c62828;">📝 My Personal Reminders:</label>
+      <textarea id="amNoteInput" class="input-field" rows="3" placeholder="Type your notes here..."></textarea>
+      <button class="btn" id="saveAmNoteBtn" style="background: #c62828; padding: 8px;" onclick="saveAreaManagerNote()">Save Note</button>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid #ef9a9a; margin: 15px 0;">
+    
+    <label style="font-size: 0.8rem; font-weight: bold;">Select Branch to View Details:</label>
     <select id="branchSelector" class="input-field" onchange="changeBranch()"></select>
   </div>
 
   <div id="dashboardView">
     
-    <!-- PERSONAL DASHBOARD (Restored for all users) -->
+    <!-- PERSONAL DASHBOARD -->
     <div class="card" id="personalDashboard" style="display:none; border-top: 4px solid #8e24aa;">
       <h2 id="userNameHeader" style="color: #8e24aa;">👤 Personal Profile</h2>
       
@@ -164,8 +187,8 @@
       <button class="btn btn-image" style="background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);" onclick="openReportModal('teammates')">📊 View Teammates Gap Report</button>
     </div>
 
-    <!-- STAFF TABLE (Visible to all) -->
-    <div class="card">
+    <!-- STAFF TABLE (Hidden from Staff) -->
+    <div class="card" id="staffTableSection" style="display:none;">
       <h3 style="margin-top: 0; font-size: 0.9rem; color: var(--primary-dark);">Today's Staff Performance</h3>
       <div style="overflow-x:auto;">
         <table id="teammatesTable">
@@ -184,8 +207,6 @@
     </div>
   </div>
 
- <!-- Change v=11.0 to v=12.0 -->
-  <link rel="stylesheet" href="./styles.css?v=12.0">
-  <script src="./app.js?v=12.0"></script>
+  <script src="./app.js?v=13.0"></script>
 </body>
 </html>
