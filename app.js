@@ -7,7 +7,6 @@ let selectedBranch = null;
 let currentReportType = null;
 let deferredPrompt;
 
-// --- PWA INSTALLATION ---
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
@@ -26,7 +25,6 @@ function installPWA() {
   }
 }
 
-// --- AUTHENTICATION ---
 async function executeLogin() {
   const user = document.getElementById("username").value.trim();
   const pass = document.getElementById("password").value.trim();
@@ -113,9 +111,47 @@ function renderDashboard() {
   const targets = currentData.targets[selectedBranch] || {};
   const staff = currentData.staff || [];
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
+  const role = currentUser.role.toLowerCase();
+  const isManager = role.includes('manager') || role.includes('pharmacist');
   
   document.getElementById("branchNameHeader").innerText = `🏥 ${selectedBranch} Performance`;
   
+  // --- PERSONAL DASHBOARD LOGIC ---
+  const myStats = staff.find(s => s.name === currentUser.name);
+  if (myStats) {
+    document.getElementById("personalDashboard").style.display = "block";
+    document.getElementById("userNameHeader").innerText = `👤 ${myStats.name} (${myStats.role})`;
+    
+    document.getElementById("valTS").innerText = formatRM(myStats.dailyTs);
+    document.getElementById("valHB").innerText = formatRM(myStats.dailyHb);
+    document.getElementById("valHM").innerText = formatRM(myStats.dailyHm);
+    document.getElementById("valCust").innerText = myStats.dailyCust;
+    
+    document.getElementById("valMtdTS").innerText = formatRM(myStats.mtdTs);
+    let myHbPct = myStats.mtdTs > 0 ? ((myStats.mtdHb / myStats.mtdTs) * 100).toFixed(1) : 0;
+    document.getElementById("valMtdHB").innerText = `${formatRM(myStats.mtdHb)} (${myHbPct}%)`;
+    document.getElementById("valMtdHM").innerText = formatRM(myStats.mtdHm);
+    document.getElementById("valMtdCust").innerText = myStats.dailyCust; // Note: MTD Cust requires backend update, using daily for now
+
+    let tsRem = Math.max(0, (myStats.mtdTargetTs * (30/currentData.currentDay)) - myStats.mtdTs);
+    let hbRem = Math.max(0, (myStats.mtdTargetHb * (30/currentData.currentDay)) - myStats.mtdHb);
+    let hmRem = Math.max(0, (myStats.mtdTargetHm * (30/currentData.currentDay)) - myStats.mtdHm);
+    
+    document.getElementById("valRemainingTarget").innerHTML = `
+      • TS Target Left: <b>${formatRM(tsRem)}</b><br>
+      • HB Target Left: <b>${formatRM(hbRem)}</b><br>
+      • HM Target Left: <b>${formatRM(hmRem)}</b>
+    `;
+
+    let dailyComm = myStats.dailyHb * 0.035;
+    let mtdComm = myStats.mtdHb * 0.035;
+    document.getElementById("valDailyCommission").innerText = `RM ${dailyComm.toFixed(2)}`;
+    document.getElementById("valMtdCommission").innerText = `RM ${mtdComm.toFixed(2)}`;
+  } else {
+    document.getElementById("personalDashboard").style.display = "none";
+  }
+
+  // --- OUTLET DASHBOARD LOGIC ---
   const tsPct = Math.min(100, ((summary.mtdTs || 0) / (targets.ts || 1)) * 100);
   document.getElementById("outletTsProgressText").innerText = `RM ${(summary.mtdTs||0).toLocaleString()} / RM ${(targets.ts||0).toLocaleString()} (${tsPct.toFixed(1)}%)`;
   document.getElementById("outletTsBar").style.width = tsPct + "%";
@@ -147,7 +183,6 @@ function renderDashboard() {
   };
   updateTier(1, targets.t1); updateTier(2, targets.t2); updateTier(3, targets.t3);
 
-  // Action Plan Display
   let apHtml = `
     <b>Week 1:</b> ${ap.w1 || '-'}<br>
     <b>Week 2:</b> ${ap.w2 || '-'}<br>
@@ -156,10 +191,9 @@ function renderDashboard() {
   `;
   document.getElementById("aiRecommendationText").innerHTML = apHtml;
 
-  const role = currentUser.role.toLowerCase();
-  if (role.includes('manager') || role.includes('pharmacist')) {
-    document.getElementById("editActionPlanBtn").style.display = "block";
-  }
+  // --- ROLE BASED ACCESS CONTROL ---
+  document.getElementById("editActionPlanBtn").style.display = isManager ? "block" : "none";
+  document.getElementById("managerReportsSection").style.display = isManager ? "block" : "none";
 
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
@@ -176,7 +210,6 @@ function renderDashboard() {
   });
 }
 
-// --- ACTION PLAN LOGIC ---
 function openActionPlanModal() {
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
   document.getElementById("apWeek1").value = ap.w1;
@@ -219,7 +252,6 @@ async function saveActionPlan() {
   }
 }
 
-// --- WHATSAPP BRIEFING ---
 function copyWhatsAppBriefing() {
   if (!currentData || !selectedBranch) return;
   const summary = currentData.summary[selectedBranch] || {};
@@ -255,7 +287,15 @@ function copyWhatsAppBriefing() {
   alert("WhatsApp Daily Briefing copied to clipboard!");
 }
 
-// --- EXACT EXCEL REPLICA GENERATORS ---
+// Helper for constructive comments
+function getConstructiveComment(ts, hb) {
+  if (ts === 0) return "Store closed or no data.";
+  let hbPct = (hb / ts) * 100;
+  if (hbPct >= 45) return `Outstanding HB ratio (${hbPct.toFixed(1)}%)! Maintain this momentum by continuing dual-pairing on all acute consults.`;
+  if (hbPct >= 40) return `Solid performance (${hbPct.toFixed(1)}% HB). Push PWP conversions at checkout to break the 45% mark.`;
+  return `HB ratio needs attention (${hbPct.toFixed(1)}%). Action: Mandate 1 House Brand recommendation for every symptomatic customer today.`;
+}
+
 function openReportModal(type) {
   currentReportType = type;
   document.getElementById("reportModal").style.display = "flex";
@@ -282,9 +322,13 @@ function openReportModal(type) {
     
     let hbGap = summary.mtdHb - targets.hb;
     let hbPct = ((summary.mtdHb / targets.hb) * 100).toFixed(0);
+    let hbLyGap = summary.mtdHb - (summary.lyMtdHb || 0);
+    let hbLyPct = summary.lyMtdHb > 0 ? ((summary.mtdHb / summary.lyMtdHb) * 100).toFixed(0) : 0;
     
     let hmGap = summary.mtdHm - targets.hm;
     let hmPct = ((summary.mtdHm / targets.hm) * 100).toFixed(0);
+    let hmLyGap = summary.mtdHm - (summary.lyMtdHm || 0);
+    let hmLyPct = summary.lyMtdHm > 0 ? ((summary.mtdHm / summary.lyMtdHm) * 100).toFixed(0) : 0;
 
     let html = `
     <div class="excel-report" id="captureArea">
@@ -297,15 +341,17 @@ function openReportModal(type) {
             <tr><td>Sales Vs Target</td><td>${tsGap < 0 ? '' : '+'}${formatRM(tsGap)}</td><td>${tsPct}%</td></tr>
             <tr><td>Sales Vs LY</td><td>${tsLyGap < 0 ? '' : '+'}${formatRM(tsLyGap)}</td><td>+${tsLyPct}%</td></tr>
             <tr><td>HB Vs Target</td><td>${hbGap < 0 ? '' : '+'}${formatRM(hbGap)}</td><td>${hbPct}%</td></tr>
+            <tr><td>HB Vs LY</td><td>${hbLyGap < 0 ? '' : '+'}${formatRM(hbLyGap)}</td><td>+${hbLyPct}%</td></tr>
             <tr><td>HM Vs Target</td><td>${hmGap < 0 ? '' : '+'}${formatRM(hmGap)}</td><td>${hmPct}%</td></tr>
+            <tr><td>HM Vs LY</td><td>${hmLyGap < 0 ? '' : '+'}${formatRM(hmLyGap)}</td><td>+${hmLyPct}%</td></tr>
           </table>
 
           <table class="excel-table" style="margin-top:10px;">
             <tr class="header-yellow"><th colspan="4">From 1st to ${reportDate}</th></tr>
             <tr class="header-yellow"><th></th><th>MTD Sales</th><th>Last Year Sales</th><th>Target</th></tr>
             <tr><td><b>Total</b></td><td>${formatRM(summary.mtdTs)}</td><td>${formatRM(summary.lyMtd)}</td><td>${formatRM(targets.ts)}</td></tr>
-            <tr><td>HB</td><td>${formatRM(summary.mtdHb)}</td><td>-</td><td>${formatRM(targets.hb)}</td></tr>
-            <tr><td>HM</td><td>${formatRM(summary.mtdHm)}</td><td>-</td><td>${formatRM(targets.hm)}</td></tr>
+            <tr><td>HB</td><td>${formatRM(summary.mtdHb)}</td><td>${formatRM(summary.lyMtdHb || 0)}</td><td>${formatRM(targets.hb)}</td></tr>
+            <tr><td>HM</td><td>${formatRM(summary.mtdHm)}</td><td>${formatRM(summary.lyMtdHm || 0)}</td><td>${formatRM(targets.hm)}</td></tr>
             <tr><td>Public Medicare App</td><td>${summary.pmgApp || 0}</td><td>-</td><td>-</td></tr>
           </table>
 
@@ -333,7 +379,7 @@ function openReportModal(type) {
             <tr><td><b>Total Sales BS</b></td>${history.map(h => `<td>${h.cust > 0 ? formatRM(h.ts/h.cust) : 0}</td>`).join('')}</tr>
             <tr><td><b>HB BS</b></td>${history.map(h => `<td>${h.cust > 0 ? formatRM(h.hb/h.cust) : 0}</td>`).join('')}</tr>
             <tr><td><b>PMG APP</b></td>${history.map(h => `<td>${Math.floor(Math.random() * 4) + 1}</td>`).join('')}</tr>
-            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${history.map(h => `<td style="font-size:0.65rem; white-space:normal;">Solid day! HB ratio at ${h.ts > 0 ? ((h.hb/h.ts)*100).toFixed(1) : 0}%.</td>`).join('')}</tr>
+            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${history.map(h => `<td style="font-size:0.65rem; white-space:normal; text-align:left;">${getConstructiveComment(h.ts, h.hb)}</td>`).join('')}</tr>
           </table>
         </div>
       </div>
@@ -404,10 +450,8 @@ function closeReportModal() {
   document.getElementById("reportModal").style.display = "none";
 }
 
-// --- ULTRA HD DOWNLOAD LOGIC ---
 function downloadReportAsImage() {
   const element = document.getElementById('captureArea');
-  
   html2canvas(element, {
     scale: 3, 
     backgroundColor: "#ffffff",
