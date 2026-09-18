@@ -6,11 +6,12 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=16.0">
+  <link rel="stylesheet" href="./styles.css?v=18.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
+  <!-- Secure Login Overlay -->
   <div id="loginOverlay" class="overlay">
     <div class="login-box">
       <h2 style="color: var(--primary);">PMG Performance Hub</h2>
@@ -22,6 +23,7 @@
     </div>
   </div>
 
+  <!-- Action Plan Edit Modal -->
   <div id="actionPlanModal" class="overlay" style="display:none; z-index: 3000;">
     <div class="login-box" style="width: 90%; max-width: 400px;">
       <h3 style="color: var(--primary-dark); margin-top:0;">📝 Update Branch Info</h3>
@@ -38,6 +40,7 @@
     </div>
   </div>
 
+  <!-- Report Modal (For Screenshots) -->
   <div id="reportModal" class="overlay" style="display:none; z-index: 3000;">
     <div class="login-box" style="width: 95%; max-width: 900px; padding: 15px; overflow-y: auto; max-height: 90vh;">
       <div id="reportContent" style="overflow-x: auto; background: white; padding: 10px;"></div>
@@ -48,6 +51,7 @@
     </div>
   </div>
 
+  <!-- Header -->
   <div class="header">
     <h1>⚡ PMG Performance Hub</h1>
     <div id="lastUpdated" class="sync-status">Waiting for login...</div>
@@ -57,6 +61,7 @@
     </div>
   </div>
 
+  <!-- AREA MANAGER OVERVIEW -->
   <div id="areaManagerControls" class="card" style="display:none; background: #ffebee; border: 1px solid #ef5350;">
     <h3 style="margin-top:0; color: #c62828;">🌐 Area Manager Overview</h3>
     
@@ -72,17 +77,22 @@
     </table>
 
     <div style="margin-bottom: 15px;">
-      <label style="font-size: 0.8rem; font-weight: bold; color: #c62828;">📝 My Personal Reminders:</label>
+      <label style="font-size: 0.8rem; font-weight: bold; color: #c62828;">📝 My Personal Reminders (AM Notes):</label>
       <textarea id="amNoteInput" class="input-field" rows="3" placeholder="Type your notes here..."></textarea>
-      <button class="btn" id="saveAmNoteBtn" style="background: #c62828;" onclick="saveAmNote()">Save Note</button>
+      <div style="display: flex; gap: 10px; margin-top: 8px;">
+        <button class="btn" id="saveAmNoteBtn" style="background: #c62828; margin-top: 0;" onclick="saveAmNote()">Save Note</button>
+        <button class="btn btn-copy" style="margin-top: 0;" onclick="copyAMWhatsAppBriefing()">📱 Copy AM Briefing</button>
+      </div>
     </div>
 
     <label style="font-size: 0.8rem; font-weight: bold; color: #c62828;">Select Branch to View Details:</label>
     <select id="branchSelector" class="input-field" onchange="changeBranch()"></select>
   </div>
 
+  <!-- Main Dashboard -->
   <div id="dashboardView">
     
+    <!-- PERSONAL DASHBOARD -->
     <div class="card" id="personalDashboard" style="display:none; border-top: 4px solid #8e24aa;">
       <h2 id="userNameHeader" style="color: #8e24aa;">👤 Personal Profile</h2>
       
@@ -124,6 +134,7 @@
       </div>
     </div>
 
+    <!-- OUTLET DASHBOARD -->
     <div class="card" style="border-top: 4px solid var(--primary);">
       <h2 id="branchNameHeader" style="color: var(--primary);">🏥 Branch Performance</h2>
 
@@ -176,6 +187,7 @@
       </div>
     </div>
 
+    <!-- MANAGER REPORTS (Hidden from Staff) -->
     <div class="card" id="managerReportsSection" style="display:none;">
       <h2>📋 Reports & Actions</h2>
       <button class="btn btn-copy" onclick="copyWhatsAppBriefing()">📱 Copy WhatsApp Briefing</button>
@@ -183,6 +195,7 @@
       <button class="btn btn-image" style="background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);" onclick="openReportModal('teammates')">📊 View Teammates Gap Report</button>
     </div>
 
+    <!-- STAFF TABLE (Hidden from Staff, Visible to Managers/Pharmacists) -->
     <div class="card" id="staffPerformanceSection" style="display:none;">
       <h3 style="margin-top: 0; font-size: 0.9rem; color: var(--primary-dark);">Today's Staff Performance</h3>
       <div style="overflow-x:auto;">
@@ -202,6 +215,6 @@
     </div>
   </div>
 
-  <script src="./app.js?v=16.0"></script>
+  <script src="./app.js?v=18.0"></script>
 </body>
 </html>
