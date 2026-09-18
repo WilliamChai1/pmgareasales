@@ -48,9 +48,9 @@ async function executeLogin() {
       selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
       document.getElementById("loginOverlay").style.display = "none";
       
-      if (currentUser.role.toLowerCase() === 'area manager') {
-        document.getElementById("areaManagerControls").style.display = "block";
-      }
+      // STRICT UI RESET ON LOGIN
+      document.getElementById("areaManagerControls").style.display = (currentUser.role.toLowerCase() === 'area manager') ? "block" : "none";
+      
       loadDashboardData();
     } else {
       document.getElementById("loginError").style.display = "block";
@@ -64,9 +64,17 @@ async function executeLogin() {
 
 function logout() {
   currentUser = null;
+  currentData = null;
+  selectedBranch = null;
+  
+  // STRICT UI RESET ON LOGOUT
   document.getElementById("loginOverlay").style.display = "flex";
   document.getElementById("username").value = "";
   document.getElementById("password").value = "";
+  document.getElementById("areaManagerControls").style.display = "none";
+  document.getElementById("personalDashboard").style.display = "none";
+  document.getElementById("managerReportsSection").style.display = "none";
+  document.getElementById("editActionPlanBtn").style.display = "none";
 }
 
 async function loadDashboardData() {
@@ -82,6 +90,10 @@ async function loadDashboardData() {
     });
     currentData = await res.json();
     
+    if (currentData.error) {
+      throw new Error(currentData.message);
+    }
+
     if (currentUser.role.toLowerCase() === 'area manager' && !selectedBranch) {
       const selector = document.getElementById("branchSelector");
       selector.innerHTML = "";
@@ -95,7 +107,8 @@ async function loadDashboardData() {
     renderDashboard();
     document.getElementById("lastUpdated").innerText = `🟢 Live Sync • ${new Date().toLocaleTimeString()}`;
   } catch (e) {
-    document.getElementById("lastUpdated").innerText = "⚠️ Offline Mode / Sync Error";
+    console.error(e);
+    document.getElementById("lastUpdated").innerText = "⚠️ Error: " + e.message;
   }
 }
 
@@ -113,37 +126,47 @@ function renderDashboard() {
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
   const role = currentUser.role.toLowerCase();
   const isManager = role.includes('manager') || role.includes('pharmacist');
+  const isAreaManager = role === 'area manager';
   
-  document.getElementById("branchNameHeader").innerText = `🏥 ${selectedBranch} Performance`;
-  
-  // --- AREA MANAGER OVERVIEW ---
-  if (role === 'area manager') {
-    const amTbody = document.querySelector("#allBranchesTable tbody");
+  // --- AREA MANAGER OVERVIEW TABLE ---
+  if (isAreaManager) {
+    document.getElementById("areaManagerControls").style.display = "block";
+    const amTbody = document.querySelector("#amOverviewTable tbody");
     amTbody.innerHTML = "";
-    let totalTs = 0, totalHb = 0;
     
-    (currentData.allSummaries || []).forEach(b => {
-      if(b.branch !== 'ALL' && b.branch !== 'AREA_MANAGER') {
-        totalTs += b.mtdTs;
-        totalHb += b.mtdHb;
-        amTbody.innerHTML += `<tr>
-          <td style="text-align:left;"><b>${b.branch}</b></td>
-          <td>${formatRM(b.mtdTs)}</td>
-          <td>${formatRM(b.mtdHb)}</td>
-        </tr>`;
-      }
+    let totalTs = 0;
+    let totalHb = 0;
+
+    currentData.branches.forEach(b => {
+      let bSum = currentData.summary[b] || {};
+      totalTs += (bSum.mtdTs || 0);
+      totalHb += (bSum.mtdHb || 0);
+      
+      amTbody.innerHTML += `
+        <tr style="border-bottom: 1px solid #ffcdd2;">
+          <td style="text-align: left; padding: 8px 5px;">${b}</td>
+          <td style="text-align: right; padding: 8px 5px;">${formatRM(bSum.mtdTs || 0)}</td>
+          <td style="text-align: right; padding: 8px 5px; color: #2e7d32;">${formatRM(bSum.mtdHb || 0)}</td>
+        </tr>
+      `;
     });
     
-    amTbody.innerHTML += `<tr style="background:#ffebee; font-weight:bold;">
-      <td style="text-align:left;">TOTAL</td>
-      <td>${formatRM(totalTs)}</td>
-      <td>${formatRM(totalHb)}</td>
-    </tr>`;
-
+    // Add Total Row
+    amTbody.innerHTML += `
+      <tr style="border-top: 2px solid #ef5350; background: #ffebee; font-weight: bold;">
+        <td style="text-align: left; padding: 8px 5px;">TOTAL</td>
+        <td style="text-align: right; padding: 8px 5px;">${formatRM(totalTs)}</td>
+        <td style="text-align: right; padding: 8px 5px; color: #2e7d32;">${formatRM(totalHb)}</td>
+      </tr>
+    `;
+    
     document.getElementById("amNoteInput").value = currentData.amNote || "";
+  } else {
+    document.getElementById("areaManagerControls").style.display = "none";
   }
 
-  // --- PERSONAL DASHBOARD LOGIC ---
+  document.getElementById("branchNameHeader").innerText = `🏥 ${selectedBranch} Performance`;
+  
   const myStats = staff.find(s => s.name === currentUser.name);
   if (myStats) {
     document.getElementById("personalDashboard").style.display = "block";
@@ -158,7 +181,7 @@ function renderDashboard() {
     let myHbPct = myStats.mtdTs > 0 ? ((myStats.mtdHb / myStats.mtdTs) * 100).toFixed(1) : 0;
     document.getElementById("valMtdHB").innerText = `${formatRM(myStats.mtdHb)} (${myHbPct}%)`;
     document.getElementById("valMtdHM").innerText = formatRM(myStats.mtdHm);
-    document.getElementById("valMtdCust").innerText = myStats.dailyCust;
+    document.getElementById("valMtdCust").innerText = myStats.dailyCust; 
 
     let tsRem = Math.max(0, (myStats.mtdTargetTs * (30/currentData.currentDay)) - myStats.mtdTs);
     let hbRem = Math.max(0, (myStats.mtdTargetHb * (30/currentData.currentDay)) - myStats.mtdHb);
@@ -178,7 +201,6 @@ function renderDashboard() {
     document.getElementById("personalDashboard").style.display = "none";
   }
 
-  // --- OUTLET DASHBOARD LOGIC ---
   const tsPct = Math.min(100, ((summary.mtdTs || 0) / (targets.ts || 1)) * 100);
   document.getElementById("outletTsProgressText").innerText = `RM ${(summary.mtdTs||0).toLocaleString()} / RM ${(targets.ts||0).toLocaleString()} (${tsPct.toFixed(1)}%)`;
   document.getElementById("outletTsBar").style.width = tsPct + "%";
@@ -218,12 +240,8 @@ function renderDashboard() {
   `;
   document.getElementById("aiRecommendationText").innerHTML = apHtml;
 
-  // --- ROLE BASED ACCESS CONTROL ---
   document.getElementById("editActionPlanBtn").style.display = isManager ? "block" : "none";
   document.getElementById("managerReportsSection").style.display = isManager ? "block" : "none";
-  
-  // Hide Staff Table if user is just 'Staff'
-  document.getElementById("staffTableSection").style.display = role === 'staff' ? "none" : "block";
 
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
@@ -240,7 +258,6 @@ function renderDashboard() {
   });
 }
 
-// --- ACTION PLAN LOGIC ---
 function openActionPlanModal() {
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
   document.getElementById("apWeek1").value = ap.w1;
@@ -257,22 +274,17 @@ function closeActionPlanModal() {
 async function saveActionPlan() {
   const btn = document.getElementById("saveApBtn");
   btn.innerText = "Saving...";
-  
   const plans = {
     w1: document.getElementById("apWeek1").value,
     w2: document.getElementById("apWeek2").value,
     w3: document.getElementById("apWeek3").value,
     w4: document.getElementById("apWeek4").value
   };
-
   try {
     await fetch(API_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans })
     });
-    
     currentData.actionPlan = plans;
     renderDashboard();
     closeActionPlanModal();
@@ -283,22 +295,17 @@ async function saveActionPlan() {
   }
 }
 
-async function saveAreaManagerNote() {
+async function saveAmNote() {
   const btn = document.getElementById("saveAmNoteBtn");
   btn.innerText = "Saving...";
   const note = document.getElementById("amNoteInput").value;
-  
   try {
     await fetch(API_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: 'saveActionPlan', branch: 'AREA_MANAGER', plans: {w1: note, w2: "", w3: "", w4: ""} })
+      method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: 'saveAmNote', note: note })
     });
-    
     currentData.amNote = note;
     btn.innerText = "Save Note";
-    alert("Note saved successfully!");
   } catch (e) {
     alert("Failed to save note.");
     btn.innerText = "Save Note";
