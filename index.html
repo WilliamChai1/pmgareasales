@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=14.0">
+  <link rel="stylesheet" href="./styles.css?v=16.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
@@ -183,7 +183,7 @@
       <button class="btn btn-image" style="background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);" onclick="openReportModal('teammates')">📊 View Teammates Gap Report</button>
     </div>
 
-    <div class="card">
+    <div class="card" id="staffPerformanceSection" style="display:none;">
       <h3 style="margin-top: 0; font-size: 0.9rem; color: var(--primary-dark);">Today's Staff Performance</h3>
       <div style="overflow-x:auto;">
         <table id="teammatesTable">
@@ -202,6 +202,6 @@
     </div>
   </div>
 
-  <script src="./app.js?v=14.0"></script>
+  <script src="./app.js?v=16.0"></script>
 </body>
 </html>
