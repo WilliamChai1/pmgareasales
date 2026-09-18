@@ -6,13 +6,11 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=9.0">
-  <!-- HTML2CANVAS FOR ULTRA HD SCREENSHOTS -->
+  <link rel="stylesheet" href="./styles.css?v=10.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
-  <!-- Secure Login Overlay -->
   <div id="loginOverlay" class="overlay">
     <div class="login-box">
       <h2 style="color: var(--primary);">PMG Performance Hub</h2>
@@ -24,7 +22,6 @@
     </div>
   </div>
 
-  <!-- Action Plan Edit Modal -->
   <div id="actionPlanModal" class="overlay" style="display:none; z-index: 3000;">
     <div class="login-box" style="width: 90%; max-width: 400px;">
       <h3 style="color: var(--primary-dark); margin-top:0;">📝 Edit Action Plan</h3>
@@ -37,7 +34,6 @@
     </div>
   </div>
 
-  <!-- Report Modal (For Screenshots) -->
   <div id="reportModal" class="overlay" style="display:none; z-index: 3000;">
     <div class="login-box" style="width: 95%; max-width: 900px; padding: 15px; overflow-y: auto; max-height: 90vh;">
       <div id="reportContent" style="overflow-x: auto; background: white; padding: 10px;"></div>
@@ -48,7 +44,6 @@
     </div>
   </div>
 
-  <!-- Header -->
   <div class="header">
     <h1>⚡ PMG Performance Hub</h1>
     <div id="lastUpdated" class="sync-status">Waiting for login...</div>
@@ -58,15 +53,57 @@
     </div>
   </div>
 
-  <!-- Area Manager Controls -->
   <div id="areaManagerControls" class="card" style="display:none; background: #ffebee; border: 1px solid #ef5350;">
     <h3 style="margin-top:0; color: #c62828;">🌐 Area Manager View</h3>
     <label style="font-size: 0.8rem; font-weight: bold;">Select Branch:</label>
     <select id="branchSelector" class="input-field" onchange="changeBranch()"></select>
   </div>
 
-  <!-- Main Dashboard -->
   <div id="dashboardView">
+    
+    <!-- PERSONAL DASHBOARD (Restored for all users) -->
+    <div class="card" id="personalDashboard" style="display:none; border-top: 4px solid #8e24aa;">
+      <h2 id="userNameHeader" style="color: #8e24aa;">👤 Personal Profile</h2>
+      
+      <div style="font-size:0.78rem; font-weight:800; color:var(--primary); margin-top:2px;">📅 TODAY'S PERFORMANCE:</div>
+      <div class="metric-grid">
+        <div class="metric-box"><div class="label">TODAY TS</div><div class="val" id="valTS">RM 0</div></div>
+        <div class="metric-box"><div class="label">TODAY HB</div><div class="val" id="valHB">RM 0</div></div>
+        <div class="metric-box"><div class="label">TODAY HM</div><div class="val" id="valHM">RM 0</div></div>
+        <div class="metric-box"><div class="label">CUSTOMERS</div><div class="val" id="valCust">0</div></div>
+      </div>
+
+      <div style="font-size:0.78rem; font-weight:800; color:#4a148c; margin-top:10px;">📊 YOUR MTD ACCUMULATED SALES:</div>
+      <div class="metric-grid">
+        <div class="metric-box" style="background:#f3e5f5;"><div class="label">MTD TOTAL SALES</div><div class="val" id="valMtdTS" style="color:var(--primary-dark);">RM 0</div></div>
+        <div class="metric-box" style="background:#f3e5f5;"><div class="label">MTD HOUSE BRAND</div><div class="val" id="valMtdHB" style="color:#00796b;">RM 0</div></div>
+        <div class="metric-box" style="background:#f3e5f5;"><div class="label">MTD HIGH MARGIN</div><div class="val" id="valMtdHM">RM 0</div></div>
+        <div class="metric-box" style="background:#f3e5f5;"><div class="label">MTD PATIENTS</div><div class="val" id="valMtdCust">0</div></div>
+      </div>
+
+      <div class="gap-banner">
+        <b>🎯 Monthly Target Remaining (MTD):</b>
+        <div id="valRemainingTarget" style="margin-top:4px;">Loading...</div>
+      </div>
+
+      <div class="commission-banner">
+        <div style="font-weight: 800; font-size: 0.88rem; margin-bottom: 6px; color: var(--primary-dark);">
+          💰 House Brand Commission Tracker (~3.5% Avg):
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="background: white; padding: 8px; border-radius: 10px; text-align: center; border: 1px solid #ce93d8;">
+            <div style="font-size: 0.65rem; color: #7b1fa2; font-weight: 800;">TODAY'S EARNINGS</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #00796b; margin-top: 2px;" id="valDailyCommission">RM 0.00</div>
+          </div>
+          <div style="background: white; padding: 8px; border-radius: 10px; text-align: center; border: 1px solid #ce93d8;">
+            <div style="font-size: 0.65rem; color: #7b1fa2; font-weight: 800;">MTD ACCUMULATED</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: var(--primary); margin-top: 2px;" id="valMtdCommission">RM 0.00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OUTLET DASHBOARD -->
     <div class="card" style="border-top: 4px solid var(--primary);">
       <h2 id="branchNameHeader" style="color: var(--primary);">🏥 Branch Performance</h2>
 
@@ -119,14 +156,17 @@
       </div>
     </div>
 
-    <!-- Reports & Actions -->
-    <div class="card">
+    <!-- MANAGER REPORTS (Hidden from Staff) -->
+    <div class="card" id="managerReportsSection" style="display:none;">
       <h2>📋 Reports & Actions</h2>
       <button class="btn btn-copy" onclick="copyWhatsAppBriefing()">📱 Copy WhatsApp Briefing</button>
       <button class="btn btn-image" onclick="openReportModal('director')">📊 View Director 7-Day Report</button>
       <button class="btn btn-image" style="background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);" onclick="openReportModal('teammates')">📊 View Teammates Gap Report</button>
-      
-      <h3 style="margin-top: 20px; font-size: 0.9rem; color: var(--primary-dark);">Today's Staff Performance</h3>
+    </div>
+
+    <!-- STAFF TABLE (Visible to all) -->
+    <div class="card">
+      <h3 style="margin-top: 0; font-size: 0.9rem; color: var(--primary-dark);">Today's Staff Performance</h3>
       <div style="overflow-x:auto;">
         <table id="teammatesTable">
           <thead>
@@ -144,6 +184,6 @@
     </div>
   </div>
 
-  <script src="./app.js?v=9.0"></script>
+  <script src="./app.js?v=10.0"></script>
 </body>
 </html>
