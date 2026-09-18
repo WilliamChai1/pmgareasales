@@ -160,3 +160,17 @@ th { background: #ffebee; color: var(--primary-dark); }
 
 .gap-banner { background: #fff8e1; border-left: 4px solid #ffa000; padding: 10px; border-radius: 8px; font-size: 0.82rem; line-height: 1.5; margin-top: 8px; }
 .commission-banner { background: #f3e5f5; border-left: 4px solid var(--primary); padding: 10px; border-radius: 8px; font-size: 0.85rem; line-height: 1.4; margin-top: 8px; color: var(--primary-dark); }
+
+/* Force the 7-Day columns to stay uniform and wrap long text */
+.excel-col-right .excel-table th,
+.excel-col-right .excel-table td {
+  min-width: 85px;
+  max-width: 130px;
+  word-wrap: break-word;
+  white-space: normal;
+}
+
+/* Ensure the comment cell aligns to the top so it looks neat */
+.excel-col-right .header-yellow td {
+  vertical-align: top;
+}
