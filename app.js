@@ -73,6 +73,7 @@ function logout() {
   document.getElementById("personalDashboard").style.display = "none";
   document.getElementById("managerReportsSection").style.display = "none";
   document.getElementById("editActionPlanBtn").style.display = "none";
+  document.getElementById("staffPerformanceSection").style.display = "none";
 }
 
 async function loadDashboardData() {
@@ -181,7 +182,6 @@ function renderDashboard() {
     document.getElementById("valMtdHM").innerText = formatRM(myStats.mtdHm);
     document.getElementById("valMtdCust").innerText = myStats.dailyCust; 
 
-    // FIX: Calculate Full Month Target explicitly to avoid RM 0 bug
     let fullTsTarget = (myStats.targetTs || 0) * 30;
     let fullHbTarget = (myStats.targetHb || 0) * 30;
     let fullHmTarget = (myStats.targetHm || 0) * 30;
@@ -245,6 +245,7 @@ function renderDashboard() {
 
   document.getElementById("editActionPlanBtn").style.display = isManager ? "block" : "none";
   document.getElementById("managerReportsSection").style.display = isManager ? "block" : "none";
+  document.getElementById("staffPerformanceSection").style.display = isManager ? "block" : "none";
 
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
@@ -270,7 +271,7 @@ function openActionPlanModal() {
   document.getElementById("apWeek2").value = ap.w2;
   document.getElementById("apWeek3").value = ap.w3;
   document.getElementById("apWeek4").value = ap.w4;
-  document.getElementById("apPmgApp").value = summary.pmgApp || 0; // Load today's PMG App
+  document.getElementById("apPmgApp").value = summary.pmgApp || 0; 
   
   document.getElementById("actionPlanModal").style.display = "flex";
 }
