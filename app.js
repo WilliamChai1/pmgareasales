@@ -136,26 +136,51 @@ function renderDashboard() {
     
     let totalTs = 0;
     let totalHb = 0;
+    let totalTsTarget = 0;
+    let totalHbTarget = 0;
 
     currentData.branches.forEach(b => {
-      let bSum = currentData.summary[b.toUpperCase()] || {};
+      let bUpper = b.toUpperCase();
+      let bSum = currentData.summary[bUpper] || {};
+      let bTarget = currentData.targets[bUpper] || {};
+      
       totalTs += (bSum.mtdTs || 0);
       totalHb += (bSum.mtdHb || 0);
+      totalTsTarget += (bTarget.ts || 0);
+      totalHbTarget += (bTarget.hb || 0);
+      
+      let tsPct = bTarget.ts ? (((bSum.mtdTs || 0) / bTarget.ts) * 100).toFixed(1) : 0;
+      let hbPct = bTarget.hb ? (((bSum.mtdHb || 0) / bTarget.hb) * 100).toFixed(1) : 0;
       
       amTbody.innerHTML += `
         <tr style="border-bottom: 1px solid #ffcdd2;">
-          <td style="text-align: left; padding: 8px 5px;">${b}</td>
-          <td style="text-align: right; padding: 8px 5px;">${formatRM(bSum.mtdTs || 0)}</td>
-          <td style="text-align: right; padding: 8px 5px; color: #2e7d32;">${formatRM(bSum.mtdHb || 0)}</td>
+          <td style="text-align: left; padding: 8px 5px; font-weight: bold;">${b}</td>
+          <td style="text-align: right; padding: 8px 5px;">
+            ${formatRM(bSum.mtdTs || 0)}<br>
+            <span style="font-size:0.65rem; color:#666;">(${tsPct}%)</span>
+          </td>
+          <td style="text-align: right; padding: 8px 5px; color: #2e7d32; font-weight: bold;">
+            ${formatRM(bSum.mtdHb || 0)}<br>
+            <span style="font-size:0.65rem; color:#666;">(${hbPct}%)</span>
+          </td>
         </tr>
       `;
     });
     
+    let overallTsPct = totalTsTarget ? ((totalTs / totalTsTarget) * 100).toFixed(1) : 0;
+    let overallHbPct = totalHbTarget ? ((totalHb / totalHbTarget) * 100).toFixed(1) : 0;
+
     amTbody.innerHTML += `
       <tr style="border-top: 2px solid #ef5350; background: #ffebee; font-weight: bold;">
         <td style="text-align: left; padding: 8px 5px;">TOTAL</td>
-        <td style="text-align: right; padding: 8px 5px;">${formatRM(totalTs)}</td>
-        <td style="text-align: right; padding: 8px 5px; color: #2e7d32;">${formatRM(totalHb)}</td>
+        <td style="text-align: right; padding: 8px 5px;">
+          ${formatRM(totalTs)}<br>
+          <span style="font-size:0.65rem; color:#c62828;">(${overallTsPct}%)</span>
+        </td>
+        <td style="text-align: right; padding: 8px 5px; color: #2e7d32;">
+          ${formatRM(totalHb)}<br>
+          <span style="font-size:0.65rem; color:#2e7d32;">(${overallHbPct}%)</span>
+        </td>
       </tr>
     `;
     
@@ -243,6 +268,7 @@ function renderDashboard() {
   `;
   document.getElementById("aiRecommendationText").innerHTML = apHtml;
 
+  // ROLE BASED ACCESS CONTROL
   document.getElementById("editActionPlanBtn").style.display = isManager ? "block" : "none";
   document.getElementById("managerReportsSection").style.display = isManager ? "block" : "none";
   document.getElementById("staffPerformanceSection").style.display = isManager ? "block" : "none";
@@ -364,6 +390,53 @@ function copyWhatsAppBriefing() {
   text += `\n🔗 *View Full Dashboard:* ${WEBAPP_LINK}`;
   navigator.clipboard.writeText(text);
   alert("WhatsApp Daily Briefing copied to clipboard!");
+}
+
+function copyAMWhatsAppBriefing() {
+  if (!currentData || !currentData.branches) return;
+
+  let totalTs = 0, totalHb = 0, totalTsTarget = 0, totalHbTarget = 0;
+  let branchDetails = "";
+
+  currentData.branches.forEach(b => {
+    let bUpper = b.toUpperCase();
+    let bSum = currentData.summary[bUpper] || {};
+    let bTarget = currentData.targets[bUpper] || {};
+
+    totalTs += (bSum.mtdTs || 0);
+    totalHb += (bSum.mtdHb || 0);
+    totalTsTarget += (bTarget.ts || 0);
+    totalHbTarget += (bTarget.hb || 0);
+
+    let tsPct = bTarget.ts ? (((bSum.mtdTs || 0) / bTarget.ts) * 100).toFixed(1) : 0;
+    let hbPct = bTarget.hb ? (((bSum.mtdHb || 0) / bTarget.hb) * 100).toFixed(1) : 0;
+    let aiRec = bSum.recommendation || "Focus on House Brand pairings today.";
+
+    branchDetails += `🏥 *${b}*\n`;
+    branchDetails += `• TS: ${tsPct}% | HB: ${hbPct}%\n`;
+    branchDetails += `• 🤖 *AI Directive:* ${aiRec}\n\n`;
+  });
+
+  let overallTsPct = totalTsTarget ? ((totalTs / totalTsTarget) * 100).toFixed(1) : 0;
+  let overallHbPct = totalHbTarget ? ((totalHb / totalHbTarget) * 100).toFixed(1) : 0;
+
+  let text = `*🌐 AREA MANAGER DAILY BRIEFING*\n`;
+  text += `Date: ${new Date().toLocaleDateString()}\n\n`;
+
+  text += `*📊 OVERALL REGION PERFORMANCE:*\n`;
+  text += `Total TS: ${formatRM(totalTs)} (${overallTsPct}%)\n`;
+  text += `Total HB: ${formatRM(totalHb)} (${overallHbPct}%)\n\n`;
+
+  text += `*🎯 BRANCH DIRECTIVES (For PM, BM & ABM):*\n`;
+  text += branchDetails;
+
+  text += `*📝 AM Notes & Focus:*\n${currentData.amNote || "Let's keep the momentum going! Focus on our HB targets."}\n\n`;
+
+  text += `Let's execute these strategies today. 💪\n`;
+  text += `🔗 *View Full Dashboard:* ${WEBAPP_LINK}`;
+
+  navigator.clipboard.writeText(text);
+  alert("Area Manager Master Briefing copied to clipboard!");
 }
 
 function getConstructiveComment(ts, hb) {
