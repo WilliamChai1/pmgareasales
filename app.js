@@ -379,7 +379,7 @@ function openReportModal(type) {
             <tr><td><b>Total Sales BS</b></td>${history.map(h => `<td>${h.cust > 0 ? formatRM(h.ts/h.cust) : 0}</td>`).join('')}</tr>
             <tr><td><b>HB BS</b></td>${history.map(h => `<td>${h.cust > 0 ? formatRM(h.hb/h.cust) : 0}</td>`).join('')}</tr>
             <tr><td><b>PMG APP</b></td>${history.map(h => `<td>${Math.floor(Math.random() * 4) + 1}</td>`).join('')}</tr>
-            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${history.map(h => `<td style="font-size:0.65rem; white-space:normal; text-align:left;">${getConstructiveComment(h.ts, h.hb)}</td>`).join('')}</tr>
+            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${history.map(h => `<td style="font-size:0.65rem; white-space:normal; text-align:left; max-width:130px; word-wrap:break-word;">${getConstructiveComment(h.ts, h.hb)}</td>`).join('')}</tr>
           </table>
         </div>
       </div>
