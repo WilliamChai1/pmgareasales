@@ -48,7 +48,6 @@ async function executeLogin() {
       selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
       document.getElementById("loginOverlay").style.display = "none";
       
-      // STRICT UI RESET ON LOGIN
       document.getElementById("areaManagerControls").style.display = (currentUser.role.toLowerCase() === 'area manager') ? "block" : "none";
       
       loadDashboardData();
@@ -67,7 +66,6 @@ function logout() {
   currentData = null;
   selectedBranch = null;
   
-  // STRICT UI RESET ON LOGOUT
   document.getElementById("loginOverlay").style.display = "flex";
   document.getElementById("username").value = "";
   document.getElementById("password").value = "";
@@ -120,8 +118,9 @@ function changeBranch() {
 function renderDashboard() {
   if (!currentData || !selectedBranch) return;
   
-  const summary = currentData.summary[selectedBranch] || {};
-  const targets = currentData.targets[selectedBranch] || {};
+  const branchUpper = String(selectedBranch).toUpperCase();
+  const summary = currentData.summary[branchUpper] || {};
+  const targets = currentData.targets[branchUpper] || {};
   const staff = currentData.staff || [];
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
   const role = currentUser.role.toLowerCase();
@@ -138,7 +137,7 @@ function renderDashboard() {
     let totalHb = 0;
 
     currentData.branches.forEach(b => {
-      let bSum = currentData.summary[b] || {};
+      let bSum = currentData.summary[b.toUpperCase()] || {};
       totalTs += (bSum.mtdTs || 0);
       totalHb += (bSum.mtdHb || 0);
       
@@ -151,7 +150,6 @@ function renderDashboard() {
       `;
     });
     
-    // Add Total Row
     amTbody.innerHTML += `
       <tr style="border-top: 2px solid #ef5350; background: #ffebee; font-weight: bold;">
         <td style="text-align: left; padding: 8px 5px;">TOTAL</td>
@@ -183,14 +181,19 @@ function renderDashboard() {
     document.getElementById("valMtdHM").innerText = formatRM(myStats.mtdHm);
     document.getElementById("valMtdCust").innerText = myStats.dailyCust; 
 
-    let tsRem = Math.max(0, (myStats.mtdTargetTs * (30/currentData.currentDay)) - myStats.mtdTs);
-    let hbRem = Math.max(0, (myStats.mtdTargetHb * (30/currentData.currentDay)) - myStats.mtdHb);
-    let hmRem = Math.max(0, (myStats.mtdTargetHm * (30/currentData.currentDay)) - myStats.mtdHm);
+    // FIX: Calculate Full Month Target explicitly to avoid RM 0 bug
+    let fullTsTarget = (myStats.targetTs || 0) * 30;
+    let fullHbTarget = (myStats.targetHb || 0) * 30;
+    let fullHmTarget = (myStats.targetHm || 0) * 30;
+
+    let tsRem = Math.max(0, fullTsTarget - (myStats.mtdTs || 0));
+    let hbRem = Math.max(0, fullHbTarget - (myStats.mtdHb || 0));
+    let hmRem = Math.max(0, fullHmTarget - (myStats.mtdHm || 0));
     
     document.getElementById("valRemainingTarget").innerHTML = `
-      • TS Target Left: <b>${formatRM(tsRem)}</b><br>
-      • HB Target Left: <b>${formatRM(hbRem)}</b><br>
-      • HM Target Left: <b>${formatRM(hmRem)}</b>
+      • TS Target Left: <b>${formatRM(tsRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullTsTarget)})</span><br>
+      • HB Target Left: <b>${formatRM(hbRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullHbTarget)})</span><br>
+      • HM Target Left: <b>${formatRM(hmRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullHmTarget)})</span>
     `;
 
     let dailyComm = myStats.dailyHb * 0.035;
@@ -260,10 +263,15 @@ function renderDashboard() {
 
 function openActionPlanModal() {
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
+  const branchUpper = String(selectedBranch).toUpperCase();
+  const summary = currentData.summary[branchUpper] || {};
+  
   document.getElementById("apWeek1").value = ap.w1;
   document.getElementById("apWeek2").value = ap.w2;
   document.getElementById("apWeek3").value = ap.w3;
   document.getElementById("apWeek4").value = ap.w4;
+  document.getElementById("apPmgApp").value = summary.pmgApp || 0; // Load today's PMG App
+  
   document.getElementById("actionPlanModal").style.display = "flex";
 }
 
@@ -274,24 +282,33 @@ function closeActionPlanModal() {
 async function saveActionPlan() {
   const btn = document.getElementById("saveApBtn");
   btn.innerText = "Saving...";
+  
   const plans = {
     w1: document.getElementById("apWeek1").value,
     w2: document.getElementById("apWeek2").value,
     w3: document.getElementById("apWeek3").value,
     w4: document.getElementById("apWeek4").value
   };
+  
+  const pmgCount = document.getElementById("apPmgApp").value || 0;
+
   try {
     await fetch(API_URL, {
       method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans })
+      body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans, pmgCount: pmgCount, date: new Date().toDateString() })
     });
+    
     currentData.actionPlan = plans;
+    if(currentData.summary[String(selectedBranch).toUpperCase()]) {
+      currentData.summary[String(selectedBranch).toUpperCase()].pmgApp = pmgCount;
+    }
+    
     renderDashboard();
     closeActionPlanModal();
-    btn.innerText = "Save Action Plan";
+    btn.innerText = "Save Updates";
   } catch (e) {
     alert("Failed to save. Check connection.");
-    btn.innerText = "Save Action Plan";
+    btn.innerText = "Save Updates";
   }
 }
 
@@ -314,8 +331,9 @@ async function saveAmNote() {
 
 function copyWhatsAppBriefing() {
   if (!currentData || !selectedBranch) return;
-  const summary = currentData.summary[selectedBranch] || {};
-  const targets = currentData.targets[selectedBranch] || {};
+  const branchUpper = String(selectedBranch).toUpperCase();
+  const summary = currentData.summary[branchUpper] || {};
+  const targets = currentData.targets[branchUpper] || {};
   const ap = currentData.actionPlan || {};
   
   const tsPct = (((summary.mtdTs || 0) / (targets.ts || 1)) * 100).toFixed(1);
@@ -359,8 +377,9 @@ function openReportModal(type) {
   currentReportType = type;
   document.getElementById("reportModal").style.display = "flex";
   const content = document.getElementById("reportContent");
-  const summary = currentData.summary[selectedBranch] || {};
-  const targets = currentData.targets[selectedBranch] || {};
+  const branchUpper = String(selectedBranch).toUpperCase();
+  const summary = currentData.summary[branchUpper] || {};
+  const targets = currentData.targets[branchUpper] || {};
   const history = currentData.history || [];
   const staff = currentData.staff || [];
   const ap = currentData.actionPlan || {};
@@ -437,7 +456,7 @@ function openReportModal(type) {
             <tr><td><b>No. of tranx</b></td>${history.map(h => `<td>${h.cust}</td>`).join('')}</tr>
             <tr><td><b>Total Sales BS</b></td>${history.map(h => `<td>${h.cust > 0 ? formatRM(h.ts/h.cust) : 0}</td>`).join('')}</tr>
             <tr><td><b>HB BS</b></td>${history.map(h => `<td>${h.cust > 0 ? formatRM(h.hb/h.cust) : 0}</td>`).join('')}</tr>
-            <tr><td><b>PMG APP</b></td>${history.map(h => `<td>${Math.floor(Math.random() * 4) + 1}</td>`).join('')}</tr>
+            <tr><td><b>PMG APP</b></td>${history.map(h => `<td>${h.pmgApp || 0}</td>`).join('')}</tr>
             <tr class="header-yellow"><td><b>Daily Comment:</b></td>${history.map(h => `<td style="font-size:0.65rem; white-space:normal; text-align:left; max-width:130px; word-wrap:break-word;">${getConstructiveComment(h.ts, h.hb)}</td>`).join('')}</tr>
           </table>
         </div>
@@ -464,8 +483,8 @@ function openReportModal(type) {
     let totalCust=0, totalTs=0, totalHb=0, totalHm=0, totalTsGap=0, totalHbGap=0;
 
     staff.forEach(s => {
-      let tsGap = s.mtdTs - s.mtdTargetTs;
-      let hbGap = s.mtdHb - s.mtdTargetHb;
+      let tsGap = s.mtdTs - (s.targetTs * currentData.currentDay);
+      let hbGap = s.mtdHb - (s.targetHb * currentData.currentDay);
       let hbPct = s.mtdTs > 0 ? ((s.mtdHb / s.mtdTs) * 100).toFixed(1) : 0;
       
       totalCust += s.dailyCust; 
