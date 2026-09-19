@@ -45,14 +45,18 @@ async function executeLogin() {
     
     if (data.success) {
       currentUser = data.user;
+      localStorage.setItem("pmg_session", JSON.stringify(currentUser));
       selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
       document.getElementById("loginOverlay").style.display = "none";
       
-      document.getElementById("areaManagerControls").style.display = (currentUser.role.toLowerCase() === 'area manager') ? "block" : "none";
+      const role = (currentUser.position || currentUser.role || '').toLowerCase();
+      document.getElementById("areaManagerControls").style.display = (role === 'area manager') ? "block" : "none";
       
       loadDashboardData();
     } else {
-      document.getElementById("loginError").style.display = "block";
+      const errEl = document.getElementById("loginError");
+      errEl.innerText = data.message || "Invalid credentials. Please try again.";
+      errEl.style.display = "block";
       btn.innerText = "Secure Login";
     }
   } catch (e) {
@@ -65,6 +69,7 @@ function logout() {
   currentUser = null;
   currentData = null;
   selectedBranch = null;
+  localStorage.removeItem("pmg_session");
   
   document.getElementById("loginOverlay").style.display = "flex";
   document.getElementById("username").value = "";
@@ -76,6 +81,23 @@ function logout() {
   document.getElementById("staffPerformanceSection").style.display = "none";
 }
 
+function initSession() {
+  try {
+    const saved = localStorage.getItem("pmg_session");
+    if (saved) {
+      currentUser = JSON.parse(saved);
+      selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
+      document.getElementById("loginOverlay").style.display = "none";
+      const role = (currentUser.position || currentUser.role || '').toLowerCase();
+      document.getElementById("areaManagerControls").style.display = (role === 'area manager') ? "block" : "none";
+      loadDashboardData();
+    }
+  } catch (e) {
+    localStorage.removeItem("pmg_session");
+  }
+}
+window.addEventListener('DOMContentLoaded', initSession);
+
 async function loadDashboardData() {
   document.getElementById("lastUpdated").innerText = "🔄 Syncing with Database...";
   const branchToFetch = selectedBranch || "ALL"; 
@@ -85,7 +107,12 @@ async function loadDashboardData() {
       method: 'POST',
       redirect: 'follow',
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: 'getData', branch: branchToFetch, role: currentUser.role })
+      body: JSON.stringify({ 
+        action: 'getData', 
+        branch: branchToFetch, 
+        role: currentUser.position || currentUser.role,
+        username: currentUser.username 
+      })
     });
     currentData = await res.json();
     
@@ -93,7 +120,8 @@ async function loadDashboardData() {
       throw new Error(currentData.message);
     }
 
-    if (currentUser.role.toLowerCase() === 'area manager' && !selectedBranch) {
+    const role = (currentUser.position || currentUser.role || '').toLowerCase();
+    if (role === 'area manager' && !selectedBranch) {
       const selector = document.getElementById("branchSelector");
       selector.innerHTML = "";
       currentData.branches.forEach(b => {
@@ -124,9 +152,13 @@ function renderDashboard() {
   const targets = currentData.targets[branchUpper] || {};
   const staff = currentData.staff || [];
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
-  const role = currentUser.role.toLowerCase();
-  const isManager = role.includes('manager') || role.includes('pharmacist');
+  const role = (currentUser.position || currentUser.role || '').toLowerCase();
   const isAreaManager = role === 'area manager';
+  const isBranchManager = role === 'branch manager' || role === 'assistant branch manager';
+  const isPharmacist = role.includes('pharmacist');
+  const canEditActionPlan = isAreaManager || isBranchManager;
+  const canViewReports = isAreaManager || isBranchManager;
+  const canViewStaffPerformance = isAreaManager || isBranchManager || isPharmacist;
   
   // --- AREA MANAGER OVERVIEW TABLE ---
   if (isAreaManager) {
@@ -207,9 +239,10 @@ function renderDashboard() {
     document.getElementById("valMtdHM").innerText = formatRM(myStats.mtdHm);
     document.getElementById("valMtdCust").innerText = myStats.dailyCust; 
 
-    let fullTsTarget = (myStats.targetTs || 0) * 30;
-    let fullHbTarget = (myStats.targetHb || 0) * 30;
-    let fullHmTarget = (myStats.targetHm || 0) * 30;
+    const daysInMonth = currentData.daysInMonth || 30;
+    let fullTsTarget = (myStats.targetTs || 0) * daysInMonth;
+    let fullHbTarget = (myStats.targetHb || 0) * daysInMonth;
+    let fullHmTarget = (myStats.targetHm || 0) * daysInMonth;
 
     let tsRem = Math.max(0, fullTsTarget - (myStats.mtdTs || 0));
     let hbRem = Math.max(0, fullHbTarget - (myStats.mtdHb || 0));
@@ -269,9 +302,9 @@ function renderDashboard() {
   document.getElementById("aiRecommendationText").innerHTML = apHtml;
 
   // ROLE BASED ACCESS CONTROL
-  document.getElementById("editActionPlanBtn").style.display = isManager ? "block" : "none";
-  document.getElementById("managerReportsSection").style.display = isManager ? "block" : "none";
-  document.getElementById("staffPerformanceSection").style.display = isManager ? "block" : "none";
+  document.getElementById("editActionPlanBtn").style.display = canEditActionPlan ? "block" : "none";
+  document.getElementById("managerReportsSection").style.display = canViewReports ? "block" : "none";
+  document.getElementById("staffPerformanceSection").style.display = canViewStaffPerformance ? "block" : "none";
 
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
