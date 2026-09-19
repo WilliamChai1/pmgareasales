@@ -366,12 +366,25 @@ function copyWhatsAppBriefing() {
   const tsPct = (((summary.mtdTs || 0) / (targets.ts || 1)) * 100).toFixed(1);
   const hbPct = (((summary.mtdHb || 0) / (targets.hb || 1)) * 100).toFixed(1);
   
+  // Pacing Logic
+  let currentDay = currentData.currentDay || new Date().getDate();
+  let daysLeft = Math.max(1, 30 - currentDay);
+  
+  let expectedTs = ((targets.ts || 0) / 30) * currentDay;
+  let expectedHb = ((targets.hb || 0) / 30) * currentDay;
+  
+  let tsReqPerDay = Math.max(0, ((targets.ts || 0) - (summary.mtdTs || 0)) / daysLeft);
+  let hbReqPerDay = Math.max(0, ((targets.hb || 0) - (summary.mtdHb || 0)) / daysLeft);
+
+  let tsStatus = (summary.mtdTs >= expectedTs) ? "🟢 On Track" : `🔴 Off Track (Need RM ${formatRM(tsReqPerDay)}/day)`;
+  let hbStatus = (summary.mtdHb >= expectedHb) ? "🟢 On Track" : `🔴 Off Track (Need RM ${formatRM(hbReqPerDay)}/day)`;
+  
   let text = `*📊 ${selectedBranch} Daily Briefing*\n`;
   text += `Date: ${new Date().toLocaleDateString()}\n\n`;
   
   text += `*🎯 Target Achievement:*\n`;
-  text += `TS: RM ${(summary.mtdTs||0).toLocaleString()} / RM ${(targets.ts||0).toLocaleString()} (${tsPct}%)\n`;
-  text += `HB: RM ${(summary.mtdHb||0).toLocaleString()} / RM ${(targets.hb||0).toLocaleString()} (${hbPct}%)\n`;
+  text += `TS: RM ${(summary.mtdTs||0).toLocaleString()} / RM ${(targets.ts||0).toLocaleString()} (${tsPct}%) - ${tsStatus}\n`;
+  text += `HB: RM ${(summary.mtdHb||0).toLocaleString()} / RM ${(targets.hb||0).toLocaleString()} (${hbPct}%) - ${hbStatus}\n`;
   text += `📱 PMG App Installs Today: ${summary.pmgApp || 0}\n\n`;
   
   text += `*🎯 Strategy Plan:*\n`;
@@ -379,13 +392,29 @@ function copyWhatsAppBriefing() {
   
   text += `*🏆 Congratulation Board:*\n`;
   let achievers = 0;
+  
+  // Actionable Tips Array
+  const tips = [
+    "Tip: Pair Vitamin C with every cough/cold consult today.",
+    "Tip: Suggest a 30-day joint supplement pack for pain relief.",
+    "Tip: Recommend probiotics with every antibiotic script.",
+    "Tip: Offer a PWP item at checkout for baskets over RM30.",
+    "Tip: Upgrade 15-day supplies to 30-day for better compliance."
+  ];
+
   currentData.staff.forEach(s => {
-    if(s.dailyTs >= s.targetTs || s.dailyHb >= s.targetHb) {
+    let hits = [];
+    if(s.dailyTs >= s.targetTs) hits.push("TS");
+    if(s.dailyHb >= s.targetHb) hits.push("HB");
+    
+    if(hits.length > 0) {
       achievers++;
-      text += `• *${s.name}*: Fantastic job hitting your target! (RM ${Number(s.dailyTs).toLocaleString()} TS / RM ${Number(s.dailyHb).toLocaleString()} HB). Your dedication to patient care and House Brands is highly appreciated. Keep up the great momentum! 🌟\n`;
+      let randomTip = tips[Math.floor(Math.random() * tips.length)];
+      text += `• *${s.name}*: Hit ${hits.join(" & ")}! 🌟 ${randomTip}\n`;
     }
   });
-  if(achievers === 0) text += `Let's push hard today to get everyone on the board! 💪\n`;
+  
+  if(achievers === 0) text += `Let's push hard today to get everyone on the board! Focus on PWP at checkout. 💪\n`;
   
   text += `\n🔗 *View Full Dashboard:* ${WEBAPP_LINK}`;
   navigator.clipboard.writeText(text);
@@ -397,6 +426,8 @@ function copyAMWhatsAppBriefing() {
 
   let totalTs = 0, totalHb = 0, totalTsTarget = 0, totalHbTarget = 0;
   let branchDetails = "";
+  let currentDay = currentData.currentDay || new Date().getDate();
+  let daysLeft = Math.max(1, 30 - currentDay);
 
   currentData.branches.forEach(b => {
     let bUpper = b.toUpperCase();
@@ -410,11 +441,14 @@ function copyAMWhatsAppBriefing() {
 
     let tsPct = bTarget.ts ? (((bSum.mtdTs || 0) / bTarget.ts) * 100).toFixed(1) : 0;
     let hbPct = bTarget.hb ? (((bSum.mtdHb || 0) / bTarget.hb) * 100).toFixed(1) : 0;
-    let aiRec = bSum.recommendation || "Focus on House Brand pairings today.";
+    
+    let expectedTs = ((bTarget.ts || 0) / 30) * currentDay;
+    let tsReqPerDay = Math.max(0, ((bTarget.ts || 0) - (bSum.mtdTs || 0)) / daysLeft);
+    let tsStatus = (bSum.mtdTs >= expectedTs) ? "🟢 On Track" : `🔴 Need RM ${formatRM(tsReqPerDay)}/day`;
 
     branchDetails += `🏥 *${b}*\n`;
-    branchDetails += `• TS: ${tsPct}% | HB: ${hbPct}%\n`;
-    branchDetails += `• 🤖 *AI Directive:* ${aiRec}\n\n`;
+    branchDetails += `• TS: ${tsPct}% (${tsStatus})\n`;
+    branchDetails += `• HB: ${hbPct}%\n\n`;
   });
 
   let overallTsPct = totalTsTarget ? ((totalTs / totalTsTarget) * 100).toFixed(1) : 0;
@@ -427,7 +461,7 @@ function copyAMWhatsAppBriefing() {
   text += `Total TS: ${formatRM(totalTs)} (${overallTsPct}%)\n`;
   text += `Total HB: ${formatRM(totalHb)} (${overallHbPct}%)\n\n`;
 
-  text += `*🎯 BRANCH DIRECTIVES (For PM, BM & ABM):*\n`;
+  text += `*🎯 BRANCH PACING (For PM, BM & ABM):*\n`;
   text += branchDetails;
 
   text += `*📝 AM Notes & Focus:*\n${currentData.amNote || "Let's keep the momentum going! Focus on our HB targets."}\n\n`;
@@ -438,7 +472,6 @@ function copyAMWhatsAppBriefing() {
   navigator.clipboard.writeText(text);
   alert("Area Manager Master Briefing copied to clipboard!");
 }
-
 function getConstructiveComment(ts, hb) {
   if (ts === 0) return "Store closed or no data.";
   let hbPct = (hb / ts) * 100;
