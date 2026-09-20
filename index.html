@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#d32f2f">
   <title>PMG Enterprise Performance Hub</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=20.0">
+  <link rel="stylesheet" href="./styles.css?v=21.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
@@ -22,7 +22,7 @@
       <button class="btn" id="loginBtn" onclick="executeLogin()">Secure Login</button>
       <p id="loginError" class="error-text">Invalid credentials. Please try again.</p>
       <p style="margin-top: 16px; font-size: 0.85rem; color: #555;">
-        New teammate? <a href="#" onclick="toggleAuthView('signup')" style="color: var(--primary); font-weight: bold; text-decoration: none;">Sign Up Here</a>
+        New teammate? <a href="javascript:void(0)" onclick="toggleAuthView('signup')" style="color: var(--primary); font-weight: bold; text-decoration: none;">Sign Up Here</a>
       </p>
     </div>
 
@@ -91,7 +91,7 @@
       <p id="signupSuccess" style="display:none; color: #2e7d32; font-size: 0.85rem; font-weight: bold; text-align: center; margin-top: 10px;"></p>
 
       <p style="margin-top: 14px; font-size: 0.82rem; color: #555; text-align: center;">
-        Already have an account? <a href="#" onclick="toggleAuthView('login')" style="color: var(--primary); font-weight: bold; text-decoration: none;">Login Here</a>
+        Already have an account? <a href="javascript:void(0)" onclick="toggleAuthView('login')" style="color: var(--primary); font-weight: bold; text-decoration: none;">Login Here</a>
       </p>
     </div>
   </div>
@@ -297,6 +297,6 @@
     </div>
   </div>
 
-  <script src="./app.js?v=20.0"></script>
+  <script src="./app.js?v=21.0"></script>
 </body>
 </html>
