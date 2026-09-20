@@ -65,6 +65,135 @@ async function executeLogin() {
   }
 }
 
+function toggleAuthView(view) {
+  const loginBox = document.getElementById("loginBox");
+  const signupBox = document.getElementById("signupBox");
+  const loginErr = document.getElementById("loginError");
+  const signupErr = document.getElementById("signupError");
+  const signupSuccess = document.getElementById("signupSuccess");
+
+  if (loginErr) loginErr.style.display = "none";
+  if (signupErr) signupErr.style.display = "none";
+  if (signupSuccess) signupSuccess.style.display = "none";
+
+  if (view === 'signup') {
+    loginBox.style.display = "none";
+    signupBox.style.display = "block";
+    history.pushState({ authView: 'signup' }, '');
+  } else {
+    signupBox.style.display = "none";
+    loginBox.style.display = "block";
+  }
+}
+
+async function executeSignUp() {
+  const name = document.getElementById("signupName").value.trim();
+  const empId = document.getElementById("signupEmpId").value.trim();
+  const role = document.getElementById("signupRole").value;
+  const race = document.getElementById("signupRace").value;
+  const branch = document.getElementById("signupBranch").value;
+  const user = document.getElementById("signupUsername").value.trim();
+  const pass = document.getElementById("signupPassword").value.trim();
+  const confirmPass = document.getElementById("signupConfirmPassword").value.trim();
+
+  const errEl = document.getElementById("signupError");
+  const succEl = document.getElementById("signupSuccess");
+  const btn = document.getElementById("signupBtn");
+
+  errEl.style.display = "none";
+  succEl.style.display = "none";
+
+  if (!name || !empId || !user || !pass || !confirmPass) {
+    errEl.innerText = "Please fill in all required fields.";
+    errEl.style.display = "block";
+    return;
+  }
+
+  if (pass !== confirmPass) {
+    errEl.innerText = "Passwords do not match. Please re-enter.";
+    errEl.style.display = "block";
+    return;
+  }
+
+  if (pass.length < 4) {
+    errEl.innerText = "Password / PIN must be at least 4 digits.";
+    errEl.style.display = "block";
+    return;
+  }
+
+  btn.innerText = "Submitting...";
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'signup',
+        username: user,
+        password: pass,
+        name: name,
+        role: role,
+        branch: branch,
+        empId: empId,
+        race: race
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      succEl.innerHTML = "✅ Registration submitted!<br><span style='font-size:0.78rem; font-weight:normal; color:#444;'>Your account is pending Area Manager approval. Once approved, you can log in immediately.</span>";
+      succEl.style.display = "block";
+      btn.style.display = "none";
+      setTimeout(() => {
+        toggleAuthView('login');
+        btn.style.display = "block";
+        btn.innerText = "Submit for Approval";
+        btn.disabled = false;
+      }, 4000);
+    } else {
+      errEl.innerText = data.message || "Registration failed. Please try again.";
+      errEl.style.display = "block";
+      btn.innerText = "Submit for Approval";
+      btn.disabled = false;
+    }
+  } catch (e) {
+    errEl.innerText = "Connection error. Please check your internet.";
+    errEl.style.display = "block";
+    btn.innerText = "Submit for Approval";
+    btn.disabled = false;
+  }
+}
+
+async function executeApproveUser(targetUsername) {
+  if (!confirm(`Are you sure you want to approve @${targetUsername}?`)) return;
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'approveUser',
+        targetUsername: targetUsername,
+        adminUsername: currentUser ? currentUser.username : ''
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      alert(data.message || "User approved successfully!");
+      loadDashboardData();
+    } else {
+      alert(data.message || "Failed to approve user.");
+    }
+  } catch (e) {
+    alert("Error connecting to server. Please try again.");
+  }
+}
+
 function logout() {
   currentUser = null;
   currentData = null;
@@ -72,6 +201,7 @@ function logout() {
   localStorage.removeItem("pmg_session");
   
   document.getElementById("loginOverlay").style.display = "flex";
+  toggleAuthView('login');
   document.getElementById("username").value = "";
   document.getElementById("password").value = "";
   document.getElementById("areaManagerControls").style.display = "none";
@@ -160,9 +290,46 @@ function renderDashboard() {
   const canViewReports = isAreaManager || isBranchManager;
   const canViewStaffPerformance = isAreaManager || isBranchManager || isPharmacist;
   
+  // Dynamically populate signup branch list if branches data is available
+  const signupBranchSelect = document.getElementById("signupBranch");
+  if (signupBranchSelect && currentData.branches && currentData.branches.length > 0) {
+    const currentVal = signupBranchSelect.value;
+    signupBranchSelect.innerHTML = currentData.branches.map(b => `<option value="${b}">${b}</option>`).join("");
+    if (currentVal && currentData.branches.includes(currentVal)) {
+      signupBranchSelect.value = currentVal;
+    }
+  }
+
   // --- AREA MANAGER OVERVIEW TABLE ---
   if (isAreaManager) {
     document.getElementById("areaManagerControls").style.display = "block";
+
+    // --- PENDING REGISTRATIONS APPROVAL SECTION ---
+    const pendingSection = document.getElementById("pendingApprovalsSection");
+    const pendingList = document.getElementById("pendingUsersList");
+    const pendingBadge = document.getElementById("pendingCountBadge");
+
+    if (currentData.pendingUsers && currentData.pendingUsers.length > 0) {
+      if (pendingSection) pendingSection.style.display = "block";
+      if (pendingBadge) pendingBadge.innerText = currentData.pendingUsers.length;
+      if (pendingList) {
+        pendingList.innerHTML = "";
+        currentData.pendingUsers.forEach(u => {
+          pendingList.innerHTML += `
+            <div style="background: white; border-radius: 6px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ffe082;">
+              <div>
+                <div style="font-weight: bold; font-size: 0.85rem; color: #333;">${u.name} <span style="font-size:0.7rem; color:#666;">(@${u.username})</span></div>
+                <div style="font-size: 0.72rem; color: #777;">${u.role} · ${u.branch} · ${u.empId || 'No ID'} · ${u.race || ''}</div>
+              </div>
+              <button class="btn" style="width: auto; padding: 5px 12px; margin: 0; font-size: 0.75rem; background: #2e7d32;" onclick="executeApproveUser('${u.username}')">Approve</button>
+            </div>
+          `;
+        });
+      }
+    } else if (pendingSection) {
+      pendingSection.style.display = "none";
+    }
+
     const amTbody = document.querySelector("#amOverviewTable tbody");
     amTbody.innerHTML = "";
     
@@ -731,6 +898,7 @@ async function downloadReportAsImage() {
 window.addEventListener('popstate', (e) => {
   const reportModal = document.getElementById("reportModal");
   const actionPlanModal = document.getElementById("actionPlanModal");
+  const signupBox = document.getElementById("signupBox");
 
   let modalClosed = false;
   if (reportModal && reportModal.style.display === "flex") {
@@ -739,6 +907,10 @@ window.addEventListener('popstate', (e) => {
   }
   if (actionPlanModal && actionPlanModal.style.display === "flex") {
     closeActionPlanModal(false);
+    modalClosed = true;
+  }
+  if (signupBox && signupBox.style.display === "block") {
+    toggleAuthView('login');
     modalClosed = true;
   }
 
@@ -770,11 +942,14 @@ document.addEventListener('touchend', (e) => {
   if (Math.abs(diffX) > 70 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
     const reportModal = document.getElementById("reportModal");
     const actionPlanModal = document.getElementById("actionPlanModal");
+    const signupBox = document.getElementById("signupBox");
 
     if (reportModal && reportModal.style.display === "flex") {
       closeReportModal(true);
     } else if (actionPlanModal && actionPlanModal.style.display === "flex") {
       closeActionPlanModal(true);
+    } else if (signupBox && signupBox.style.display === "block") {
+      toggleAuthView('login');
     }
   }
 }, { passive: true });
