@@ -447,13 +447,13 @@ function copyWhatsAppBriefing() {
     if(hits.length > 0) {
       achievers++;
       let randomTip = tips[Math.floor(Math.random() * tips.length)];
-      text += `• *${s.name}*: Hit ${hits.join(" & ")}! 🌟 ${randomTip}\n`;
+      text += `• *${s.name}*: Hit ${hits.join(" & ")}! 🌟 ${randomTip}\n\n`;
     }
   });
   
-  if(achievers === 0) text += `Let's push hard today to get everyone on the board! Focus on PWP at checkout. 💪\n`;
+  if(achievers === 0) text += `Let's push hard today to get everyone on the board! Focus on PWP at checkout. 💪\n\n`;
   
-  text += `\n🔗 *View Full Dashboard:* ${WEBAPP_LINK}`;
+  text += `🔗 *View Full Dashboard:* ${WEBAPP_LINK}`;
   navigator.clipboard.writeText(text);
   alert("WhatsApp Daily Briefing copied to clipboard!");
 }
