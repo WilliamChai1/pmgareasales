@@ -13,13 +13,86 @@
 
   <!-- Secure Login Overlay -->
   <div id="loginOverlay" class="overlay">
-    <div class="login-box">
+    <!-- Login Box -->
+    <div class="login-box" id="loginBox">
       <h2 style="color: var(--primary);">PMG Performance Hub</h2>
       <p style="font-size: 0.85rem; color: #666;">Enter your credentials to access your branch.</p>
       <input type="text" id="username" class="input-field" placeholder="Username">
       <input type="password" id="password" class="input-field" placeholder="Password" onkeydown="if(event.key==='Enter') executeLogin()">
       <button class="btn" id="loginBtn" onclick="executeLogin()">Secure Login</button>
       <p id="loginError" class="error-text">Invalid credentials. Please try again.</p>
+      <p style="margin-top: 16px; font-size: 0.85rem; color: #555;">
+        New teammate? <a href="#" onclick="toggleAuthView('signup')" style="color: var(--primary); font-weight: bold; text-decoration: none;">Sign Up Here</a>
+      </p>
+    </div>
+
+    <!-- Sign-Up Box -->
+    <div class="login-box" id="signupBox" style="display:none; width: 92%; max-width: 380px; max-height: 90vh; overflow-y: auto; text-align: left;">
+      <h2 style="color: var(--primary); margin-top:0; text-align: center;">Teammate Sign-Up</h2>
+      <p style="font-size: 0.8rem; color: #666; margin-bottom: 12px; text-align: center;">
+        Fill in your details. Account requires <b>Area Manager approval</b> before first login.
+      </p>
+      
+      <label style="font-size: 0.75rem; font-weight: bold; color: #444;">Full Name:</label>
+      <input type="text" id="signupName" class="input-field" placeholder="e.g. Nurhafizah" style="margin-top:2px;">
+
+      <label style="font-size: 0.75rem; font-weight: bold; color: #444;">Employee ID:</label>
+      <input type="text" id="signupEmpId" class="input-field" placeholder="e.g. PMG04120" style="margin-top:2px;">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div>
+          <label style="font-size: 0.75rem; font-weight: bold; color: #444;">Position / Role:</label>
+          <select id="signupRole" class="input-field" style="margin-top:2px;">
+            <option value="Staff">Staff</option>
+            <option value="Pharmacist">Pharmacist</option>
+            <option value="Assistant Branch Manager">Asst Branch Mgr</option>
+            <option value="Branch Manager">Branch Manager</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: bold; color: #444;">Race / Demography:</label>
+          <select id="signupRace" class="input-field" style="margin-top:2px;">
+            <option value="Chinese">Chinese</option>
+            <option value="Malay">Malay</option>
+            <option value="Iban / Bidayuh">Iban / Bidayuh</option>
+            <option value="Indian">Indian</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <label style="font-size: 0.75rem; font-weight: bold; color: #444;">Branch:</label>
+      <select id="signupBranch" class="input-field" style="margin-top:2px;">
+        <option value="Kota Sentosa">Kota Sentosa</option>
+        <option value="Matang">Matang</option>
+        <option value="BDC">BDC</option>
+        <option value="MJC">MJC</option>
+        <option value="Serian">Serian</option>
+        <option value="Tabuan">Tabuan</option>
+        <option value="7th Mile">7th Mile</option>
+      </select>
+
+      <label style="font-size: 0.75rem; font-weight: bold; color: #444;">Choose Username:</label>
+      <input type="text" id="signupUsername" class="input-field" placeholder="e.g. nurhafizah" style="margin-top:2px;">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div>
+          <label style="font-size: 0.75rem; font-weight: bold; color: #444;">Password / PIN:</label>
+          <input type="password" id="signupPassword" class="input-field" placeholder="6-digit PIN" style="margin-top:2px;">
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; font-weight: bold; color: #444;">Confirm PIN:</label>
+          <input type="password" id="signupConfirmPassword" class="input-field" placeholder="Re-enter PIN" style="margin-top:2px;">
+        </div>
+      </div>
+
+      <button class="btn" id="signupBtn" onclick="executeSignUp()" style="margin-top: 10px;">Submit for Approval</button>
+      <p id="signupError" class="error-text" style="text-align: center;"></p>
+      <p id="signupSuccess" style="display:none; color: #2e7d32; font-size: 0.85rem; font-weight: bold; text-align: center; margin-top: 10px;"></p>
+
+      <p style="margin-top: 14px; font-size: 0.82rem; color: #555; text-align: center;">
+        Already have an account? <a href="#" onclick="toggleAuthView('login')" style="color: var(--primary); font-weight: bold; text-decoration: none;">Login Here</a>
+      </p>
     </div>
   </div>
 
