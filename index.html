@@ -137,6 +137,15 @@
   <!-- AREA MANAGER OVERVIEW -->
   <div id="areaManagerControls" class="card" style="display:none; background: #ffebee; border: 1px solid #ef5350;">
     <h3 style="margin-top:0; color: #c62828;">🌐 Area Manager Overview</h3>
+
+    <!-- PENDING REGISTRATIONS APPROVAL SECTION -->
+    <div id="pendingApprovalsSection" style="display:none; background: #fffde7; border: 1px solid #ffd54f; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 0.85rem; font-weight: bold; color: #f57f17;">🔔 Pending Teammate Registrations</span>
+        <span id="pendingCountBadge" style="background: #f57f17; color: white; border-radius: 12px; font-size: 0.7rem; font-weight: bold; padding: 2px 8px;">0</span>
+      </div>
+      <div id="pendingUsersList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+    </div>
     
     <table id="amOverviewTable" style="width: 100%; margin-bottom: 15px; font-size: 0.8rem; border-collapse: collapse;">
       <thead>
