@@ -333,10 +333,14 @@ function openActionPlanModal() {
   document.getElementById("apPmgApp").value = summary.pmgApp || 0; 
   
   document.getElementById("actionPlanModal").style.display = "flex";
+  history.pushState({ modal: 'actionPlanModal' }, '');
 }
 
-function closeActionPlanModal() {
+function closeActionPlanModal(shouldPop = true) {
   document.getElementById("actionPlanModal").style.display = "none";
+  if (shouldPop && history.state && history.state.modal === 'actionPlanModal') {
+    history.back();
+  }
 }
 
 async function saveActionPlan() {
@@ -516,11 +520,12 @@ function getConstructiveComment(ts, hb) {
 function openReportModal(type) {
   currentReportType = type;
   document.getElementById("reportModal").style.display = "flex";
+  history.pushState({ modal: 'reportModal' }, '');
   const content = document.getElementById("reportContent");
   const branchUpper = String(selectedBranch).toUpperCase();
   const summary = currentData.summary[branchUpper] || {};
   const targets = currentData.targets[branchUpper] || {};
-  const history = currentData.history || [];
+  const historyData = currentData.history || [];
   const staff = currentData.staff || [];
   const ap = currentData.actionPlan || {};
   
@@ -530,7 +535,7 @@ function openReportModal(type) {
     return d.getDate() + "-" + months[d.getMonth()];
   };
 
-  let reportDate = history.length > 0 ? formatShortDate(history[history.length-1].date).toUpperCase() + "-2026" : new Date().toLocaleDateString();
+  let reportDate = historyData.length > 0 ? formatShortDate(historyData[historyData.length-1].date).toUpperCase() + "-2026" : new Date().toLocaleDateString();
 
   if (type === 'director') {
     let tsGap = summary.mtdTs - targets.ts;
@@ -549,7 +554,7 @@ function openReportModal(type) {
     let hmLyPct = summary.lyMtdHm > 0 ? ((summary.mtdHm / summary.lyMtdHm) * 100).toFixed(0) : 0;
 
     let html = `
-    <div class="excel-report" id="captureArea">
+    <div class="excel-report" id="captureArea" style="min-width: 860px; width: max-content;">
       <div class="excel-title">PMG PHARMACY ${selectedBranch.toUpperCase()} - DIRECTORS' DAILY SALES REPORT (${reportDate})</div>
       
       <div class="excel-grid">
@@ -586,18 +591,18 @@ function openReportModal(type) {
           <table class="excel-table">
             <tr class="header-blue">
               <th>Metric</th>
-              ${history.map((h, i) => `<th class="${i === history.length-1 ? 'header-orange' : ''}">${formatShortDate(h.date)}${i === history.length-1 ? ' *' : ''}</th>`).join('')}
+              ${historyData.map((h, i) => `<th class="${i === historyData.length-1 ? 'header-orange' : ''}">${formatShortDate(h.date)}${i === historyData.length-1 ? ' *' : ''}</th>`).join('')}
             </tr>
-            <tr><td><b>Total Sales</b></td>${history.map(h => `<td>${formatRM(h.ts)}</td>`).join('')}</tr>
-            <tr><td><b>HB</b></td>${history.map(h => `<td>${formatRM(h.hb)}</td>`).join('')}</tr>
-            <tr><td><b>HB%</b></td>${history.map(h => `<td>${h.ts > 0 ? ((h.hb/h.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
-            <tr><td><b>HM</b></td>${history.map(h => `<td>${formatRM(h.hm)}</td>`).join('')}</tr>
-            <tr><td><b>HM%</b></td>${history.map(h => `<td>${h.ts > 0 ? ((h.hm/h.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
-            <tr><td><b>No. of tranx</b></td>${history.map(h => `<td>${h.cust}</td>`).join('')}</tr>
-            <tr><td><b>Total Sales BS</b></td>${history.map(h => `<td>${h.cust > 0 ? formatRM(h.ts/h.cust) : 0}</td>`).join('')}</tr>
-            <tr><td><b>HB BS</b></td>${history.map(h => `<td>${h.cust > 0 ? formatRM(h.hb/h.cust) : 0}</td>`).join('')}</tr>
-            <tr><td><b>PMG APP</b></td>${history.map(h => `<td>${h.pmgApp || 0}</td>`).join('')}</tr>
-            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${history.map(h => `<td style="font-size:0.65rem; white-space:normal; text-align:left; max-width:130px; word-wrap:break-word;">${getConstructiveComment(h.ts, h.hb)}</td>`).join('')}</tr>
+            <tr><td><b>Total Sales</b></td>${historyData.map(h => `<td>${formatRM(h.ts)}</td>`).join('')}</tr>
+            <tr><td><b>HB</b></td>${historyData.map(h => `<td>${formatRM(h.hb)}</td>`).join('')}</tr>
+            <tr><td><b>HB%</b></td>${historyData.map(h => `<td>${h.ts > 0 ? ((h.hb/h.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
+            <tr><td><b>HM</b></td>${historyData.map(h => `<td>${formatRM(h.hm)}</td>`).join('')}</tr>
+            <tr><td><b>HM%</b></td>${historyData.map(h => `<td>${h.ts > 0 ? ((h.hm/h.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
+            <tr><td><b>No. of tranx</b></td>${historyData.map(h => `<td>${h.cust}</td>`).join('')}</tr>
+            <tr><td><b>Total Sales BS</b></td>${historyData.map(h => `<td>${h.cust > 0 ? formatRM(h.ts/h.cust) : 0}</td>`).join('')}</tr>
+            <tr><td><b>HB BS</b></td>${historyData.map(h => `<td>${h.cust > 0 ? formatRM(h.hb/h.cust) : 0}</td>`).join('')}</tr>
+            <tr><td><b>PMG APP</b></td>${historyData.map(h => `<td>${h.pmgApp || 0}</td>`).join('')}</tr>
+            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${historyData.map(h => `<td style="font-size:0.65rem; white-space:normal; text-align:left; max-width:130px; word-wrap:break-word;">${getConstructiveComment(h.ts, h.hb)}</td>`).join('')}</tr>
           </table>
         </div>
       </div>
@@ -606,7 +611,7 @@ function openReportModal(type) {
   } 
   else if (type === 'teammates') {
     let html = `
-    <div class="excel-report" id="captureArea" style="width: 100%; max-width: 800px;">
+    <div class="excel-report" id="captureArea" style="min-width: 840px; width: max-content;">
       <div class="excel-title">PMG ${selectedBranch.toUpperCase()} - TEAMMATE PERFORMANCE & TARGET GAP (${reportDate} MTD)</div>
       <table class="excel-table">
         <tr class="header-red">
@@ -664,21 +669,112 @@ function formatRM(num) {
   return "RM " + Number(num).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
 }
 
-function closeReportModal() {
+function closeReportModal(shouldPop = true) {
   document.getElementById("reportModal").style.display = "none";
+  if (shouldPop && history.state && history.state.modal === 'reportModal') {
+    history.back();
+  }
 }
 
-function downloadReportAsImage() {
+async function downloadReportAsImage() {
   const element = document.getElementById('captureArea');
-  html2canvas(element, {
-    scale: 3, 
-    backgroundColor: "#ffffff",
-    useCORS: true
-  }).then(canvas => {
+  if (!element) return;
+
+  const btn = document.querySelector("#reportModal button[onclick*='downloadReportAsImage']");
+  const originalText = btn ? btn.innerText : "";
+  if (btn) btn.innerText = "⏳ Generating Ultra-HD PNG...";
+
+  try {
+    const origWidth = element.style.width;
+    const origMaxWidth = element.style.maxWidth;
+    const origOverflow = element.style.overflow;
+
+    // Expand element to its full scroll dimensions so 100% of columns and rows are captured
+    const fullWidth = Math.max(element.scrollWidth, 860);
+    const fullHeight = element.scrollHeight;
+
+    element.style.width = fullWidth + "px";
+    element.style.maxWidth = "none";
+    element.style.overflow = "visible";
+
+    const canvas = await html2canvas(element, {
+      scale: 3,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      width: fullWidth,
+      height: fullHeight,
+      windowWidth: fullWidth + 100,
+      windowHeight: fullHeight + 100,
+      scrollX: 0,
+      scrollY: 0
+    });
+
+    // Restore original styles
+    element.style.width = origWidth;
+    element.style.maxWidth = origMaxWidth;
+    element.style.overflow = origOverflow;
+
     const imgData = canvas.toDataURL('image/png');
     const link = document.createElement('a');
     link.download = `PMG_${selectedBranch}_${currentReportType}_Report.png`;
     link.href = imgData;
     link.click();
-  });
+  } catch (err) {
+    console.error("Screenshot generation error:", err);
+    alert("Failed to generate image report. Please try again.");
+  } finally {
+    if (btn) btn.innerText = originalText;
+  }
 }
+
+// ─── MOBILE GESTURE & BACK NAVIGATION HANDLER ───────────────────────────────
+window.addEventListener('popstate', (e) => {
+  const reportModal = document.getElementById("reportModal");
+  const actionPlanModal = document.getElementById("actionPlanModal");
+
+  let modalClosed = false;
+  if (reportModal && reportModal.style.display === "flex") {
+    closeReportModal(false);
+    modalClosed = true;
+  }
+  if (actionPlanModal && actionPlanModal.style.display === "flex") {
+    closeActionPlanModal(false);
+    modalClosed = true;
+  }
+
+  // Prevent browser/PWA from closing on accidental swipe if already on dashboard
+  if (!modalClosed && currentUser) {
+    history.pushState({ page: 'dashboard' }, '');
+  }
+});
+
+// Touch Swipe Detection (Left/Right swipe to go back to previous page / close modals)
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener('touchstart', (e) => {
+  if (e.touches && e.touches.length === 1) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+  if (!e.changedTouches || e.changedTouches.length === 0) return;
+  const touchEndX = e.changedTouches[0].clientX;
+  const touchEndY = e.changedTouches[0].clientY;
+  const diffX = touchEndX - touchStartX;
+  const diffY = touchEndY - touchStartY;
+
+  // Horizontal swipe detected (swipe left or right > 70px)
+  if (Math.abs(diffX) > 70 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+    const reportModal = document.getElementById("reportModal");
+    const actionPlanModal = document.getElementById("actionPlanModal");
+
+    if (reportModal && reportModal.style.display === "flex") {
+      closeReportModal(true);
+    } else if (actionPlanModal && actionPlanModal.style.display === "flex") {
+      closeActionPlanModal(true);
+    }
+  }
+}, { passive: true });
