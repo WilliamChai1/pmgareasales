@@ -8,6 +8,16 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(authenticateUser(request.username, request.password)))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (request.action === "signup") {
+      return ContentService.createTextOutput(JSON.stringify(registerUser(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "approveUser") {
+      return ContentService.createTextOutput(JSON.stringify(approveUser(request.targetUsername, request.adminUsername)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     
     if (request.action === "getData") {
       return ContentService.createTextOutput(JSON.stringify(getDashboardData(request.branch, request.role, request.username)))
@@ -71,6 +81,9 @@ function authenticateUser(username, password) {
 
       // Check Status (Col H / Index 7)
       const status = data[i][7] ? String(data[i][7]).trim().toLowerCase() : 'active';
+      if (status === 'pending') {
+        return { success: false, message: "Your account is pending Area Manager approval. Please notify William Chai." };
+      }
       if (status === 'inactive') {
         return { success: false, message: "Account is inactive. Please contact your Area Manager." };
       }
@@ -96,6 +109,88 @@ function authenticateUser(username, password) {
     }
   }
   return { success: false, message: "Invalid credentials" };
+}
+
+function registerUser(req) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = getStaffSheet(ss);
+    if (!sheet) return { success: false, message: "Staff directory sheet not found." };
+
+    const username = String(req.username || '').trim();
+    const password = String(req.password || '').trim();
+    const name = String(req.name || '').trim();
+    const role = String(req.role || 'Staff').trim();
+    const branch = String(req.branch || '').trim();
+    const empId = String(req.empId || '').trim();
+    const race = String(req.race || '').trim();
+
+    if (!username || !password || !name || !branch) {
+      return { success: false, message: "Please fill in all required fields." };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const uLower = username.toLowerCase();
+    const eLower = empId.toLowerCase();
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === uLower) {
+        return { success: false, message: "Username already taken. Please choose another." };
+      }
+      if (empId && data[i][5] && String(data[i][5]).trim().toLowerCase() === eLower) {
+        return { success: false, message: "Employee ID already registered." };
+      }
+    }
+
+    // Append new row with 'Pending' status
+    // Columns: [Username, Password, Name, Role, Branch, EmpID, Race, Status]
+    sheet.appendRow([username, password, name, role, branch, empId, race, "Pending"]);
+    return { 
+      success: true, 
+      message: "Registration submitted successfully! Your account is pending Area Manager approval." 
+    };
+  } catch (err) {
+    return { success: false, message: "Registration failed: " + err.toString() };
+  }
+}
+
+function approveUser(targetUsername, adminUsername) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = getStaffSheet(ss);
+    if (!sheet) return { success: false, message: "Staff directory sheet not found." };
+
+    const data = sheet.getDataRange().getValues();
+    const aLower = String(adminUsername || '').trim().toLowerCase();
+    const tLower = String(targetUsername || '').trim().toLowerCase();
+
+    // Verify admin is Area Manager
+    let isAdmin = false;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === aLower) {
+        const role = String(data[i][3]).trim().toLowerCase();
+        if (role === 'area manager') isAdmin = true;
+        break;
+      }
+    }
+
+    if (!isAdmin) {
+      return { success: false, message: "Unauthorized. Only Area Manager can approve registrations." };
+    }
+
+    // Find target user and set status to 'Active'
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === tLower) {
+        // Col H is column 8 (1-based index 8)
+        sheet.getRange(i + 1, 8).setValue("Active");
+        return { success: true, message: `Account for ${data[i][2]} (${data[i][0]}) approved successfully!` };
+      }
+    }
+
+    return { success: false, message: "Target user not found." };
+  } catch (err) {
+    return { success: false, message: "Approval failed: " + err.toString() };
+  }
 }
 
 function saveActionPlan(branch, plans, pmgCount, dateStr) {
@@ -367,9 +462,31 @@ function getDashboardData(requestedBranch, role, username) {
     });
   }
 
+  // 6. Fetch Pending Approvals for Area Manager
+  let pendingUsers = [];
+  if (isAreaManager) {
+    const staffSheet = getStaffSheet(ss);
+    if (staffSheet) {
+      const sData = staffSheet.getDataRange().getValues();
+      for (let i = 1; i < sData.length; i++) {
+        const st = sData[i][7] ? String(sData[i][7]).trim().toLowerCase() : '';
+        if (st === 'pending') {
+          pendingUsers.push({
+            username: sData[i][0],
+            name: sData[i][2],
+            role: sData[i][3],
+            branch: sData[i][4],
+            empId: sData[i][5] || '',
+            race: sData[i][6] || ''
+          });
+        }
+      }
+    }
+  }
+
   return { 
     targets: targets, summary: summary, staff: staff, history: history,
     actionPlan: actionPlan, amNote: amNote, branches: originalBranchNames, currentDay: currentDayOfMonth,
-    daysInMonth: daysInMonth
+    daysInMonth: daysInMonth, pendingUsers: pendingUsers
   };
 }
