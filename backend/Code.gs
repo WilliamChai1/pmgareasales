@@ -402,7 +402,7 @@ function getDashboardData(requestedBranch, role, username) {
       if(rowDate > latestDate) latestDate = rowDate;
 
       if (!staffMap[sName]) {
-        staffMap[sName] = { name: sName, role: sRole, mtdTs: 0, mtdHb: 0, mtdHm: 0, dailyTs: 0, dailyHb: 0, dailyHm: 0, dailyCust: 0, lastDate: new Date(0) };
+        staffMap[sName] = { name: sName, role: sRole, mtdTs: 0, mtdHb: 0, mtdHm: 0, mtdCust: 0, dailyTs: 0, dailyHb: 0, dailyHm: 0, dailyCust: 0, lastDate: new Date(0) };
         branchStaffList.push({ name: sName, role: sRole });
       }
       
@@ -414,12 +414,14 @@ function getDashboardData(requestedBranch, role, username) {
       staffMap[sName].mtdTs += ts;
       staffMap[sName].mtdHb += hb;
       staffMap[sName].mtdHm += hm;
+      staffMap[sName].mtdCust += cust;
 
       if(rowDate >= staffMap[sName].lastDate) {
         staffMap[sName].dailyTs = ts; staffMap[sName].dailyHb = hb;
         staffMap[sName].dailyHm = hm; staffMap[sName].dailyCust = cust;
         staffMap[sName].lastDate = rowDate;
       }
+
 
       let dateKey = rowDate.toDateString();
       if (!dailyHistoryMap[dateKey]) {
