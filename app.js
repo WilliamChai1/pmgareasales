@@ -799,13 +799,13 @@ function openReportModal(type) {
       let hbGap = s.mtdHb - (s.targetHb * currentData.currentDay);
       let hbPct = s.mtdTs > 0 ? ((s.mtdHb / s.mtdTs) * 100).toFixed(1) : 0;
       
-      totalCust += s.dailyCust; 
+      totalCust += s.mtdCust || 0;   // MTD total transactions
       totalTs += s.mtdTs; totalHb += s.mtdHb; totalHm += s.mtdHm;
       totalTsGap += tsGap; totalHbGap += hbGap;
 
       html += `<tr>
         <td style="text-align:left;"><b>${s.name}</b><br><span style="font-size:0.6rem; color:#666;">${s.role}</span></td>
-        <td>${s.dailyCust}</td>
+        <td>${s.mtdCust || 0}</td>
         <td>${formatRM(s.mtdTs)}</td>
         <td style="color:${tsGap >= 0 ? '#2e7d32' : '#c62828'}; font-weight:bold;">${tsGap > 0 ? '+' : ''}${formatRM(tsGap)}</td>
         <td>${formatRM(s.mtdHb)}</td>
@@ -818,7 +818,7 @@ function openReportModal(type) {
     let totalHbPct = totalTs > 0 ? ((totalHb / totalTs) * 100).toFixed(1) : 0;
     html += `<tr style="background:#f5f5f5; font-weight:bold;">
       <td style="text-align:left;">OUTLET CUMULATIVE</td>
-      <td>-</td>
+      <td>${totalCust}</td>
       <td>${formatRM(totalTs)}</td>
       <td style="color:${totalTsGap >= 0 ? '#2e7d32' : '#c62828'};">${totalTsGap > 0 ? '+' : ''}${formatRM(totalTsGap)}</td>
       <td>${formatRM(totalHb)}</td>
@@ -945,7 +945,13 @@ document.addEventListener('touchend', (e) => {
     const signupBox = document.getElementById("signupBox");
 
     if (reportModal && reportModal.style.display === "flex") {
-      closeReportModal(true);
+      // Only close the report modal if the swipe started from the screen edge (≤40px).
+      // Swipes from the middle of the screen are the user scrolling the wide table — ignore them.
+      const screenEdgeThreshold = 40;
+      const isEdgeSwipe = touchStartX <= screenEdgeThreshold || touchStartX >= window.innerWidth - screenEdgeThreshold;
+      if (isEdgeSwipe) {
+        closeReportModal(true);
+      }
     } else if (actionPlanModal && actionPlanModal.style.display === "flex") {
       closeActionPlanModal(true);
     } else if (signupBox && signupBox.style.display === "block") {
@@ -953,3 +959,4 @@ document.addEventListener('touchend', (e) => {
     }
   }
 }, { passive: true });
+
