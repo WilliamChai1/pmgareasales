@@ -1291,10 +1291,135 @@ async function downloadReportAsImage() {
   }
 }
 
+// ─── PMG HOUSE BRAND 220+ CATALOG VIEWER & SEARCH ─────────────────────────────
+let currentHbFilterBrand = 'ALL';
+
+function openHouseBrandModal() {
+  const modal = document.getElementById("houseBrandModal");
+  if (!modal) return;
+  modal.style.display = "flex";
+  history.pushState({ page: 'hbModal' }, '');
+  renderHbChips();
+  filterHouseBrands();
+}
+
+function closeHouseBrandModal(fromPopState = false) {
+  const modal = document.getElementById("houseBrandModal");
+  if (modal) modal.style.display = "none";
+  if (!fromPopState && history.state && history.state.page === 'hbModal') {
+    history.back();
+  }
+}
+
+function renderHbChips() {
+  const chipsContainer = document.getElementById("hbCategoryChips");
+  if (!chipsContainer) return;
+  const popularBrands = [
+    { label: "All (221)", val: "ALL" },
+    { label: "Nutribridge", val: "Nutribridge" },
+    { label: "JH Nutrition", val: "JH Nutrition" },
+    { label: "Livemore", val: "Livemore" },
+    { label: "VK Dermsolve", val: "VK Dermsolve" },
+    { label: "V-Infinity", val: "V-Infinity" },
+    { label: "Denticlear", val: "Denticlear" },
+    { label: "Medicplast", val: "Medicplast" },
+    { label: "Joint & Bone", val: "Joint & Bone" },
+    { label: "Cardiovascular", val: "Cardiovascular" },
+    { label: "Digestive & Gut", val: "Digestive & Gut" },
+    { label: "Immunity", val: "Immunity & Respiratory" },
+    { label: "Pediatric", val: "Pediatric" }
+  ];
+
+  chipsContainer.innerHTML = popularBrands.map(b => {
+    const isActive = currentHbFilterBrand === b.val;
+    const bg = isActive ? "#0d9488" : "#f0fdfa";
+    const color = isActive ? "#ffffff" : "#0f766e";
+    const border = isActive ? "1px solid #0d9488" : "1px solid #99f6e4";
+    return `<button type="button" onclick="setHbFilterChip('${b.val}')" style="background:${bg}; color:${color}; border:${border}; border-radius:16px; padding:3px 10px; cursor:pointer; font-weight:bold; font-size:0.7rem;">${b.label}</button>`;
+  }).join("");
+}
+
+function setHbFilterChip(val) {
+  currentHbFilterBrand = val;
+  renderHbChips();
+  filterHouseBrands();
+}
+
+function filterHouseBrands() {
+  const query = (document.getElementById("hbSearchInput")?.value || "").toLowerCase().trim();
+  const listContainer = document.getElementById("hbProductsList");
+  if (!listContainer) return;
+
+  const catalog = (typeof window !== 'undefined' && window.PMG_HOUSE_BRANDS_CATALOG) || [];
+  if (catalog.length === 0) {
+    listContainer.innerHTML = `<div style="text-align:center; padding:20px; color:#666;">Catalog loading or not available.</div>`;
+    return;
+  }
+
+  const filtered = catalog.filter(p => {
+    if (currentHbFilterBrand !== 'ALL') {
+      const matchBrand = p.brand === currentHbFilterBrand;
+      const matchIndication = (p.indication || []).some(ind => ind.toLowerCase().includes(currentHbFilterBrand.toLowerCase()));
+      if (!matchBrand && !matchIndication) return false;
+    }
+
+    if (query) {
+      const titleMatch = (p.title || "").toLowerCase().includes(query);
+      const summaryMatch = (p.summary || "").toLowerCase().includes(query);
+      const indMatch = (p.indication || []).some(ind => ind.toLowerCase().includes(query));
+      const brandMatch = (p.brand || "").toLowerCase().includes(query);
+      return titleMatch || summaryMatch || indMatch || brandMatch;
+    }
+
+    return true;
+  });
+
+  const badge = document.getElementById("hbTotalBadge");
+  if (badge) badge.innerText = `${filtered.length} / ${catalog.length} Products`;
+
+  if (filtered.length === 0) {
+    listContainer.innerHTML = `
+      <div style="text-align:center; padding:30px 10px; color:#888;">
+        <div style="font-size:2rem; margin-bottom:8px;">🔍</div>
+        <div>No House Brand products found matching "<b>${query}</b>".</div>
+        <div style="font-size:0.75rem; margin-top:4px;">Try searching by general indication e.g. "gastric", "milk", "joint", or "nerve".</div>
+      </div>
+    `;
+    return;
+  }
+
+  listContainer.innerHTML = filtered.map(p => {
+    const tagsHtml = (p.indication || []).map(t => 
+      `<span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:600;">${t}</span>`
+    ).join(" ");
+
+    return `
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+          <div>
+            <span style="font-size:0.65rem; font-weight:bold; color:#0f766e; background:#ccfbf1; padding:2px 6px; border-radius:4px; text-transform:uppercase;">${p.brand}</span>
+            <h4 style="margin: 4px 0; font-size: 0.92rem; color: #1e293b; font-weight: 700;">${p.title}</h4>
+          </div>
+          <a href="${p.link}" target="_blank" rel="noopener noreferrer" style="font-size:0.7rem; color:#0d9488; text-decoration:none; font-weight:bold; white-space:nowrap; border:1px solid #99f6e4; padding:2px 7px; border-radius:6px; background:#f0fdfa;">
+            Official ↗
+          </a>
+        </div>
+        <div style="font-size: 0.76rem; color: #475569; line-height: 1.35; margin: 4px 0 6px 0;">
+          ${p.summary}
+        </div>
+        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+          ${tagsHtml}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
 // ─── MOBILE GESTURE & BACK NAVIGATION HANDLER ───────────────────────────────
 window.addEventListener('popstate', (e) => {
   const reportModal = document.getElementById("reportModal");
   const actionPlanModal = document.getElementById("actionPlanModal");
+  const houseBrandModal = document.getElementById("houseBrandModal");
   const signupBox = document.getElementById("signupBox");
 
   let modalClosed = false;
@@ -1304,6 +1429,10 @@ window.addEventListener('popstate', (e) => {
   }
   if (actionPlanModal && actionPlanModal.style.display === "flex") {
     closeActionPlanModal(false);
+    modalClosed = true;
+  }
+  if (houseBrandModal && houseBrandModal.style.display === "flex") {
+    closeHouseBrandModal(false);
     modalClosed = true;
   }
   if (signupBox && signupBox.style.display === "block") {
@@ -1339,11 +1468,10 @@ document.addEventListener('touchend', (e) => {
   if (Math.abs(diffX) > 70 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
     const reportModal = document.getElementById("reportModal");
     const actionPlanModal = document.getElementById("actionPlanModal");
+    const houseBrandModal = document.getElementById("houseBrandModal");
     const signupBox = document.getElementById("signupBox");
 
     if (reportModal && reportModal.style.display === "flex") {
-      // Only close the report modal if the swipe started from the screen edge (≤40px).
-      // Swipes from the middle of the screen are the user scrolling the wide table — ignore them.
       const screenEdgeThreshold = 40;
       const isEdgeSwipe = touchStartX <= screenEdgeThreshold || touchStartX >= window.innerWidth - screenEdgeThreshold;
       if (isEdgeSwipe) {
@@ -1351,6 +1479,8 @@ document.addEventListener('touchend', (e) => {
       }
     } else if (actionPlanModal && actionPlanModal.style.display === "flex") {
       closeActionPlanModal(true);
+    } else if (houseBrandModal && houseBrandModal.style.display === "flex") {
+      closeHouseBrandModal(true);
     } else if (signupBox && signupBox.style.display === "block") {
       toggleAuthView('login');
     }

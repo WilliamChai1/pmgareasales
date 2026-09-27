@@ -1,0 +1,2599 @@
+// Auto-generated PMG House Brand Catalog from Jase Healthcare (2026-09-27T09:20:37.081Z)
+window.PMG_HOUSE_BRANDS_CATALOG = [
+  {
+    "id": 1580,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Sheep Placenta",
+    "slug": "nutribridge-sheep-placenta",
+    "link": "https://jasehealthcare.com/product/nutribridge-sheep-placenta/",
+    "summary": "Nutribridge® Sheep Placenta is a premium beauty and vitality supplement formulated with 600 mg Sheep Placenta Extract (50:1) and Grape Seed Extract. It is designed to support skin hydration, elasticity and renewal, while providing antioxidant support to help maintain youthfulness, energy and overall well-being.",
+    "indication": [
+      "Cardiovascular",
+      "Dermatology & Beauty",
+      "Immunity & Respiratory"
+    ]
+  },
+  {
+    "id": 1578,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Suppflora",
+    "slug": "nutribridge-suppflora",
+    "link": "https://jasehealthcare.com/product/nutribridge-suppflora/",
+    "summary": "Nutribridge® Suppflora is a 3-in-1 digestive health formula combining 8 probiotic strains, prebiotic Fibregum® (Acacia Gum), and DigeZyme® digestive enzymes. It helps support healthy gut flora, digestion, nutrient breakdown, and digestive comfort, making it suitable for daily gut health maintenance.",
+    "indication": [
+      "Digestive & Gut",
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 1563,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Eutango",
+    "slug": "jh-nutrition-eutango",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-eutango/",
+    "summary": "JH Nutrition® Eutango is a multi-herbal formula combining traditional botanical extracts to support joint comfort, mobility, and overall musculoskeletal wellness. Formulated with Astragalus, Salvia, Ziziphus, and other herbal ingredients, it helps maintain healthy circulation and supports an active lifestyle.",
+    "indication": [
+      "Joint & Bone",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1562,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Eclipx",
+    "slug": "jh-nutrition-eclipx",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-eclipx/",
+    "summary": "JH Nutrition® Eclipx contains Lycopersicon esculentum (Tomato) Fruit Extract 400mg, a natural source of lycopene, combined with L-Cysteine to support skin health and antioxidant protection. It helps maintain healthy skin, supports skin radiance, and promotes overall wellness from within.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1561,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Fish Oil 1000mg",
+    "slug": "jh-nutrition-fish-oil-1000mg",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-fish-oil-1000mg/",
+    "summary": "JH Nutrition® Fish Oil 1000mg contains Omega-3 Fish Oil (1000mg) providing EPA 180mg and DHA 120mg, enriched with Vitamin E for antioxidant support. It helps support cardiovascular health, brain function, eye health, and overall wellbeing as part of a balanced lifestyle.",
+    "indication": [
+      "Joint & Bone",
+      "Cardiovascular",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1560,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Enersure",
+    "slug": "jh-nutrition-enersure",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-enersure/",
+    "summary": "JH Nutrition® Enersure is a complete nutritional milk formula containing whey protein, isolated soy protein, MCT oil, colostrum, lutein &amp; zeaxanthin, multivitamins, minerals, FOS, inulin, and six types of probiotics. Designed to provide balanced nutrition, it helps support daily energy needs, muscle health, digestive wellness, and overall wellbeing for active adults and seniors.",
+    "indication": [
+      "Joint & Bone",
+      "Nerve Health",
+      "Digestive & Gut",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1559,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Flexson",
+    "slug": "jh-nutrition-flexson",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-flexson/",
+    "summary": "JH Nutrition® Flexson is a joint health supplement formulated with Curcuma longa Extract (250mg) and Boswellia serrata Extract (200mg), traditionally used to support joint comfort and help relieve joint discomfort. With its combination of turmeric and boswellia extracts, Flexson provides antioxidant support and helps maintain overall joint and mobility health.",
+    "indication": [
+      "Joint & Bone",
+      "Digestive & Gut",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1551,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – BG-Pro",
+    "slug": "jh-nutrition-bg-pro",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-bg-pro/",
+    "summary": "JH Nutrition® BG-Pro is a high-fibre oat-based nutritional drink formulated with oat bran powder, oat endosperm powder, inulin, barley powder, and Lactobacillus rhamnosus GG to support daily digestive wellness and heart health. With naturally occurring beta-glucan, it helps support cholesterol management, healthy blood sugar levels, and weight management as part of a balanced lifestyle. A low-calorie, fibre-rich choice suitable for adults and children above 6 years old.",
+    "indication": [
+      "Cardiovascular",
+      "Digestive & Gut",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1477,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – 100% Original Pure Repairing Jelly",
+    "slug": "dermsolve-by-vk-100-original-pure-repairing-jelly",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-100-original-pure-repairing-jelly/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1476,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – Body Lotion",
+    "slug": "dermsolve-by-vk-body-lotion",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-body-lotion/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1475,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – Hair Shampoo",
+    "slug": "dermsolve-by-vk-hair-shampoo",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-hair-shampoo/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1474,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – Hair Conditioner",
+    "slug": "dermsolve-by-vk-hair-conditioner",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-hair-conditioner/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1473,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – Gentle Skin Cleanser",
+    "slug": "dermsolve-by-vk-gentle-skin-cleanser",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-gentle-skin-cleanser/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1472,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – Facial Cleanser",
+    "slug": "dermsolve-by-vk-facial-cleanser",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-facial-cleanser/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1471,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – Feminine Intimate Wash Foam",
+    "slug": "dermsolve-by-vk-feminine-intimate-wash-foam",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-feminine-intimate-wash-foam/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1470,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – Kapilarine Hair Tonic",
+    "slug": "dermsolve-by-vk-kapilarine-hair-tonic",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-kapilarine-hair-tonic/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1469,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – Kapilarine Hair Shampoo",
+    "slug": "dermsolve-by-vk-kapilarine-hair-shampoo",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-kapilarine-hair-shampoo/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1455,
+    "brand": "VK Dermsolve",
+    "title": "Dermsolve by VK – A.I. Cream",
+    "slug": "dermsolve-by-vk-a-i-cream",
+    "link": "https://jasehealthcare.com/product/dermsolve-by-vk-a-i-cream/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1454,
+    "brand": "VK Dermsolve",
+    "title": "VK – Fair & Lovely Shower Cream",
+    "slug": "vk-fair-lovely-shower-cream-copy",
+    "link": "https://jasehealthcare.com/product/vk-fair-lovely-shower-cream-copy/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1453,
+    "brand": "VK Dermsolve",
+    "title": "VK – Moisturizing & Revitalizing Shower Cream",
+    "slug": "vk-moisturizing-revitalizing-shower-cream",
+    "link": "https://jasehealthcare.com/product/vk-moisturizing-revitalizing-shower-cream/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1452,
+    "brand": "VK Dermsolve",
+    "title": "VK – Calming & Soothing Shower Cream",
+    "slug": "vk-calming-soothing-shower-cream",
+    "link": "https://jasehealthcare.com/product/vk-calming-soothing-shower-cream/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1451,
+    "brand": "VK Dermsolve",
+    "title": "VK – King Kong Balm",
+    "slug": "vk-king-kong-balm",
+    "link": "https://jasehealthcare.com/product/vk-king-kong-balm/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1449,
+    "brand": "VK Dermsolve",
+    "title": "VK – Collagen Lavender Soap",
+    "slug": "vk-collagen-lavender-soap",
+    "link": "https://jasehealthcare.com/product/vk-collagen-lavender-soap/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1448,
+    "brand": "VK Dermsolve",
+    "title": "VK – Aloe Vera Soap",
+    "slug": "vk-aloe-vera-soap",
+    "link": "https://jasehealthcare.com/product/vk-aloe-vera-soap/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1447,
+    "brand": "VK Dermsolve",
+    "title": "VK – Activated B. Charcoal Soap",
+    "slug": "vk-activated-b-charcoal-soap",
+    "link": "https://jasehealthcare.com/product/vk-activated-b-charcoal-soap/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1446,
+    "brand": "VK Dermsolve",
+    "title": "VK – Aloe Vera Gel",
+    "slug": "vk-aloe-vera",
+    "link": "https://jasehealthcare.com/product/vk-aloe-vera/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1435,
+    "brand": "VK Dermsolve",
+    "title": "VK – Baby Bath",
+    "slug": "vk-baby-bath",
+    "link": "https://jasehealthcare.com/product/vk-baby-bath/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1434,
+    "brand": "Victoria",
+    "title": "Victoria – TR90 Frame with Spring Hinges Reading Glasses",
+    "slug": "victoria-tr90-frame-with-spring-hinges-reading-glasses",
+    "link": "https://jasehealthcare.com/product/victoria-tr90-frame-with-spring-hinges-reading-glasses/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1431,
+    "brand": "Victoria",
+    "title": "Victoria – PC Frame with Spring Hinges Reading Glasses",
+    "slug": "victoria-pc-frame-with-spring-hinges-reading-glasses",
+    "link": "https://jasehealthcare.com/product/victoria-pc-frame-with-spring-hinges-reading-glasses/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1430,
+    "brand": "V-Infinity",
+    "title": "V∞ – Tyreps",
+    "slug": "v%e2%88%9e-tyreps",
+    "link": "https://jasehealthcare.com/product/v%e2%88%9e-tyreps/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1429,
+    "brand": "V-Infinity",
+    "title": "V∞ – Neuright",
+    "slug": "v%e2%88%9e-neuright-copy",
+    "link": "https://jasehealthcare.com/product/v%e2%88%9e-neuright-copy/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1428,
+    "brand": "V-Infinity",
+    "title": "V∞ – Spirulina + Ginkgo",
+    "slug": "v%e2%88%9e-spirulina-ginkgo",
+    "link": "https://jasehealthcare.com/product/v%e2%88%9e-spirulina-ginkgo/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1427,
+    "brand": "V-Infinity",
+    "title": "V∞ – Neoflex",
+    "slug": "v%e2%88%9e-neoflex",
+    "link": "https://jasehealthcare.com/product/v%e2%88%9e-neoflex/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1425,
+    "brand": "V-Infinity",
+    "title": "V∞ – ORT",
+    "slug": "v%e2%88%9e-ort",
+    "link": "https://jasehealthcare.com/product/v%e2%88%9e-ort/",
+    "summary": "V∞® ORT Lemon Flavoured relieves symptoms of dehydration and helps replace water and electrolytes lost due to vomiting, diarrhoea, heavy sweating, vigorous exercise and occasional hangovers.",
+    "indication": [
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1417,
+    "brand": "V-Infinity",
+    "title": "V∞ – G9",
+    "slug": "v%e2%88%9e-g9",
+    "link": "https://jasehealthcare.com/product/v%e2%88%9e-g9/",
+    "summary": "V∞® G9® is a combination of water-soluble, insoluble fiber and 4 herbs extract that helps relieve constipation and promote bowel movement.",
+    "indication": [
+      "Digestive & Gut",
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1415,
+    "brand": "Tealosophy",
+    "title": "Tealosophy – CF Tea",
+    "slug": "tealosophy-cf-tea",
+    "link": "https://jasehealthcare.com/product/tealosophy-cf-tea/",
+    "summary": "Tealosophy® CF Tea is a traditional herbal tea same function as Shen Nong Tea named after Shen Nong, an ancient Chinese figure often referred to as the “Divine Farmer” or the “Father of Chinese Medicine.” Tealosophy® CF Tea is typically composed of a blend of herbs known for their health benefits and is deeply rooted in Chinese medicine.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1412,
+    "brand": "Tealosophy",
+    "title": "Tealosophy – Roiyaltea",
+    "slug": "tealosophy-roiyaltea",
+    "link": "https://jasehealthcare.com/product/tealosophy-roiyaltea/",
+    "summary": "Tealosophy® Roiyaltea is a formulation of Chinese medicinal herbs. It formulated using Rooibos Tea and Soursop Leaves Powder. Rooibos Tea comes from South Africa, country of origin, is one of the most versatile health beverages available today. It is caffeine free and rich in minerals and anti-oxidants. Using advanced technology, this product is fragrant and has good properties in enhancing the body system.",
+    "indication": [
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1411,
+    "brand": "Shieldmax",
+    "title": "Shieldmax – Body Spray",
+    "slug": "shieldmax-body-spray",
+    "link": "https://jasehealthcare.com/product/shieldmax-body-spray/",
+    "summary": "Shieldmax® Body Spray is formulated with IR3535®, a well-established insect-repellent ingredient designed to help protect against mosquitoes, ticks and other biting insects. Suitable for outdoor activities, travel and everyday use, it provides reliable protection to help keep you and your family comfortable while enjoying the outdoors. Its gentle, effective formula is developed for dependable insect protection while being mindful of everyday use.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 1407,
+    "brand": "Shieldmax",
+    "title": "Shieldmax – Perfex Antibacterial Wipes",
+    "slug": "shieldmax-perfex-antibacterial-wipes",
+    "link": "https://jasehealthcare.com/product/shieldmax-perfex-antibacterial-wipes/",
+    "summary": "Shieldmax Perfex pre-moistened wipes are designed to help remove 99.9% of bacteria while keeping skin feeling fresh, clean and moisturised. The alcohol-free, pH-balanced formula contains Tea Tree Extract and Aloe Vera Extract for gentle everyday cleansing. Suitable for hands and body, including use on children, Shieldmax® Perfex is convenient for daily use, travel and on-the-go hygiene.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Immunity & Respiratory",
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 1370,
+    "brand": "Neovis",
+    "title": "Neovis – Multi-Purpose Solution",
+    "slug": "neovis-multi-purpose-solution",
+    "link": "https://jasehealthcare.com/product/neovis-multi-purpose-solution/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1365,
+    "brand": "Neovis",
+    "title": "Neovis – Eye Drops",
+    "slug": "neovis-eye-drops",
+    "link": "https://jasehealthcare.com/product/neovis-eye-drops/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1346,
+    "brand": "Oxyplus",
+    "title": "Oxyplus – Oxygenated Water",
+    "slug": "oxyplus-oxygenated-water",
+    "link": "https://jasehealthcare.com/product/oxyplus-oxygenated-water/",
+    "summary": "Oxyplus Oxygenated Water is a new benefit beverage product that has oxygen added to it during the canning or bottling process. Our bodies are not getting enough oxygen to maintain healthy functions due to air pollution. Oxyplus Oxygenated Water packed with up to 500% oxygen which provides a natural boost to your well-being.",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1345,
+    "brand": "Omma",
+    "title": "Omma – Chia Seed",
+    "slug": "omma-chia-seed",
+    "link": "https://jasehealthcare.com/product/omma-chia-seed/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1344,
+    "brand": "Omma",
+    "title": "Omma – Bamboo Salt",
+    "slug": "omma-bamboo-salt",
+    "link": "https://jasehealthcare.com/product/omma-bamboo-salt/",
+    "summary": "Omma Bamboo Salt is made by extracting natural sea salt from the west coast of Korea into 3 – year old raw bamboos. The bamboos are then baked in high temperature with pine tree firewood. As a result, the salt is infused in medicinal properties of bamboo that are good to health. Bamboo salt is baking for six times and it is recognized as a detoxifying and anti-inflammatory agent that can help in health maintenance. It can purify blood and remove harmful heavy metal effects inside the body.",
+    "indication": [
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1343,
+    "brand": "Omma",
+    "title": "Omma – Acacia Honey",
+    "slug": "omma-acacia-honey",
+    "link": "https://jasehealthcare.com/product/omma-acacia-honey/",
+    "summary": "Extensively researched, Acacia Honey is recognised worldwide for its special active properties. With over 140 year of experties in honey, Omma Acacia Mangium Honey uses only the finest, purest Borneo Rainforest acacia honey. Omma Acacia Mangium Honey is highly packed with phenolic, bio-flavonoids, vitamins and minerals that support body immune system, replenish energy, beautifying skin and suppress coughs.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1342,
+    "brand": "Omma",
+    "title": "Omma – Honey Flavour Apple Cider",
+    "slug": "omma-honey-flavour-apple-cider",
+    "link": "https://jasehealthcare.com/product/omma-honey-flavour-apple-cider/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1335,
+    "brand": "Omma",
+    "title": "Omma – Original Flavour Apple Cider",
+    "slug": "omma-original-flavour-apple-cider",
+    "link": "https://jasehealthcare.com/product/omma-original-flavour-apple-cider/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1331,
+    "brand": "NutriXlim",
+    "title": "NutriXlim – Fibolac",
+    "slug": "nutrixlim-fibolac",
+    "link": "https://jasehealthcare.com/product/nutrixlim-fibolac/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1330,
+    "brand": "NutriXlim",
+    "title": "NutriXlim – Lipofit",
+    "slug": "nutrixlim-lipofit",
+    "link": "https://jasehealthcare.com/product/nutrixlim-lipofit/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1325,
+    "brand": "NutriXlim",
+    "title": "NutriXlim – Protein Shake",
+    "slug": "nutrixlim-protein-shake",
+    "link": "https://jasehealthcare.com/product/nutrixlim-protein-shake/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1321,
+    "brand": "NANOFINE",
+    "title": "NANOFINE – PEN NEEDLES",
+    "slug": "nanofine-pen-needles",
+    "link": "https://jasehealthcare.com/product/nanofine-pen-needles/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1320,
+    "brand": "Mr. Throat",
+    "title": "Mr. Throat – Extra Mint & Cool",
+    "slug": "mr-throat-extra-mint-cool",
+    "link": "https://jasehealthcare.com/product/mr-throat-extra-mint-cool/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1316,
+    "brand": "Mr. Throat",
+    "title": "Mr. Throat – Extra Strong & Sugar Free",
+    "slug": "mr-throat-extra-strong-sugar-free",
+    "link": "https://jasehealthcare.com/product/mr-throat-extra-strong-sugar-free/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1315,
+    "brand": "Mediwheel",
+    "title": "Mediwheel – MDL809-01 Wheelchair",
+    "slug": "mediwheel-mdl809-01-wheelchair",
+    "link": "https://jasehealthcare.com/product/mediwheel-mdl809-01-wheelchair/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1314,
+    "brand": "Mediwheel",
+    "title": "Mediwheel – MDL863-01 Wheelchair",
+    "slug": "mediwheel-mdl863-01-wheelchair",
+    "link": "https://jasehealthcare.com/product/mediwheel-mdl863-01-wheelchair/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1313,
+    "brand": "Mediwheel",
+    "title": "Mediwheel – MDL863 Aluminum Wheelchair",
+    "slug": "mediwheel-mdl863-aluminum-wheelchair",
+    "link": "https://jasehealthcare.com/product/mediwheel-mdl863-aluminum-wheelchair/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1312,
+    "brand": "Mediwheel",
+    "title": "Mediwheel – MDL809 Standard Wheelchair",
+    "slug": "mediwheel-mdl809-standard-wheelchair",
+    "link": "https://jasehealthcare.com/product/mediwheel-mdl809-standard-wheelchair/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1311,
+    "brand": "Mediwheel",
+    "title": "Mediwheel – MDL924 Quad Cane",
+    "slug": "mediwheel-mdl924-quad-cane",
+    "link": "https://jasehealthcare.com/product/mediwheel-mdl924-quad-cane/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1303,
+    "brand": "Mediwheel",
+    "title": "Mediwheel – MDL913L Walking Frame",
+    "slug": "mediwheel-mdl913l-walking-frame",
+    "link": "https://jasehealthcare.com/product/mediwheel-mdl913l-walking-frame/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1302,
+    "brand": "Medicplast",
+    "title": "Medicplast – Heat Therapy Patch",
+    "slug": "medicplast-heat-therapy-patch",
+    "link": "https://jasehealthcare.com/product/medicplast-heat-therapy-patch/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1301,
+    "brand": "Medicplast",
+    "title": "Medicplast – Thermo Patch",
+    "slug": "medicplast-thermo-patch",
+    "link": "https://jasehealthcare.com/product/medicplast-thermo-patch/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1300,
+    "brand": "Medicplast",
+    "title": "Medicplast – Reliefcof Patch",
+    "slug": "medicplast-coldmax-spray",
+    "link": "https://jasehealthcare.com/product/medicplast-coldmax-spray/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1299,
+    "brand": "Medicplast",
+    "title": "Medicplast – Breathe Well",
+    "slug": "medicplast-breathe-well",
+    "link": "https://jasehealthcare.com/product/medicplast-breathe-well/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1298,
+    "brand": "Medicplast",
+    "title": "Medicplast Terracool – Refreshing Mint Cooling Patch",
+    "slug": "medicplast-terracool-refreshing-mint-cooling-patch",
+    "link": "https://jasehealthcare.com/product/medicplast-terracool-refreshing-mint-cooling-patch/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1297,
+    "brand": "Medicplast",
+    "title": "Medicplast Terracool – Fever Cooling Patch",
+    "slug": "medicplast-terracool-fever-cooling-patch",
+    "link": "https://jasehealthcare.com/product/medicplast-terracool-fever-cooling-patch/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1296,
+    "brand": "Medicplast",
+    "title": "Medicplast Terracool – Babies Cooling Patch",
+    "slug": "medicplast-terracool-babies-cooling-patch",
+    "link": "https://jasehealthcare.com/product/medicplast-terracool-babies-cooling-patch/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1295,
+    "brand": "Medicplast",
+    "title": "Medicplast – Wound Cleansing",
+    "slug": "medicplast-wound-cleansing",
+    "link": "https://jasehealthcare.com/product/medicplast-wound-cleansing/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1281,
+    "brand": "Medicplast",
+    "title": "Medicplast – Elastic Crepe Bandage",
+    "slug": "medicplast-elastic-crepe-bandage",
+    "link": "https://jasehealthcare.com/product/medicplast-elastic-crepe-bandage/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1279,
+    "brand": "Medicplast",
+    "title": "Medicplast – Alcohol Pad",
+    "slug": "medicplast-alcohol-pad",
+    "link": "https://jasehealthcare.com/product/medicplast-alcohol-pad/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1277,
+    "brand": "Lunéa",
+    "title": "Lunéa – Firmea",
+    "slug": "lunea-firmea",
+    "link": "https://jasehealthcare.com/product/lunea-firmea/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1276,
+    "brand": "Lunéa",
+    "title": "Lunéa – Shinea",
+    "slug": "lunea-shinea",
+    "link": "https://jasehealthcare.com/product/lunea-shinea/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1275,
+    "brand": "Lunéa",
+    "title": "Lunéa – Slimea",
+    "slug": "lunea-slimea",
+    "link": "https://jasehealthcare.com/product/lunea-slimea/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1270,
+    "brand": "Lunéa",
+    "title": "Lunéa – Imunea C",
+    "slug": "lunea-imunea-c",
+    "link": "https://jasehealthcare.com/product/lunea-imunea-c/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1269,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Multivitamins & Minerals & CoQ10",
+    "slug": "nutribridge-multivitamins-minerals-coq10",
+    "link": "https://jasehealthcare.com/product/nutribridge-multivitamins-minerals-coq10/",
+    "summary": "Nutribridge® Multivitamins &amp; Minerals &amp; CoQ10 is a comprehensive daily wellness formula containing 21 key vitamins and minerals with CoQ10 to support energy production, immunity, heart health and overall well-being. It is designed for adults seeking convenient daily nutritional support, especially those with busy lifestyles or insufficient nutrient intake.",
+    "indication": [
+      "Cardiovascular",
+      "Nerve Health",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1268,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Menz",
+    "slug": "nutribridge-menz",
+    "link": "https://jasehealthcare.com/product/nutribridge-menz/",
+    "summary": "Nutribridge® Menz is a men’s health formula combining KSM-66® Ashwagandha, Maca Root Extract and Tongkat Ali Extract to support energy, vitality, stamina, exercise performance and overall male wellness. It is designed for adult men seeking daily support for strength, performance and reproductive health.",
+    "indication": [
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1267,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Maxlim Coffee",
+    "slug": "nutribridge-maxlim-coffee",
+    "link": "https://jasehealthcare.com/product/nutribridge-maxlim-coffee/",
+    "summary": "Nutribridge® Maxlim Coffee is a functional coffee blend combining coffee powder, inulin fibre, African Mango Extract, and Green Tea Extract. Formulated for coffee lovers seeking a healthier lifestyle choice, it provides a convenient way to enjoy coffee while supporting digestive wellness, satiety, and weight management goals as part of a balanced diet.",
+    "indication": [
+      "Digestive & Gut",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1266,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Maxlife Coffee",
+    "slug": "nutribridge-maxlife-coffee",
+    "link": "https://jasehealthcare.com/product/nutribridge-maxlife-coffee/",
+    "summary": "Nutribridge® Maxlife Coffee is a functional coffee blend infused with botanical ingredients including Ashwagandha Extract, Maca Extract, Cordyceps Powder, and Fenugreek Extract. Designed for active individuals, it provides a convenient coffee experience while supporting daily energy, vitality, stamina, and overall wellbeing.",
+    "indication": [
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1265,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Magnesium 150mg",
+    "slug": "nutribridge-magnesium-150mg",
+    "link": "https://jasehealthcare.com/product/nutribridge-magnesium-150mg/",
+    "summary": "Nutribrigde® Magnesium 150mg provides 150 mg of elemental magnesium from Magnesium Bisglycinate Chelate, a highly absorbable and gentle form of magnesium. It helps support normal muscle and nerve function, relaxation, sleep quality, bone health and overall well-being.",
+    "indication": [
+      "Joint & Bone",
+      "Nerve Health",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1264,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Lipicholin",
+    "slug": "nutribridge-lipicholin",
+    "link": "https://jasehealthcare.com/product/nutribridge-lipicholin/",
+    "summary": "Nutribridge® Lipicholin is a nutritional supplement formulated with a combination of essential nutrients and herbal extracts to support healthy cholesterol balance and cardiovascular wellness. It helps maintain healthy lipid levels and supports heart health as part of a balanced lifestyle.",
+    "indication": [
+      "Cardiovascular",
+      "Immunity & Respiratory",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1263,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Kids Grow",
+    "slug": "nutribridge-kids-grow",
+    "link": "https://jasehealthcare.com/product/nutribridge-kids-grow/",
+    "summary": "Nutribridge® Enhanced Kidsgrow is a complete growing-up nutrition formula for children aged 1–10 years, designed to support healthy height and weight gain, brain development, immunity, eye health and gut health. It combines high-quality protein, 28 vitamins and minerals, Arginine, Lysine, Glutamic Acid, Omega 3-6-9, prebiotics &amp; probiotics, lutein and CPP mini-peptides for comprehensive growth support.",
+    "indication": [
+      "Cardiovascular",
+      "Digestive & Gut",
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1261,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Hemacel",
+    "slug": "nutribridge-hemacel",
+    "link": "https://jasehealthcare.com/product/nutribridge-hemacel/",
+    "summary": "Nutribridge® Hemacel is an advanced iron supplement formulated with Ferrochel® chelated iron and Quatrefolic® folate, combined with non-acidic vitamin C to support iron absorption. Its gentle, non-constipating formula helps support healthy red blood cell formation, energy levels, and overall nutritional needs, especially during periods of increased iron requirements.",
+    "indication": [
+      "Nerve Health",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1259,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Goat Milk Colostrum Chewable",
+    "slug": "nutribridge-goat-milk-colostrum-chewable",
+    "link": "https://jasehealthcare.com/product/nutribridge-goat-milk-colostrum-chewable/",
+    "summary": "Nutribridge® Goat Milk Colostrum Chewable is a convenient chewable nutritional supplement formulated with goat milk and colostrum to support daily nutrition, growth, digestive wellness, and overall health. Its easy-to-consume format makes it suitable for children and adults seeking additional nutritional support.",
+    "indication": [
+      "Digestive & Gut",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1257,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Glycoway",
+    "slug": "nutribridge-glycoway",
+    "link": "https://jasehealthcare.com/product/nutribridge-glycoway/",
+    "summary": "Nutribridge® Glycoway is a plant-based blood glucose support formula combining pTeroSol® Pterocarpus marsupium, Salaretin® Salacia reticulata, and Momordicin™ Bitter Melon Extract. It is designed to help maintain healthy blood glucose levels and support overall glucose metabolism as part of daily wellness management.",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1255,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Flexsure Gold",
+    "slug": "nutribridge-flexsure-gold",
+    "link": "https://jasehealthcare.com/product/nutribridge-flexsure-gold/",
+    "summary": "Nutribridge® Flexsure Gold is a complete balanced nutrition formula specially designed to support joint, muscle and bone health. It combines UC-II® Undenatured Type II Collagen, Ovomet® Eggshell Membrane, CaHMB and Turmeric Extract, together with high-quality protein, 28 vitamins and minerals, and pre- &amp; probiotics to support joint comfort, mobility, muscle recovery and overall strength.",
+    "indication": [
+      "Joint & Bone",
+      "Nerve Health",
+      "Digestive & Gut",
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1254,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Ezydream",
+    "slug": "nutribridge-ezydream",
+    "link": "https://jasehealthcare.com/product/nutribridge-ezydream/",
+    "summary": "Nutribridge® Ezydream is a sleep-support formula combining Saffron, Chamomile, Valerian Root and Tryptophan to promote relaxation, better sleep quality and longer, more restful sleep. It is designed to help calm the nervous system, support mood balance and improve overall sleep wellness.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1253,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Crystoe",
+    "slug": "nutribridge-crystoe",
+    "link": "https://jasehealthcare.com/product/nutribridge-crystoe/",
+    "summary": "Nutribridge® Crystoe is a gout and uric acid support formula combining Ayuric® Terminalia bellirica, Celery Seed Extract and CherryPure® Tart Cherry Extract. It is designed to help maintain healthy uric acid levels, reduce gout-related inflammation and discomfort, and support joint function and overall well-being.",
+    "indication": [
+      "Joint & Bone",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1252,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Citazen",
+    "slug": "nutribridge-citazen",
+    "link": "https://jasehealthcare.com/product/nutribridge-citazen/",
+    "summary": "Nutribridge® Citazen is an advanced immune and antioxidant formula combining 500 mg buffered Vitamin C, 13 mg elemental Zinc and 50 mg Resveratrol. It helps support healthy immune function, cellular protection and antioxidant defense, while its non-acidic Vitamin C form is gentler on the stomach.",
+    "indication": [
+      "Immunity & Respiratory"
+    ]
+  },
+  {
+    "id": 1251,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Calcium Plus Vitamin D3 & K2",
+    "slug": "nutribridge-calcium-plus-vitamin-d3-k2",
+    "link": "https://jasehealthcare.com/product/nutribridge-calcium-plus-vitamin-d3-k2/",
+    "summary": "Nutribridge® Calcium Plus Vitamin D3 &amp; K2 is a 3-in-1 bone health formula combining Calcium, Vitamin D3 and VitaMK7® Vitamin K2 to support calcium absorption, strong bones and healthy bone mineralisation. It also supports normal muscle and nerve function, making it suitable for daily bone health maintenance.",
+    "indication": [
+      "Joint & Bone",
+      "Nerve Health",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1250,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Bectamin Zinc Plus",
+    "slug": "nutribridge-bectamin-zinc-plus",
+    "link": "https://jasehealthcare.com/product/nutribridge-bectamin-zinc-plus/",
+    "summary": "Nutribridge® Bectamin Zinc Plus is a comprehensive daily multivitamin formula combining B-complex vitamins, high-strength Vitamin C, Vitamin D3, Vitamin E, Folic Acid and chelated Zinc. It helps support immune function, energy production, antioxidant protection and recovery, making it suitable for everyday nutritional support and overall vitality.",
+    "indication": [
+      "Nerve Health",
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1249,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Sea Cucumber & Collagen Essence of Fish",
+    "slug": "nutribridge-sea-cucumber-collagen-essence-of-fish",
+    "link": "https://jasehealthcare.com/product/nutribridge-sea-cucumber-collagen-essence-of-fish/",
+    "summary": "Nutribridge® Fish Essence with Sea Cucumber &amp; Collagen combines fish essence with Sea Cucumber Extract and Fish Collagen to support skin health, joint and bone strength, muscle recovery and tissue repair. Its nourishing formula also supports immunity, hydration and overall recovery.",
+    "indication": [
+      "Joint & Bone",
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1247,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Traditional Essence of Fish",
+    "slug": "nutribridge-traditional-essence-of-fish",
+    "link": "https://jasehealthcare.com/product/nutribridge-traditional-essence-of-fish/",
+    "summary": "Nutribridge® Traditional Fish Essence is made from 95% original fish essence, providing essential fatty acids, amino acids and collagen. It helps support recovery, brain and cognitive health, joint and bone strength, muscle recovery, and overall vitality.",
+    "indication": [
+      "Joint & Bone",
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1240,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Traditional Essence of Chicken",
+    "slug": "nutribridge-traditional-essence-of-chicken",
+    "link": "https://jasehealthcare.com/product/nutribridge-traditional-essence-of-chicken/",
+    "summary": "Nutribridge® Traditional Chicken Essence is made with 99.8% original essence of chicken, providing naturally occurring amino acids, peptides and proteins. It helps support energy, mental alertness, immunity and recovery, making it a convenient daily tonic for overall vitality and well-being.",
+    "indication": [
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1228,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – American Ginseng Essence of Chicken",
+    "slug": "nutribridge-american-ginseng-chicken-essence",
+    "link": "https://jasehealthcare.com/product/nutribridge-american-ginseng-chicken-essence/",
+    "summary": "Nutribridge® Chicken Essence with American Ginseng &amp; Cordyceps combines concentrated chicken essence with American Ginseng and Cordyceps to support energy, stamina, mental performance and immunity. It is ideal for individuals seeking extra support against fatigue and stress while maintaining daily vitality.",
+    "indication": [
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 1223,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Nutri Alpha",
+    "slug": "nutribridge-nutri-alpha",
+    "link": "https://jasehealthcare.com/product/nutribridge-nutri-alpha/",
+    "summary": "Nutribridge® Nutri Alpha is a complete low-GI nutrition formula designed to support healthy blood glucose management and weight control. With protein, fibre, pre- &amp; probiotics and lutein, it provides balanced daily nutrition while supporting digestive health, eye health and overall well-being.",
+    "indication": [
+      "Digestive & Gut",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1206,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Nutrenmax",
+    "slug": "nutribridge-nutrenmax",
+    "link": "https://jasehealthcare.com/product/nutribridge-nutrenmax/",
+    "summary": "Nutribridge® NutrenMax is a complete nutritional milk formula enriched with high-quality protein, MCT, CaHMB, prebiotic fibre, vitamins, and minerals to support daily nutritional needs. Formulated for adults requiring additional nutritional support, it helps maintain muscle health, digestive wellness, and overall wellbeing.",
+    "indication": [
+      "Digestive & Gut",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1203,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Beaullagen",
+    "slug": "nutribridge-beaullagen",
+    "link": "https://jasehealthcare.com/product/nutribridge-beaullagen/",
+    "summary": "Nutribridge® Beaullagen is a beauty-from-within collagen formula featuring Collagen Tripeptide, Olive Fruit Extract, Tremella Fuciformis, White Tomato Extract, Vitamin E and antioxidant-rich botanicals. It helps support skin hydration, elasticity, collagen replenishment and antioxidant protection, promoting a smoother, firmer and more youthful-looking complexion.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1179,
+    "brand": "Livemore",
+    "title": "Livemore – Vitaglo",
+    "slug": "livemore-vitaglo",
+    "link": "https://jasehealthcare.com/product/livemore-vitaglo/",
+    "summary": "Livemore® Vitaglo is a beauty-from-within formula combining hydrolysed fish collagen, glutathione, PureWay-C® Vitamin C, L-Cysteine, ceramide and biotin to support healthy skin, hair and nails. It helps promote skin hydration and elasticity, strengthen hair and nails, and support a brighter, more youthful appearance.",
+    "indication": [
+      "Dermatology & Beauty"
+    ]
+  },
+  {
+    "id": 1178,
+    "brand": "Livemore",
+    "title": "Livemore – Zencool",
+    "slug": "livemore-zencool",
+    "link": "https://jasehealthcare.com/product/livemore-zencool/",
+    "summary": "Livemore® Zencool is a refreshing lime-flavoured effervescent formula with Gypsum Fibrosum, Job’s Tear, Acerola &amp; Lemon, and prebiotic Inulin. It is designed to help cool and refresh the body, soothe throat and mouth discomfort, support immunity, and promote gut wellness, especially after spicy or “heaty” foods or during hot weather.",
+    "indication": [
+      "Digestive & Gut",
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1177,
+    "brand": "Livemore",
+    "title": "Livemore – Neo-D3 1000IU",
+    "slug": "livemore-neo-d3-1000iu",
+    "link": "https://jasehealthcare.com/product/livemore-neo-d3-1000iu/",
+    "summary": "Livemore® Neo-D3 provides 1000 IU of Vitamin D3 per tablet to support calcium and phosphorus absorption, strong bones and teeth, and overall well-being. It is designed for convenient daily supplementation, especially for individuals with limited sun exposure or inadequate vitamin D intake.",
+    "indication": [
+      "Joint & Bone",
+      "Dermatology & Beauty"
+    ]
+  },
+  {
+    "id": 1176,
+    "brand": "Livemore",
+    "title": "Livemore – Methylcobalamin 600mcg",
+    "slug": "livemore-methylcobalamin-600mcg",
+    "link": "https://jasehealthcare.com/product/livemore-methylcobalamin-600mcg/",
+    "summary": "Livemore® Methylcobalamin 600mcg provides the active form of Vitamin B12 to support energy production, healthy red blood cell formation and normal nervous system function. Its high-potency, vegan-friendly formula is designed for convenient daily supplementation.",
+    "indication": [
+      "Nerve Health"
+    ]
+  },
+  {
+    "id": 1175,
+    "brand": "Livemore",
+    "title": "Livemore – Lipi-K",
+    "slug": "livemore-lipi-k",
+    "link": "https://jasehealthcare.com/product/livemore-lipi-k/",
+    "summary": "Livemore® Lipi-K is a heart-health supplement combining Red Yeast Rice Extract, Olive Fruit Extract and Coenzyme Q10 to support healthy cholesterol levels and overall cardiovascular wellness. It is designed for adults seeking convenient daily support for maintaining a healthy lipid profile and heart function.",
+    "indication": [
+      "Cardiovascular"
+    ]
+  },
+  {
+    "id": 1174,
+    "brand": "Livemore",
+    "title": "Livemore – Gasmint",
+    "slug": "livemore-gasmint",
+    "link": "https://jasehealthcare.com/product/livemore-gasmint/",
+    "summary": "Livemore® Gasmint is a convenient functional food formulated with Fucorich® brown seaweed, sodium alginate, sodium bicarbonate and calcium carbonate to help neutralize excess stomach acid, relieve indigestion and stomach discomfort, reduce acid reflux, and support the stomach’s mucosal barrier.",
+    "indication": [
+      "Digestive & Gut",
+      "Immunity & Respiratory",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1173,
+    "brand": "Livemore",
+    "title": "Livemore – BrightIQ",
+    "slug": "livemore-brightiq",
+    "link": "https://jasehealthcare.com/product/livemore-brightiq/",
+    "summary": "Livemore® BrightIQ is formulated with Silk Protein (Brain Factor-7®), Bacopa, choline and B-complex vitamins to support cognitive performance, memory, mental clarity and brain health. Designed for modern lifestyles, it is suitable for professionals, students and individuals seeking daily support for focus, recall and mental energy.",
+    "indication": [
+      "Nerve Health",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1172,
+    "brand": "Livemore",
+    "title": "Livemore – Q-Folix",
+    "slug": "livemore-q-folix",
+    "link": "https://jasehealthcare.com/product/livemore-q-folix/",
+    "summary": "Livemore® Q-Folix is a premium folate supplement providing 600 mcg of active 5-MTHF (Quatrefolic®) per tablet. Its bioavailable form is ready for immediate use by the body, helping support DNA synthesis, healthy red blood cell formation, fetal development, and overall folate status, especially before and during pregnancy.",
+    "indication": [
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 1171,
+    "brand": "Livemore",
+    "title": "Livemore – Opticlear",
+    "slug": "livemore-opticlear",
+    "link": "https://jasehealthcare.com/product/livemore-opticlear/",
+    "summary": "Livemore® Opticlear is a comprehensive eye health formula featuring Lutemax® 2020 Lutein &amp; Zeaxanthin, together with Vitamins A, C &amp; E, Zinc and Copper. It helps support clear vision, eye comfort and macular health, while providing antioxidant protection against oxidative stress and the effects of prolonged screen exposure.",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1170,
+    "brand": "Livemore",
+    "title": "Livemore – CO-Q10 Plus",
+    "slug": "livemore-co-q10-plus",
+    "link": "https://jasehealthcare.com/product/livemore-co-q10-plus/",
+    "summary": "Livemore® Co-Q10 Plus is a 2-in-1 health supplement combining Coenzyme Q10 and L-Carnitine to support heart health and cellular energy production. Its synergistic formula helps promote fat metabolism, support cardiovascular function, and enhance overall energy and vitality.",
+    "indication": [
+      "Cardiovascular",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1169,
+    "brand": "Livemore",
+    "title": "Livemore – Nervion",
+    "slug": "livemore-nervion",
+    "link": "https://jasehealthcare.com/product/livemore-nervion/",
+    "summary": "Livemore® Nervion is formulated with vitamins B1, B6 and B12, together with chromium, to support healthy nerve function, energy metabolism and overall wellbeing. It provides convenient daily nutritional support for individuals looking to maintain nervous-system health and adequate B-vitamin intake.",
+    "indication": [
+      "Nerve Health",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1156,
+    "brand": "Livemore",
+    "title": "Livemore – Ginoba 120mg",
+    "slug": "livemore-ginoba-120mg",
+    "link": "https://jasehealthcare.com/product/livemore-ginoba-120mg/",
+    "summary": "Livemore® Ginoba is a dietary supplement formulated with Ginkgo biloba extract, derived from the leaves of the Ginkgo tree. It helps support cognitive function, memory and healthy blood circulation as part of daily wellness.",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1155,
+    "brand": "Livemore",
+    "title": "Livemore – Flexmore",
+    "slug": "livemore-flexmore",
+    "link": "https://jasehealthcare.com/product/livemore-flexmore/",
+    "summary": "Livemore® Flexmore is a comprehensive joint-support formula containing hydrolysed fish collagen, sodium hyaluronate, Boswellia serrata extract, turmeric extract, hydrolysed chicken eggshell membrane, branched-chain amino acids, Ca-HMB, vitamins and minerals. Designed for active adults and older individuals, it helps support joint comfort, mobility and everyday movement.",
+    "indication": [
+      "Joint & Bone",
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1151,
+    "brand": "Livemore",
+    "title": "Livemore – Neomega Plus",
+    "slug": "livemore-neomega-plus",
+    "link": "https://jasehealthcare.com/product/livemore-neomega-plus/",
+    "summary": "Livemore® Neomega Plus is a high-strength omega-3 formula combining 700 mg EPA + 350 mg DHA with Resveratrol, Vitamin D3 and Vitamin E to support cardiovascular health, antioxidant protection, immunity and overall vitality. Its enteric-coated softgels help reduce fishy reflux for better daily compliance.",
+    "indication": [
+      "Cardiovascular",
+      "Digestive & Gut",
+      "Immunity & Respiratory"
+    ]
+  },
+  {
+    "id": 1148,
+    "brand": "Livemore",
+    "title": "Livemore – Neomega",
+    "slug": "livemore-neomega",
+    "link": "https://jasehealthcare.com/product/livemore-neomega/",
+    "summary": "Livemore® Neomega is a purified fish oil supplement sourced from oily fish such as mackerel, sardines and anchovies. It undergoes molecular distillation to remove unwanted contaminants and is enriched with 30 IU of natural vitamin E for enhanced oxidative stability. Its high-quality ethyl ester fish oil formula helps support heart, brain, eye and skin health.",
+    "indication": [
+      "Cardiovascular",
+      "Dermatology & Beauty"
+    ]
+  },
+  {
+    "id": 1140,
+    "brand": "L’Ogreen",
+    "title": "L’Ogreen – 6-in-1 Laundry Pods",
+    "slug": "1140",
+    "link": "https://jasehealthcare.com/product/1140/",
+    "summary": "L’Ogreen® 6-in-1 Laundry Pods are formulated with naturally derived enzymes to deliver effective, skin-friendly cleaning. Their advanced antibacterial and anti-dust mite technology helps maintain cleaner, fresher fabrics, while colour-protection technology helps reduce fading and preserve fabric vibrancy. Each pod also helps soften fabrics and leaves a light peach fragrance that remains fresh even when clothes are dried indoors. Convenient and easy to use, L’Ogreen® Laundry Pods provide complete everyday care for your laundry.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 1139,
+    "brand": "Jordan",
+    "title": "Jordan – FIR Tourmaline Ankle Support",
+    "slug": "jordan-fir-tourmaline-ankle-support-2",
+    "link": "https://jasehealthcare.com/product/jordan-fir-tourmaline-ankle-support-2/",
+    "summary": "FIR Tourmaline Ankle Support provides mild compression and support to the ankle which helps relieve pain and swelling. The FIR Tourmaline has the characteristics of self-heating, comfort, and warmth. It is ideal for recovery and protection in sport and daily activity.",
+    "indication": [
+      "Joint & Bone",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1137,
+    "brand": "Jordan",
+    "title": "Jordan – Lumbar Posture Corrector",
+    "slug": "jordan-lumbar-support-2",
+    "link": "https://jasehealthcare.com/product/jordan-lumbar-support-2/",
+    "summary": "Jordan® Lumbar Posture Corrector provides mild to medium support in posture correction. Crafted with adjustable wrap and straps that wrap over shoulders and around central of the body, Jordan Posture Corrector provides 3-in-1 support for upper back, lower back and abdomen to relieve neck, shoulder and back pain. Padded shoulder straps further ensure comfortability while wearing for extended hours.",
+    "indication": [
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1136,
+    "brand": "Jordan",
+    "title": "Jordan – Premium Kinesio Tape",
+    "slug": "jordan-premium-kinesio-tape",
+    "link": "https://jasehealthcare.com/product/jordan-premium-kinesio-tape/",
+    "summary": "Jordan® Kinesio Tape is designed to provide flexible support for sports and everyday injuries, including shin splints, plantar fasciitis, runner’s knee and back discomfort. Its elastic design gently lifts the skin to create a decompressive effect, helping support movement and reduce pressure on the underlying muscles and fascia. With strong adhesion, reliable stretch and durable performance, Jordan® Kinesio Tape is suitable for athletes, active individuals and healthcare professionals.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1134,
+    "brand": "Jordan",
+    "title": "Jordan – Spinning Bike",
+    "slug": "jordan-fir-tourmaline-ankle-support",
+    "link": "https://jasehealthcare.com/product/jordan-fir-tourmaline-ankle-support/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1133,
+    "brand": "Jordan",
+    "title": "Jordan – FIR Tourmaline Elbow Support",
+    "slug": "jordan-fir-tourmaline-elbow-support",
+    "link": "https://jasehealthcare.com/product/jordan-fir-tourmaline-elbow-support/",
+    "summary": "Jordan® FIR Tourmaline Elbow Support provides mild compression and support to the elbow which helps relieve pain and swelling. The FIR Tourmaline has the characteristics of self-heating, comfort, and warmth. It is ideal for recovery and protection in sport and daily activity.",
+    "indication": [
+      "Joint & Bone",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1131,
+    "brand": "Jordan",
+    "title": "Jordan – FIR Tourmaline Knee Support",
+    "slug": "jordan-fir-tourmaline-knee-support",
+    "link": "https://jasehealthcare.com/product/jordan-fir-tourmaline-knee-support/",
+    "summary": "Jordan® FIR Tourmaline Knee Support provides mild compression and support to the knee which helps relieve pain and swelling Jordan® FIR Tourmaline Knee Support provide a protective warmth and support for all physical activities. Helps absorb shock and helps prevents twisting. Gain greater flexibility of movement without feeling like you are wearing a support or brace. May be worn by both men and women. Made from non-sweaty breathable material.",
+    "indication": [
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1130,
+    "brand": "Jordan",
+    "title": "Jordan – Bamboo Fibre Knee Support",
+    "slug": "jordan-bamboo-fibre-knee-support",
+    "link": "https://jasehealthcare.com/product/jordan-bamboo-fibre-knee-support/",
+    "summary": "Jordan® Bamboo Fibre Knee Support can adjust humidity by absorning moisture, perspiration etc and helps reject dampness with a high effect. Bamboo charcoal is know to have high porosity. Various impurities or foreign matter will be absorbed on the wide surface area of the moisture and air will be converted to dry. If the air is too dry then the charcoal will discharge its moisture thus adjusting the humidity in the air and makes it an excellent humidity regulator.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1129,
+    "brand": "Jordan",
+    "title": "Jordan – Sports Knee Support",
+    "slug": "jordan-sports-knee-support",
+    "link": "https://jasehealthcare.com/product/jordan-sports-knee-support/",
+    "summary": "Jordan® Sports Knee Support is carefully knitted to provide excellent compression to the knee region and retain warmth which allows for maximum comfort. It is used for knee stabilization, sprains or strains and prevention of sport injuries. The patella ring allows for form support to the patella zone and its spiral stays reinforce stabilization during knee movement.",
+    "indication": [
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1118,
+    "brand": "Jordan",
+    "title": "Jordan – Premium Breathable Arm Sling",
+    "slug": "jordan-premium-breathable-arm-sling",
+    "link": "https://jasehealthcare.com/product/jordan-premium-breathable-arm-sling/",
+    "summary": "Jordan® Premium Breathable Arm Sling is a medical device used to support and immobilize the arm, shoulder, or wrist following an injury or surgery. It is commonly prescribed for fractures, sprains, dislocations, and post-operative recovery, helping to stabilize the arm and promote proper healing.",
+    "indication": [
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1100,
+    "brand": "Jordan",
+    "title": "Jordan – Lumbar Support",
+    "slug": "jordan-lumbar-support",
+    "link": "https://jasehealthcare.com/product/jordan-lumbar-support/",
+    "summary": "Jordan® Lumbar Support provides mild to medium support to the lumbar spine in weak or injured spine. Adjust the side pulls to provide extra compression. It using high grade multi-layer material which is elastic, breathable and comfortable for prolonged wearing comfort. Besides that, 4 stays enhance support to weak and injured spine which helps relieve lower back pain. Not only that, it consist side pull with strong velcro provide additional compression and snug fit adjustments. Lastly, there is a finger pass for easy use and adjustment.",
+    "indication": [
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 1097,
+    "brand": "Joycerin",
+    "title": "Joycerin – Lumi Whitening Cream",
+    "slug": "joycerin-lumi-whitening-cream-2",
+    "link": "https://jasehealthcare.com/product/joycerin-lumi-whitening-cream-2/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1096,
+    "brand": "Joycerin",
+    "title": "Joycerin – Lumi Radiance Toner",
+    "slug": "joycerin-lumi-radiance-toner",
+    "link": "https://jasehealthcare.com/product/joycerin-lumi-radiance-toner/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1090,
+    "brand": "Joycerin",
+    "title": "Joycerin – Lumi Brightening Serum",
+    "slug": "joycerin-lumi-whitening-cream",
+    "link": "https://jasehealthcare.com/product/joycerin-lumi-whitening-cream/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1089,
+    "brand": "Joycerin",
+    "title": "Joycerin – Refine Clarifying Serum",
+    "slug": "joycerin-refine-clarifying-serum-2",
+    "link": "https://jasehealthcare.com/product/joycerin-refine-clarifying-serum-2/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1088,
+    "brand": "Joycerin",
+    "title": "Joycerin – Refine Balancing Toner",
+    "slug": "joycerin-refine-clarifying-serum",
+    "link": "https://jasehealthcare.com/product/joycerin-refine-clarifying-serum/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1084,
+    "brand": "Joycerin",
+    "title": "Joycerin – Refine Blemish Control Cream",
+    "slug": "joycerin-refine-blemish-control-cream",
+    "link": "https://jasehealthcare.com/product/joycerin-refine-blemish-control-cream/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1083,
+    "brand": "Joycerin",
+    "title": "Joycerin – Hydra Hydrating Toner",
+    "slug": "joycerin-hydra-hydrating-toner",
+    "link": "https://jasehealthcare.com/product/joycerin-hydra-hydrating-toner/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1082,
+    "brand": "Joycerin",
+    "title": "Joycerin – Hydra Intensive Serum",
+    "slug": "joycerin-hydra-intensive-serum",
+    "link": "https://jasehealthcare.com/product/joycerin-hydra-intensive-serum/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1078,
+    "brand": "Joycerin",
+    "title": "Joycerin – Hydra Moisturizing Cream",
+    "slug": "joycerin-hydra-moisturizing-cream",
+    "link": "https://jasehealthcare.com/product/joycerin-hydra-moisturizing-cream/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1077,
+    "brand": "Joycerin",
+    "title": "Joycerin – Calm Barrier Repair Cream",
+    "slug": "joycerin-calm-barrier-repair-cream",
+    "link": "https://jasehealthcare.com/product/joycerin-calm-barrier-repair-cream/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1074,
+    "brand": "Joycerin",
+    "title": "Joycerin – Calm Recovery Serum",
+    "slug": "joycerin-calm-recovery-serum",
+    "link": "https://jasehealthcare.com/product/joycerin-calm-recovery-serum/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1072,
+    "brand": "Joycerin",
+    "title": "Joycerin – Calm Soothing Toner",
+    "slug": "joycerin-calm-soothing-toner",
+    "link": "https://jasehealthcare.com/product/joycerin-calm-soothing-toner/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1070,
+    "brand": "Joycerin",
+    "title": "Joycerin – Refine 2-IN-1 Purifying Cleanser",
+    "slug": "joycerin-refine-2-in-1-purifying-cleanser",
+    "link": "https://jasehealthcare.com/product/joycerin-refine-2-in-1-purifying-cleanser/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1068,
+    "brand": "Joycerin",
+    "title": "Joycerin – Lumi 2-IN-1 Brightening Cleanser",
+    "slug": "joycerin-lumi-2-in-1-brightening-cleanser",
+    "link": "https://jasehealthcare.com/product/joycerin-lumi-2-in-1-brightening-cleanser/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1066,
+    "brand": "Joycerin",
+    "title": "Joycerin – Calm 2-IN-1 Gentle Cleanser",
+    "slug": "joycerin-calm-2-in-1-moisturizing-cleanser",
+    "link": "https://jasehealthcare.com/product/joycerin-calm-2-in-1-moisturizing-cleanser/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1061,
+    "brand": "Joycerin",
+    "title": "Joycerin – Hydra 2-IN-1 Moisturizing Cleanser",
+    "slug": "joycerin-hydra-2-in-1-moisturizing-cleanser",
+    "link": "https://jasehealthcare.com/product/joycerin-hydra-2-in-1-moisturizing-cleanser/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 1060,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Tygeres",
+    "slug": "jh-nutrition-tygeres",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-tygeres/",
+    "summary": "JH Nutrition® Tygeres combines Tiger Milk Mushroom (LiGNO TM02®) with seven types of berries rich in vitamins and flavonoids. This convenient sachet formula supports respiratory wellness, lung health and the body’s natural immune defences.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1058,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Usolve",
+    "slug": "jh-nutrition-usolve",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-usolve/",
+    "summary": "JH Nutrition® U-Solve combines cranberry extract, elderberry extract, a urinary alkaliser, prebiotics and vitamin C. This carefully formulated blend supports urinary tract health, healthy urine pH and overall urinary comfort, while providing antioxidant and digestive support.",
+    "indication": [
+      "Digestive & Gut",
+      "Immunity & Respiratory",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1057,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Tigermilk Coffee",
+    "slug": "jh-nutrition-tigermilk-coffee",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-tigermilk-coffee/",
+    "summary": "JH Nutrition® Tigermilk Coffee combines 100% Arabica coffee with Tiger Milk Mushroom to support respiratory wellness, recovery and daily vitality. This nutrient-rich blend is lower in caffeine and formulated without sugar or creamer, offering a smooth and convenient beverage for everyday enjoyment.",
+    "indication": [
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1052,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Sleepright",
+    "slug": "jh-nutrition-sleepright",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-sleepright/",
+    "summary": "Often times, insomnia is caused by various stressors including an unhealthy lifestyle, interference of the normal sleeping schedule and other uncomfortable illnesses contributing to our restlessness at night, robbing us of the rest that we long for. Nature’s sleep aid, JH Nutrition® Sleepright combines 4 medicinal herbs in one capsule that is traditionally used for difficulty in sleep.",
+    "indication": [
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1049,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Tracentia",
+    "slug": "jh-nutrition-tracentia",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-tracentia/",
+    "summary": "JH Nutrition® Tracentia is formulated with Momordica Charantia (Bitter Melon Extract). Bitter Melon is a fruit with a distinguished bitter taste, containing a complex array of antioxidants and other nutrients. Research studies show that bitter melon contains charantin and polypeptide-P, known as plant insulin, which helps maintain healthy blood sugar in healthy individuals.",
+    "indication": [
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1046,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Progutor",
+    "slug": "jh-nutrition-progutor",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-progutor/",
+    "summary": "JH Nutrition® Progutor brings fast, soothing and long-lasting relief from the pain and discomfort of heartburn (gastric reflux) and indigestion. JH Nutrition® Progutor quickly soothes the burning sensation and helps keep digestive acid in the stomach where it should be.",
+    "indication": [
+      "Cardiovascular",
+      "Digestive & Gut",
+      "Immunity & Respiratory",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1044,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Oxygrain",
+    "slug": "jh-nutrition-oxygrain",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-oxygrain/",
+    "summary": "People nowadays, including young children are always on their phone or staring at the computer or TV screen. Blue ray light from digital device screens can cause damage to the eyes. Healthy drinks JH Nutrition® Oxygrain contains 24 types of whole grains, added with Oxxynea®, purple sweet potato, L-leucine and colostrum which are perfect daily choice for you and your family.",
+    "indication": [
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1041,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Ota-Goat",
+    "slug": "jh-nutrition-ota-goat",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-ota-goat/",
+    "summary": "For centuries, goat milk has been known as a reliable source of protein and energy. JH Nutrition® Ota-Goat is a premium, rich and delicious goat milk formula packed with vitamins and minerals. It has no ‘goaty’ taste aftertaste so that you can enjoy the goodness of goat milk without fear and tear. JH Nutrition® Ota-Goat is also enriched with 50 billion probiotics and tiger milk mushroom to boost your immune system. Drink JH Nutrition® Ota-Goat today!",
+    "indication": [
+      "Nerve Health",
+      "Digestive & Gut",
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1040,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Raspberry Flavour Immucol Gummies",
+    "slug": "jh-nutrition-raspberry-flavour-immucol-gummies",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-raspberry-flavour-immucol-gummies/",
+    "summary": "JH Nutrition® Immucol Gummies are a great tasting daily gummy with Black Elderberry, Vitamin C and Zinc for children 2 years+.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1039,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – IQ-Pro",
+    "slug": "jh-nutrition-iq-pro",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-iq-pro/",
+    "summary": "JH Nutrition® IQ-Pro contains Lutein and Zeaxanthin which are natural constituents of marigold pigment extract. Bacopa Monnieri on the other hand is a plant that has been used for centuries in traditional Ayurvedic medicine for longevity and cognitive improvement. When it comes to taste, chocolate is the best.",
+    "indication": [
+      "Nerve Health",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1038,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Optimum Kids",
+    "slug": "jh-nutrition-optimum-kids",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-optimum-kids/",
+    "summary": "JH Nutrition® Optimum Kids is specially formulated to support healthy growth and development in children aged 1 to 10 years. Enriched with arginine and vitamin K2, it helps support strong bones, physical development and overall wellbeing throughout your child’s important growing years.",
+    "indication": [
+      "Joint & Bone",
+      "Nerve Health",
+      "Digestive & Gut",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1037,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Immunz-IgG",
+    "slug": "jh-nutrition-immunz-igg",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-immunz-igg/",
+    "summary": "JH Nutrition® Immunz-IgG is an unique combination of colostrum powder with probiotics DHA and lutein. Each cup of JH Nutrition® Immunz-IgG contains important antibody in human defense system called Immunoglobulin. This product is also high in protein, high in vitamins (A, D, B2 &amp; B12), high in calcium and source of magnesium and zinc. Every glass of colostrum milk provides creamy and smooth taste, suitable for all ages. It is the best choice for you and your family.",
+    "indication": [
+      "Nerve Health",
+      "Digestive & Gut",
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1036,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Nacous",
+    "slug": "jh-nutrition-nacous",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-nacous/",
+    "summary": "JH Nutrition® Nacous contains 300mg of N-acetylcysteine, also known as NAC, in a convenient capsule form that is easy to swallow. NAC is a mucolytic agent which means it is able to reduce the viscosity of phlegm, making it easier to be expelled through coughing reflex.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1025,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Livason",
+    "slug": "jh-nutrition-livason",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-livason/",
+    "summary": "The liver plays an essential role in supporting the body’s natural detoxification processes, bile production, protein synthesis and enzyme activation. JH Nutrition® Livason is formulated with milk thistle extract and Phyllanthus niruri extract, two carefully selected botanical ingredients that help support normal liver function and overall liver health.",
+    "indication": [
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1019,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Hemacel Forte",
+    "slug": "jh-nutrition-hermacel-forte",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-hermacel-forte/",
+    "summary": "JH Nutrition® Hemacel Forte is a once-daily dietary supplement formulated to support healthy iron levels, energy and vitality. It contains Ferrochel® and Quatrefolic®, carefully selected for effective absorption and to be gentle on the digestive system. Iron plays an essential role in transporting oxygen throughout the body. When dietary iron intake is insufficient, it may contribute to tiredness and fatigue. JH Nutrition® Hemacel Forte also provides important vitamins to support the nutritional needs of women and is suitable for vegans and vegetarians.",
+    "indication": [
+      "Nerve Health",
+      "Digestive & Gut",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1018,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Strawberry Flavour Gummy Bear",
+    "slug": "jh-nutrition-strawberry-flavour-gummy-bear",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-strawberry-flavour-gummy-bear/",
+    "summary": "JH Nutrition® Gummy Bear Strawberry is formulated to support a healthy appetite and overall growth and development. It is a low-calorie, 100% vegetarian gummy made without gluten, wheat, yeast, artificial colours, artificial flavours, artificial sweeteners, milk or preservatives.",
+    "indication": [
+      "Nerve Health",
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1017,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Orange Flavour Gummy Bear",
+    "slug": "jh-nutrition-orange-flavour-gummy-bear",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-orange-flavour-gummy-bear/",
+    "summary": "JH Nutrition® Gummy Bear Orange is specially formulated to support healthy brain and nerve development, memory and immune health. This low-calorie vegetarian gummy contains no gluten, wheat, yeast, artificial colours, artificial flavours, artificial sweeteners, milk or preservatives.",
+    "indication": [
+      "Nerve Health",
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1010,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Grape Flavour Gummy Bear",
+    "slug": "jh-nutrition-grape-flavour-gummy-bear",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-grape-flavour-gummy-bear/",
+    "summary": "JH Nutrition® Gummy Bear Grape is a delicious vegetarian gummy formulated to support healthy immune function. It is low in calories and made without gluten, wheat, yeast, artificial colours, artificial flavours, artificial sweeteners, milk or preservatives.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1008,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Flvright",
+    "slug": "jh-nutrition-flvright",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-flvright/",
+    "summary": "JH Nutrition® Flvright contain highly concentrated Black Elderberry and Andrographis Paniculata to help reduce the severity and duration of Cold &amp; Flu symptoms. JH Nutrition® Flvright help reduce the severity and duration of Cold &amp; Flu symptoms including sore throat, cough, congestion and fatigue.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 1001,
+    "brand": "Denticlear",
+    "title": "Denticlear – PTFE Dental Floss Picks",
+    "slug": "denticlear-ptfe-dental-floss-picks",
+    "link": "https://jasehealthcare.com/product/denticlear-ptfe-dental-floss-picks/",
+    "summary": "DENTICLEAR® PTFE Dental Floss Pick is designed to glide smoothly between teeth, helping remove plaque and food particles from hard-to-reach areas. Its durable, shred-resistant floss supports a more comfortable clean while the convenient pick makes daily flossing quick and easy.",
+    "indication": [
+      "Pediatric",
+      "Oral Care"
+    ]
+  },
+  {
+    "id": 1000,
+    "brand": "Denticlear",
+    "title": "Denticlear – Dental Floss Picks",
+    "slug": "denticlear-dental-floss-picks",
+    "link": "https://jasehealthcare.com/product/denticlear-dental-floss-picks/",
+    "summary": "DENTICLEAR® Dental Floss helps clean hard-to-reach areas between teeth where plaque may accumulate. Its three-way cleaning action supports cleaner teeth and fresher breath. Regular flossing, together with brushing, helps remove more plaque and maintain better oral hygiene.",
+    "indication": [
+      "Pediatric",
+      "Oral Care"
+    ]
+  },
+  {
+    "id": 999,
+    "brand": "Denticlear",
+    "title": "Denticlear – Complete Protection Toothpaste",
+    "slug": "denticlear-complete-protection-toothpaste",
+    "link": "https://jasehealthcare.com/product/denticlear-complete-protection-toothpaste/",
+    "summary": "DENTICLEAR® Complete Protection Toothpaste is specifically designed for people with sensitive teeth. It offers comprehensive oral care benefits while also addressing tooth sensitivity, which is its primary feature.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Oral Care"
+    ]
+  },
+  {
+    "id": 998,
+    "brand": "Denticlear",
+    "title": "Denticlear – Fresh Lime Mouthwash",
+    "slug": "denticlear-fresh-lime-mouthwash",
+    "link": "https://jasehealthcare.com/product/denticlear-fresh-lime-mouthwash/",
+    "summary": "DENTICLEAR® Fresh Lime Mouthwash provides a clean, refreshing citrus experience while helping fight germs that cause bad breath, plaque and gingivitis. Make it the third step in your daily oral care routine for a fresher and more complete clean.",
+    "indication": [
+      "Pediatric",
+      "Oral Care"
+    ]
+  },
+  {
+    "id": 997,
+    "brand": "Denticlear",
+    "title": "Denticlear – Green Apple Mouthwash",
+    "slug": "denticlear-green-apple-mouthwash",
+    "link": "https://jasehealthcare.com/product/denticlear-green-apple-mouthwash/",
+    "summary": "DENTICLEAR® Green Apple Mouthwash combines effective oral care with a crisp, fruity flavour. Its germ-killing formula helps reduce plaque, protect against gingivitis and freshen areas that brushing and flossing may miss.",
+    "indication": [
+      "Pediatric",
+      "Oral Care"
+    ]
+  },
+  {
+    "id": 989,
+    "brand": "Denticlear",
+    "title": "Denticlear – Cool Mint Mouthwash",
+    "slug": "denticlear-cool-mint-mouthwash",
+    "link": "https://jasehealthcare.com/product/denticlear-cool-mint-mouthwash/",
+    "summary": "DENTICLEAR® Cool Mint Mouthwash helps kill germs associated with bad breath, plaque and gingivitis while delivering a refreshing mint sensation. Used twice daily after brushing and flossing, it supports cleaner teeth, healthier gums and long-lasting fresh breath.",
+    "indication": [
+      "Pediatric",
+      "Oral Care"
+    ]
+  },
+  {
+    "id": 980,
+    "brand": "Chewy-C",
+    "title": "Chewy-C – Yogurt Flavour",
+    "slug": "chewy-c-yogurt-flavour",
+    "link": "https://jasehealthcare.com/product/chewy-c-yogurt-flavour/",
+    "summary": "Chewy-C Yogurt Milk Candy brings together real milk, Vitamin C and a refreshing yogurt flavour. Its creamy, tangy taste, less-sugar formula and low-fat content make it a delightful snack for kids and adults.",
+    "indication": [
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 978,
+    "brand": "Chewy-C",
+    "title": "Chewy-C – Strawberry Flavour",
+    "slug": "chewy-c-strawberry-flavour",
+    "link": "https://jasehealthcare.com/product/chewy-c-strawberry-flavour/",
+    "summary": "Chewy-C Strawberry Milk Candy blends real milk, Vitamin C and sweet strawberry flavour for a creamy and fruity taste. With less sugar and low fat, it offers a fun and enjoyable treat for the whole family.",
+    "indication": [
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 974,
+    "brand": "Chewy-C",
+    "title": "Chewy-C – Blueberry Flavour",
+    "slug": "chewy-c-blueberry-flavour",
+    "link": "https://jasehealthcare.com/product/chewy-c-blueberry-flavour/",
+    "summary": "Chewy-C Blueberry Milk Candy combines real milk, Vitamin C and fruity blueberry flavour in a soft, chewy treat. Made with less sugar and low fat, it is a delicious everyday snack for both kids and adults.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 949,
+    "brand": "Aromatica Republic",
+    "title": "Aromatica Republic – Eucalyptus Essential Oil",
+    "slug": "aromatica-republic-eucalyptus-essential-oil",
+    "link": "https://jasehealthcare.com/product/aromatica-republic-eucalyptus-essential-oil/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 935,
+    "brand": "Aromatica Republic",
+    "title": "Aromatica Republic – Lavender Essential Oil",
+    "slug": "aromatica-republic-lavender-essential-oil",
+    "link": "https://jasehealthcare.com/product/aromatica-republic-lavender-essential-oil/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 929,
+    "brand": "Aromatica Republic",
+    "title": "Aromatica Republic – Lemon Essential Oil",
+    "slug": "aromatica-republic-lemon-essential-oil",
+    "link": "https://jasehealthcare.com/product/aromatica-republic-lemon-essential-oil/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 916,
+    "brand": "Aromatica Republic",
+    "title": "Aromatica Republic – Lemongrass Essential Oil",
+    "slug": "aromatica-republic-lemongrass-essential-oil",
+    "link": "https://jasehealthcare.com/product/aromatica-republic-lemongrass-essential-oil/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 914,
+    "brand": "Aromatica Republic",
+    "title": "Aromatica Republic – Sweet Orange Essential Oil",
+    "slug": "aromatica-republic-sweet-orange-essential-oil",
+    "link": "https://jasehealthcare.com/product/aromatica-republic-sweet-orange-essential-oil/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 904,
+    "brand": "Aromatica Republic",
+    "title": "Aromatica Republic – Peppermint Essential Oil",
+    "slug": "aromatica-republic-peppermint-essential-oil",
+    "link": "https://jasehealthcare.com/product/aromatica-republic-peppermint-essential-oil/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 898,
+    "brand": "Aromatica Republic",
+    "title": "Aromatica Republic – AR7966-02 Diffuser",
+    "slug": "aromatica-republic-ar7966-02-diffuser",
+    "link": "https://jasehealthcare.com/product/aromatica-republic-ar7966-02-diffuser/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 836,
+    "brand": "Aromatica Republic",
+    "title": "Aromatica Republic – AR7966-01D Diffuser",
+    "slug": "aromatica-republic-ar7966-01d-diffuser",
+    "link": "https://jasehealthcare.com/product/aromatica-republic-ar7966-01d-diffuser/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 831,
+    "brand": "Biowell",
+    "title": "Biowell – V'TROX Spray",
+    "slug": "biowell-vtrox-spray",
+    "link": "https://jasehealthcare.com/product/biowell-vtrox-spray/",
+    "summary": "BioWell® V&#8217;trox Spray is a natural tasting formula which combine three natural active ingredients with Acacia Honey to deliver both immune system support and symptomatic relief.",
+    "indication": [
+      "Immunity & Respiratory"
+    ]
+  },
+  {
+    "id": 828,
+    "brand": "Biowell",
+    "title": "Biowell – Terrafast",
+    "slug": "biowell-terrafast",
+    "link": "https://jasehealthcare.com/product/biowell-terrafast/",
+    "summary": "BioWell® Terrafast provides effective relief from common aches, pains and fever while being gentle on the stomach. It may be used for headaches, migraines, muscle and back pain, arthritis, menstrual pain, toothache, and discomfort associated with cold and flu symptoms.",
+    "indication": [
+      "Joint & Bone",
+      "Dermatology & Beauty",
+      "Immunity & Respiratory",
+      "Oral Care",
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 825,
+    "brand": "Biowell",
+    "title": "Biowell – Pensic",
+    "slug": "biowell-pensic",
+    "link": "https://jasehealthcare.com/product/biowell-pensic/",
+    "summary": "BioWell® Pensic is a combination medicine containing orphenadrine, a muscle relaxant, and paracetamol, an analgesic and antipyretic. It is used to help relieve muscle pain, stiffness and discomfort associated with muscle strains, sprains and other musculoskeletal injuries. Orphenadrine helps reduce muscle spasms and tension, while paracetamol provides relief from pain and fever. BioWell® Pensic is generally intended for short-term use and should be taken as directed by a healthcare professional. It may cause side effects such as drowsiness, dizziness or dry mouth.",
+    "indication": [
+      "Pain Relief & Plaster"
+    ]
+  },
+  {
+    "id": 823,
+    "brand": "Biowell",
+    "title": "Biowell – Fasmol 250mg Suspension",
+    "slug": "biowell-fasmol-250mg-suspension",
+    "link": "https://jasehealthcare.com/product/biowell-fasmol-250mg-suspension/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 820,
+    "brand": "Biowell",
+    "title": "Biowell – Famotac",
+    "slug": "biowell-famotac",
+    "link": "https://jasehealthcare.com/product/biowell-famotac/",
+    "summary": "Famotidine is a medication used to treat conditions related to excess stomach acid, such as gastroesophageal reflux disease (GERD), ulcers, and heartburn. It belongs to a class of drugs called H2 blockers, which work by reducing the amount of acid the stomach produces. Famotidine provides relief from symptoms like acid indigestion and helps prevent and heal ulcers in the stomach and intestines. It is available both over-the-counter and by prescription, and is generally well-tolerated with minimal side effects.",
+    "indication": [
+      "Cardiovascular",
+      "Digestive & Gut",
+      "Immunity & Respiratory"
+    ]
+  },
+  {
+    "id": 817,
+    "brand": "Biowell",
+    "title": "Biowell – Cough & Cold Syrup",
+    "slug": "biowell-cough-cold-syrup",
+    "link": "https://jasehealthcare.com/product/biowell-cough-cold-syrup/",
+    "summary": "BioWell® Cough &amp; Cold Syrup is a herbal formulation developed to help relieve coughs, soothe throat irritation and ease discomfort associated with colds. Its carefully selected herbal ingredients help loosen mucus, support clearer airways and provide relief from both dry and phlegm-related coughs. Use BioWell® Cough &amp; Cold Syrup according to the recommended dosage or as directed by a healthcare professional.",
+    "indication": [
+      "Immunity & Respiratory"
+    ]
+  },
+  {
+    "id": 809,
+    "brand": "Biowell",
+    "title": "Biowell – Zeero",
+    "slug": "biowell-zeero",
+    "link": "https://jasehealthcare.com/product/biowell-zeero/",
+    "summary": "BioWell® Zeero is an antiparasitic medicine used to treat various intestinal worm infections, including those caused by roundworms, tapeworms and hookworms. It works by preventing the parasites from absorbing glucose, gradually depleting their energy and leading to their elimination. BioWell® Zeero may also be prescribed for certain parasitic conditions, such as neurocysticercosis and giardiasis. Use only as directed by a healthcare professional and follow the recommended dosage carefully.",
+    "indication": [
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 798,
+    "brand": "Biowell",
+    "title": "Biowell – Btavite Lysine",
+    "slug": "biowell-btavite-lysine",
+    "link": "https://jasehealthcare.com/product/biowell-btavite-lysine/",
+    "summary": "BioWell® Btavite Lysine Plus is a dietary supplement fortified with Lysine (Essential Amino Acid) to improve appetite and promote overall healthy growth. It comes in a orange chewable fruity-flavoured, round-shaped tablets.",
+    "indication": [
+      "Nerve Health",
+      "Immunity & Respiratory",
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 776,
+    "brand": "Biowell",
+    "title": "Biowell – Btaminz Syrup",
+    "slug": "biowell-btaminz-syrup-120ml",
+    "link": "https://jasehealthcare.com/product/biowell-btaminz-syrup-120ml/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 768,
+    "brand": "Biowell",
+    "title": "Biowell – Bconazine Cream 15g",
+    "slug": "biowell-bconazine-cream-15g",
+    "link": "https://jasehealthcare.com/product/biowell-bconazine-cream-15g/",
+    "summary": "BioWell® Bconazine Cream is a topical medication containing econazole nitrate, an antifungal agent, and triamcinolone acetonide, a corticosteroid. It is used to treat fungal skin infections such as athlete’s foot, ringworm and jock itch, while helping to relieve associated inflammation, itching, redness and swelling. Econazole nitrate works by disrupting the fungal cell membrane, while triamcinolone acetonide helps reduce inflammation and irritation. Apply BioWell® Bconazine Cream directly to the affected area according to the instructions of a healthcare professional.",
+    "indication": [
+      "Dermatology & Beauty"
+    ]
+  },
+  {
+    "id": 766,
+    "brand": "Biowell",
+    "title": "Biowell – BBzine Cream 15g",
+    "slug": "biowell-bbzine-cream-15g",
+    "link": "https://jasehealthcare.com/product/biowell-bbzine-cream-15g/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 764,
+    "brand": "Biowell",
+    "title": "Biowell – Atrizine Tablet 10mg",
+    "slug": "biowell-atrizine-tablet-10mg",
+    "link": "https://jasehealthcare.com/product/biowell-atrizine-tablet-10mg/",
+    "summary": "Cetirizine, a human metabolite of hydroxyzine, is a potent and selective antagonist of peripheral H1-receptors. In addition to its anti-H1 effect, cetirizine was shown to display anti-allergic activities at a dose of 10mg once or twice daily, it inhibits the late phase recruitment of eosinophils, in the skin and conjunctiva of atopic subjects submitted to allergen challenge. At the recommended dosage, cetirizine has demonstrated that it improve the quality of life of patients with perennial and seasonal allergic rhinitis.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 759,
+    "brand": "Bionz",
+    "title": "Bionz – Sacha Inchi Softgel",
+    "slug": "bionz-sacha-inchi-softgel",
+    "link": "https://jasehealthcare.com/product/bionz-sacha-inchi-softgel/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 757,
+    "brand": "Bionz",
+    "title": "Bionz – Pumpkin Seed Oil Softgel",
+    "slug": "bionz-pumpkin-seed-oil-softgel",
+    "link": "https://jasehealthcare.com/product/bionz-pumpkin-seed-oil-softgel/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 755,
+    "brand": "Bionz",
+    "title": "Bionz – Olive Oil Softgel",
+    "slug": "bionz-olive-oil-softgel",
+    "link": "https://jasehealthcare.com/product/bionz-olive-oil-softgel/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 753,
+    "brand": "Bionz",
+    "title": "Bionz – Coconut Oil Softgel",
+    "slug": "bionz-coconut-oil-softgel",
+    "link": "https://jasehealthcare.com/product/bionz-coconut-oil-softgel/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 751,
+    "brand": "Axon",
+    "title": "Axon – YS35 Mesh Nebulizer",
+    "slug": "axon-ys35-mesh-nebulizer",
+    "link": "https://jasehealthcare.com/product/axon-ys35-mesh-nebulizer/",
+    "summary": "The AXON YS35 Mesh Nebulizer delivers fast and efficient respiratory therapy with advanced ultrasonic micro-mesh technology for consistent, fine mist generation. Its ultra-quiet operation, one-button control, and compact design make it convenient for both adults and children at home or on the go.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 749,
+    "brand": "Axon",
+    "title": "Axon – DBP-6181 Large-display Arm-type BP Machine",
+    "slug": "axon-dbp-6181-large-display-arm-type-bp-machine",
+    "link": "https://jasehealthcare.com/product/axon-dbp-6181-large-display-arm-type-bp-machine/",
+    "summary": "The AXON Large Display Arm-Type Blood Pressure Monitor BP-6181 provides accurate and convenient blood pressure monitoring with simple one-touch operation. Featuring a large backlit display, Irregular Heartbeat (IHB) detection, WHO blood pressure classification, cuff positioning and motion indicators, and dual-user memory for up to 150 readings each, it is ideal for reliable home and professional monitoring.",
+    "indication": [
+      "Cardiovascular"
+    ]
+  },
+  {
+    "id": 747,
+    "brand": "Axon",
+    "title": "Axon – IFT207 Thermometer",
+    "slug": "axon-ift207-thermometer",
+    "link": "https://jasehealthcare.com/product/axon-ift207-thermometer/",
+    "summary": "The AXON Non-Contact Infrared Forehead Thermometer IFT207 provides fast, hygienic, and accurate temperature readings in just 1 second. Featuring 3-in-1 measurement for forehead, room, and surface temperature, age-specific modes, a 35-reading memory, and °C/°F switching, it is ideal for convenient temperature monitoring at home or in healthcare settings.",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 744,
+    "brand": "Axon",
+    "title": "Axon – GM601 Glucometer",
+    "slug": "axon-gm601-glucometer",
+    "link": "https://jasehealthcare.com/product/axon-gm601-glucometer/",
+    "summary": "The AXON Blood Glucose Monitoring System GM601 is a fast and reliable blood glucose meter designed for convenient home self-testing. Featuring advanced FAD-GDH biosensor technology, it delivers accurate results in just 5 seconds using only a 0.5 μL blood sample, with built-in hypo/hyperglycemia alerts and ketone warning for safer daily glucose monitoring.",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 742,
+    "brand": "Axon",
+    "title": "Axon – DMT-4765 Flexible Tip Thermometer",
+    "slug": "axon-dmt-4765-flexible-tip-thermometer",
+    "link": "https://jasehealthcare.com/product/axon-dmt-4765-flexible-tip-thermometer/",
+    "summary": "AXON Flexible Tip Digital Thermometer DMT-4765 offers fast and accurate temperature measurement in just 10 seconds. Designed with a flexible tip, backlight display, and fever alarm, it provides comfortable and convenient use for oral, rectal, or underarm temperature checks.",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 740,
+    "brand": "Axon",
+    "title": "Axon – DBP-6193 Tubeless Bp Machine",
+    "slug": "axon-dbp-6193-tubeless-bp-machine",
+    "link": "https://jasehealthcare.com/product/axon-dbp-6193-tubeless-bp-machine/",
+    "summary": "Experience smarter blood pressure monitoring with the AXON DBP-6193. Featuring a convenient tubeless design, Bluetooth connectivity, MDI Technology, Irregular Heartbeat (IHB) detection, and WHO blood pressure classification, it delivers accurate and effortless everyday monitoring. Its rechargeable battery, backlit display, smart measurement indicators, and dual-user memory for up to 150 readings each make it an ideal choice for modern home healthcare.",
+    "indication": [
+      "Cardiovascular",
+      "Oral Care"
+    ]
+  },
+  {
+    "id": 738,
+    "brand": "Axon",
+    "title": "Axon – AX-BP121 Blood Pressure Machine",
+    "slug": "axon-ax-bp121-blood-pressure-machine",
+    "link": "https://jasehealthcare.com/product/axon-ax-bp121-blood-pressure-machine/",
+    "summary": "Monitor your blood pressure with confidence and convenience using the AXON BP-121. Designed for effortless one-touch operation, it features a large easy-to-read display, arrhythmia detection, WHO blood pressure classification, and memory storage for two users with up to 120 readings each. Complete with a comfortable wide-range arm cuff, the BP-121 delivers a simple, reliable solution for everyday blood pressure monitoring at home.",
+    "indication": [
+      "Cardiovascular"
+    ]
+  },
+  {
+    "id": 732,
+    "brand": "Axon",
+    "title": "Axon – AX-BC8168 Body Composition Analyser",
+    "slug": "axon-ax-bc8168-body-composition-analyser",
+    "link": "https://jasehealthcare.com/product/axon-ax-bc8168-body-composition-analyser/",
+    "summary": "The AXON® Scale (AX-BC8168) is easy to use. It can be connected wirelessly via Bluetooth 4.0 to your smartphone/tablet using FitGO App. The App is compatible on both Android and iOS. By using the app, you and your family members can track their body weight and other parameters on their smartphone/tablet easily. For home and office use only. Commercial uses are strictly prohibited.",
+    "indication": [
+      "Oral Care"
+    ]
+  },
+  {
+    "id": 730,
+    "brand": "Axon",
+    "title": "Axon – IFT199 Infrared Forehead Thermometer",
+    "slug": "axon-ift199-infrared-forehead-thermometer",
+    "link": "https://jasehealthcare.com/product/axon-ift199-infrared-forehead-thermometer/",
+    "summary": "AXON® (IFT110) Infrared Thermometer often referred to as an infrared thermometer or non-contact thermometer, is a device used to measure temperature from a distance. It is shaped like a gun (ergonomically shaped), which allows the user to point the device at an object or person without physically touching it. These thermometers are commonly used in healthcare, industrial, and household settings.",
+    "indication": [
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 724,
+    "brand": "Axon",
+    "title": "Axon – AGC1022 Pregnancy Test",
+    "slug": "axon-agc1022-pregnancy-test",
+    "link": "https://jasehealthcare.com/product/axon-agc1022-pregnancy-test/",
+    "summary": "Not all pregnancy tests offer the same level of sensitivity. With its advanced detection technology, the AXON® Midstream Pregnancy Test can detect very low levels of the pregnancy hormone up to 6 days before a missed period, or 5 days before the expected period.",
+    "indication": [
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 722,
+    "brand": "Axon",
+    "title": "Axon – GM501 Glucometer",
+    "slug": "axon-gm501-glucometer",
+    "link": "https://jasehealthcare.com/product/axon-gm501-glucometer/",
+    "summary": "Checking your blood glucose doesn’t have to get in the way of your life. The AXON® (GM501) Blood Glucose Monitoring System is designed for quick, accurate testing, so you can get your number without giving it a second thought. The AXON® (GM501) Blood Glucose Monitoring System is designed to be simply easy for quick, accurate testing.",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 720,
+    "brand": "Axon",
+    "title": "Axon – AWS301 Weight Scale",
+    "slug": "axon-aws301-weight-scale",
+    "link": "https://jasehealthcare.com/product/axon-aws301-weight-scale/",
+    "summary": "Regular weight monitoring helps you stay on track with your health and fitness goals. The AXON® Scale (AWS301) makes it easy to monitor changes, set realistic targets and maintain a healthier lifestyle. Designed to suit different needs, budgets and home styles, it offers a practical and reliable weighing solution for everyday use.",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 719,
+    "brand": "Athomer",
+    "title": "Athomer – Hypertonic Nasal Spray 100ml",
+    "slug": "athomer-hypertonic-nasal-spray-100ml",
+    "link": "https://jasehealthcare.com/product/athomer-hypertonic-nasal-spray-100ml/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 718,
+    "brand": "Athomer",
+    "title": "Athomer – Moisturizing Nasal Spray",
+    "slug": "athomer-moisturizing-nasal-spray",
+    "link": "https://jasehealthcare.com/product/athomer-moisturizing-nasal-spray/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 712,
+    "brand": "Athomer",
+    "title": "Athomer – Propolis Nasal Spray",
+    "slug": "athomer-propolis-nasal-spray",
+    "link": "https://jasehealthcare.com/product/athomer-propolis-nasal-spray/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 704,
+    "brand": "Kiddypops",
+    "title": "Kiddypops – Gromates",
+    "slug": "kiddypops-gromates",
+    "link": "https://jasehealthcare.com/product/kiddypops-gromates/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 702,
+    "brand": "Kiddypops",
+    "title": "Kiddypops – Breezo",
+    "slug": "kiddypops-breezo",
+    "link": "https://jasehealthcare.com/product/kiddypops-breezo/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 700,
+    "brand": "Kiddypops",
+    "title": "Kiddypops – OptiMind",
+    "slug": "kiddypops-optimind",
+    "link": "https://jasehealthcare.com/product/kiddypops-optimind/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 698,
+    "brand": "Kiddypops",
+    "title": "Kiddypops – SafeGuardz",
+    "slug": "kiddypops-safeguardz",
+    "link": "https://jasehealthcare.com/product/kiddypops-safeguardz/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 693,
+    "brand": "Bionz",
+    "title": "Bionz – Habbatus Sawda Softgel",
+    "slug": "bionz-habbatus-sawda-500mg-softgel",
+    "link": "https://jasehealthcare.com/product/bionz-habbatus-sawda-500mg-softgel/",
+    "summary": "",
+    "indication": [
+      "General Wellness"
+    ]
+  },
+  {
+    "id": 609,
+    "brand": "Lucentia",
+    "title": "Lucentia – Tone-up Sunscreen",
+    "slug": "lu-tone-up-sunscreen",
+    "link": "https://jasehealthcare.com/product/lu-tone-up-sunscreen/",
+    "summary": "Protect your skin effortlessly with our lightweight, fast-absorbing formula. Shields against harmful UV rays while keeping your skin nourished, hydrated, and radiant all day long.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Immunity & Respiratory"
+    ]
+  },
+  {
+    "id": 604,
+    "brand": "Lucentia",
+    "title": "Lucentia – Sunscreen Mist Spray",
+    "slug": "lu-sunscreen-mist-spray",
+    "link": "https://jasehealthcare.com/product/lu-sunscreen-mist-spray/",
+    "summary": "Stay protected on the go with our lightweight sunscreen mist. Shields your skin from harmful UV and blue light, delivers deep hydration, and supports a healthy moisture barrier—all in a refreshing, easy-to-spray formula.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Pediatric"
+    ]
+  },
+  {
+    "id": 602,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Oxxymax",
+    "slug": "jh-nutrition-oxxymax",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-oxxymax/",
+    "summary": "JH Nutrition® Oxxymax is formulated with two carefully selected ingredients, OXXYNEA® and Careflow®, to provide antioxidant support and help maintain healthy immune function. This thoughtfully developed formula is designed to support overall wellness and help the body manage everyday oxidative stress.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 597,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Systoright",
+    "slug": "jh-nutrition-systoright",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-systoright/",
+    "summary": "JH Nutrition® Systoright is designed to support heart health and maintain healthy blood pressure naturally. Its powerful antioxidant-rich formula helps improve circulation, protect your cardiovascular system, and promote overall wellness, giving you energy and confidence every day.",
+    "indication": [
+      "Cardiovascular",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 592,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Mamavia",
+    "slug": "jh-nutrition-mamavia",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-mamavia/",
+    "summary": "JH Nutrition® Mamavia is a natural supplement designed to support women during menopause. It helps to ease common symptoms such as hot flashes and mood swings, promote overall comfort and well-being during this transitional phase.",
+    "indication": [
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 586,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Immucol Kids Syrup",
+    "slug": "jh-nutrition-immucol-kids-syrup",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-immucol-kids-syrup/",
+    "summary": "JH Nutrition® Immucol Kids is a tasty berry-flavoured syrup with 5700mg of concentrated black elderberry juice per 15ml serving. Rich in antioxidants and fortified with Vitamin C and Zinc, it helps strengthen the immune system and support overall well-being. Suitable for all ages, it offers a delicious, sugar-free option for daily immune support.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 581,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Immucol Kids Drop",
+    "slug": "jh-nutrition-immucol-kids-drop",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-immucol-kids-drop/",
+    "summary": "JH Nutrition® Immucol Kids Drops is a tasty berry-flavoured liquid, packed with ElderCraft® European black elderberry extract, Vitamin C &amp; D, and Zinc. It is suitable for all ages. Zinc is essential for growth, vitamin C contributes to the absorption of iron from food and vitamin D is necessary for the absorption and utilization of calcium and phosphorus.",
+    "indication": [
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 529,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Alpha Gold",
+    "slug": "jh-nutrition-alpha-gold",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-alpha-gold/",
+    "summary": "JH Nutrition® Alpha Gold® is a scientifically formulated, diabetes-specific nutritional drink designed to provide complete and balanced nutrition for individuals with diabetes. Its advanced formula helps support strength, vitality and an active lifestyle while providing a strong nutritional foundation for daily health management. Developed with the nutritional needs of people with diabetes in mind, JH Nutrition® Alpha Gold® offers a convenient and reliable source of essential nutrients as part of a balanced diet and healthy lifestyle.",
+    "indication": [
+      "Nerve Health",
+      "Immunity & Respiratory",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 414,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – P2",
+    "slug": "jh-nutririon-p2",
+    "link": "https://jasehealthcare.com/product/jh-nutririon-p2/",
+    "summary": "JH Nutrition® P2 is a dual-action symbiotic formula combining clinically relevant probiotic strains with prebiotics to support digestive health, gut flora balance, and overall well-being.",
+    "indication": [
+      "Digestive & Gut",
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 412,
+    "brand": "Nutribridge",
+    "title": "Nutribridge – Neuright",
+    "slug": "nutribridge-neuright",
+    "link": "https://jasehealthcare.com/product/nutribridge-neuright/",
+    "summary": "Nutribridge® Neuright Tablet is a nerve-support formula combining Vitamin B1, Vitamin B6, Methylcobalamin (Vitamin B12) and Alpha Lipoic Acid. It helps support healthy nerve function, energy metabolism and antioxidant protection, while providing nutritional support for nerve health and nerve-related discomfort.",
+    "indication": [
+      "Nerve Health",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  },
+  {
+    "id": 409,
+    "brand": "JH Nutrition",
+    "title": "JH Nutrition – Eczéliv",
+    "slug": "jh-nutrition-eczeliv",
+    "link": "https://jasehealthcare.com/product/jh-nutrition-eczeliv/",
+    "summary": "JH Nutrition® Eczéliv is a comprehensive skin-support formula featuring proprietary Eczefolia™ Tenggek Burung Extract, combined with Grape Seed Extract, Pine Bark Extract, Vitamin E, Vitamin D3 and Biotin. Designed for eczema-prone and sensitive skin, its triple-action formula helps support healthy inflammatory responses, strengthen the skin barrier and provide antioxidant protection for healthier, more resilient skin.",
+    "indication": [
+      "Dermatology & Beauty",
+      "Pain Relief & Plaster",
+      "Nutrition & Specialty Milk"
+    ]
+  }
+];

@@ -124,6 +124,31 @@
     </div>
   </div>
 
+  <!-- House Brand Catalog Modal -->
+  <div id="houseBrandModal" class="overlay" style="display:none; z-index: 3000;">
+    <div class="login-box" style="width: 95%; max-width: 900px; padding: 16px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1.5px solid #ccfbf1; padding-bottom: 8px;">
+        <div>
+          <h3 style="margin: 0; color: #0f766e; font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
+            <span>🌿 PMG House Brand Catalog</span>
+            <span id="hbTotalBadge" style="font-size: 0.68rem; background: #ccfbf1; color: #0f766e; padding: 2px 8px; border-radius: 12px; font-weight: 800;">221 Products</span>
+          </h3>
+          <div style="font-size: 0.7rem; color: #64748b;">Live Jase Healthcare Master Repository</div>
+        </div>
+        <button type="button" class="btn-logout" style="padding: 4px 10px; font-size: 0.8rem; margin: 0;" onclick="closeHouseBrandModal()">✕</button>
+      </div>
+
+      <!-- Search & Filters -->
+      <div style="margin-bottom: 8px;">
+        <input type="text" id="hbSearchInput" class="input-field" placeholder="🔍 Search product name, symptom, or indication (e.g. gastric, joint, nerve, elderberry)..." style="font-size: 0.82rem; padding: 8px 12px; margin: 0 0 6px 0; border: 1.5px solid #14b8a6;" oninput="filterHouseBrands()">
+        <div id="hbCategoryChips" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; font-size: 0.72rem; white-space: nowrap;"></div>
+      </div>
+
+      <!-- Products List Container -->
+      <div id="hbProductsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;"></div>
+    </div>
+  </div>
+
   <!-- Header -->
   <div class="header">
     <h1>⚡ PMG Performance Hub</h1>
@@ -266,6 +291,7 @@
           <button id="editActionPlanBtn" class="btn-logout" style="display:none; background: #1976d2;" onclick="openActionPlanModal()">Update Info</button>
         </div>
         <div id="aiRecommendationText" style="margin-top:8px; font-size: 0.8rem;">Loading insights...</div>
+        <button type="button" class="btn" style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); color: white; margin-top: 10px; font-size: 0.78rem; padding: 8px 12px; width: 100%; border-radius: 8px; font-weight: bold;" onclick="openHouseBrandModal()">🌿 Search 220+ House Brand Catalog</button>
       </div>
     </div>
 
@@ -275,6 +301,7 @@
       <button class="btn btn-copy" id="copyBriefingBtn" onclick="copyWhatsAppBriefing()">📱 Copy WhatsApp Briefing</button>
       <button class="btn btn-image" onclick="openReportModal('director')">📊 View Director 7-Day Report</button>
       <button class="btn btn-image" style="background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);" onclick="openReportModal('teammates')">📊 View Teammates Gap Report</button>
+      <button class="btn btn-image" style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);" onclick="openHouseBrandModal()">🌿 Browse 220+ House Brand Catalog</button>
 
       <!-- GEMINI AI RETAIL STRATEGIST SETUP -->
       <div style="margin-top: 14px; padding: 12px; background: #fdf2f8; border: 1.5px solid #fbcfe8; border-radius: 12px;">
@@ -314,6 +341,7 @@
     </div>
   </div>
 
-  <script src="./app.js?v=21.0"></script>
+  <script src="./data/house_brands.js"></script>
+  <script src="./app.js?v=24.0"></script>
 </body>
 </html>
