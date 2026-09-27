@@ -471,6 +471,7 @@ function renderDashboard() {
   // ROLE BASED ACCESS CONTROL
   document.getElementById("editActionPlanBtn").style.display = canEditActionPlan ? "block" : "none";
   document.getElementById("managerReportsSection").style.display = canViewReports ? "block" : "none";
+  if (canViewReports) updateGeminiBadge();
   document.getElementById("staffPerformanceSection").style.display = canViewStaffPerformance ? "block" : "none";
 
   const tbody = document.querySelector("#teammatesTable tbody");
@@ -560,45 +561,298 @@ async function saveAmNote() {
   }
 }
 
-function generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPerDay, daysLeft, expectedTs, expectedHb) {
+// ─── PMG 7-BRANCH PROFILES & CLINICAL RETAIL DIRECTORY ────────────────────────
+const BRANCH_PROFILES = {
+  "KOTA_SENTOSA": {
+    name: "PMG PHARMACY KOTA SENTOSA",
+    shortName: "Kota Sentosa (7th Mile)",
+    demographics: "Historic commercial crossroads connecting Kuching-Serian. High elderly Chinese population, long-term chronic regulars, plus daily commuting workforce from Padawan.",
+    clinicalFocus: "Chronic Disease Management (Hypertension, Hyperlipidemia, Diabetes), Geriatric Joint & Mobility, Peripheral Neuropathy (nerve numbness), Stroke Prevention.",
+    topHouseBrands: [
+      "Livemore Methylcobalamin 600mcg (Nerve tingling & numbness)",
+      "JH Nutrition Systoright 350mg (Red Yeast + CoQ10 lipid care)",
+      "Livemore Neomega Fish Oil 1200mg (High EPA/DHA)",
+      "Nutribridge Flexsure Gold Milk (Joint & Bone mobility)",
+      "V-Infinity Neoflex Softgel (Glucosamine + Chondroitin + MSM)",
+      "Plaster BB Suan Tong Tie (Herbal pain relief patch)"
+    ],
+    pwpFocus: "Medicated pain plaster, Methylcobalamin trial blister, BP logbook with PMG App",
+    customerTip: "Seniors value personalized dosage advice, blood pressure/glucose reviews, and 2-3 month bundle savings on nerve & heart wellness."
+  },
+  "METROCITY": {
+    name: "PMG PHARMACY METROCITY",
+    shortName: "Metrocity Matang",
+    demographics: "High-energy commercial & lifestyle precinct surrounded by corporate offices, banks, fitness gym, cafes, and popular evening night market. Young professionals, trendy families, and fitness enthusiasts.",
+    clinicalFocus: "Aesthetics & Sensitive Dermatology, Collagen & Weight Management, Sports/Energy Recovery, Immunity Boosters, Modern OTC.",
+    topHouseBrands: [
+      "VK Dermsolve Gentle Cleanser & Cream (Eczema & sensitive skin)",
+      "Nutribridge Beaullagen Collagen (Skin elasticity & glow)",
+      "Nutribridge Maxlim (Healthy weight management)",
+      "Livemore Probiotics 50B (Digestive balance & bloating)",
+      "JH Nutrition Immucol Kids / Adults (Elderberry immunity)",
+      "Truelife Skin-Fix Soothing Cream"
+    ],
+    pwpFocus: "Derma gentle facial wipes, Collagen drink sample vial, Travel sanitizer",
+    customerTip: "Fast-paced evening crowd (6-9 PM). Keep grab-and-go counters stocked with skincare/wellness trials; highlight PMG App loyalty reward points."
+  },
+  "MATANG_JAYA": {
+    name: "PMG PHARMACY MATANG JAYA",
+    shortName: "Matang Jaya",
+    demographics: "Established, high-density residential community. Multi-generational families (Malay, Chinese, Dayak), school-going children, and retirees.",
+    clinicalFocus: "Pediatric Cold/Cough & Fever, Family General Wellness, Chronic Refills, First-Aid Restocking.",
+    topHouseBrands: [
+      "JH Nutrition Immucol Kids (Elderberry flu defense)",
+      "V-Infinity Vtrox Sore Throat Spray (Propolis fast throat relief)",
+      "Chewy-C Vitamin C 100mg / 500mg (Kids & family immunity)",
+      "Livemore Probiotics 50B (Gut flora & digestive comfort)",
+      "Nutribridge Flexsure Gold Milk (Bone & joint strength)"
+    ],
+    pwpFocus: "Family antiseptic wipes, Chewy-C 30s roll, Cooling fever patches",
+    customerTip: "Moms and grandmothers prioritize safe, effective remedies for children and affordable bulk daily wellness."
+  },
+  "MALIHAH": {
+    name: "PMG PHARMACY MALIHAH",
+    shortName: "Taman Malihah",
+    demographics: "Close-knit suburban residential township, predominantly working-class Malay and Bumiputera households. Very cost-conscious, valuing high-quality yet economical solutions.",
+    clinicalFocus: "Acute Cough, Cold & Throat Care, Fast Gastric/Heartburn Relief, Value Pediatric Multivitamins, Economical Nutrition.",
+    topHouseBrands: [
+      "Remeco Pepticon Double Action Suspension (Gastric & GERD raft)",
+      "V-Infinity Vtrox Sore Throat Spray (Botanical throat spray)",
+      "Fastlief Mint Chewable Antacid (Instant gastric relief)",
+      "Chewy-C Vitamin C 100mg (Kid-friendly chewables)",
+      "Nutribridge Goat Milk with Colostrum (Easy gut digestion)"
+    ],
+    pwpFocus: "Pepticon 10ml sachet, Chewy-C pocket pack, Antibacterial hand wash",
+    customerTip: "Emphasize immediate symptom relief and exceptional value per dose compared to higher-priced foreign brands."
+  },
+  "SUNGAI_MOYAN": {
+    name: "PMG PHARMACY SUNGAI MOYAN",
+    shortName: "Moyan Square",
+    demographics: "Rapidly growing residential and rural fringe corridor bridging Batu Kawa, Moyan, and Bau. Mix of multi-generation kampung households and commuting young families.",
+    clinicalFocus: "Osteoarthritis & Joint Wear, Spinal/Muscular Aches, Cerebral & Peripheral Circulation, Senior Strength Nutrition.",
+    topHouseBrands: [
+      "V-Infinity Neoflex Softgel (Triple joint cartilage formula)",
+      "Nutribridge Flexsure Gold (High-calcium joint milk)",
+      "Livemore Ginoba 120mg (Ginkgo cerebral & blood circulation)",
+      "JH Nutrition Systoright 350mg (Cardiovascular lipid support)",
+      "Plaster BB Suan Tong Tie (Medicated herbal pain plaster)"
+    ],
+    pwpFocus: "Medicated pain plaster, Menthol muscle rub, Adult nutritional milk trial sachet",
+    customerTip: "Weekend mornings are prime for senior consultations; recommend joint milk + Neoflex dual regimens for noticeable knee comfort."
+  },
+  "ASTANA": {
+    name: "PMG PHARMACY ASTANA",
+    shortName: "Astana (Petra Jaya)",
+    demographics: "Government administrative and civil service hub near Wisma Bapa Malaysia. Civil servant officers, teachers, professional families, predominantly Malay community.",
+    clinicalFocus: "Cardiovascular & Lipid Health, Executive Stress & Fatigue, Halal Health Supplements, Digestion & Acid Reflux.",
+    topHouseBrands: [
+      "JH Nutrition Systoright 350mg (Red Yeast Rice + CoQ10)",
+      "Livemore Neomega Fish Oil 1200mg (High EPA/DHA concentrated)",
+      "Livemore Methylcobalamin 600mcg (Active nerve recovery)",
+      "Remeco Pepticon Double Action Suspension (Instant reflux barrier)",
+      "Livemore Probiotics 50B (Gut wellness & bloating)"
+    ],
+    pwpFocus: "Effervescent Vitamin C + Zinc, Pepticon sachets, Travel sanitizer",
+    customerTip: "Peak footfall during lunch hour (12:30-2 PM) and post-work (4:30-6 PM). Focus on preventive heart-liver-nerve health and fast gastric relief."
+  },
+  "SAMARIANG": {
+    name: "PMG PHARMACY SAMARIANG",
+    shortName: "Bandar Baru Samariang",
+    demographics: "High-density suburban residential satellite town. Young Malay families with multiple school-aged children, toddlers, and young parents.",
+    clinicalFocus: "Pediatric Respiratory (Cough, Flu, Sore Throat), Child Immunity & Growth, Gentle Baby/Eczema Skin Care, Seasonal Fever.",
+    topHouseBrands: [
+      "JH Nutrition Immucol Kids (Black elderberry cold/flu syrup)",
+      "V-Infinity Vtrox Throat Spray (Natural herbal throat soothing)",
+      "VK Dermsolve Gentle Cleanser (Soap-free hypoallergenic bath)",
+      "Chewy-C Gummies & Tablets (Child immunity)",
+      "Nutribridge Goat Milk with Colostrum (Nutritional immunity)"
+    ],
+    pwpFocus: "Fever cooling gel patches, Kids Vitamin C rolls, Wet wipes 80s",
+    customerTip: "Young mothers appreciate kind, compassionate counseling on child immunity, soothing fever care, and gentle skin-friendly bath cleansers."
+  }
+};
+
+// PMG House Brand Master Catalog Reference
+const PMG_HOUSE_BRANDS = {
+  cardioNerve: [
+    { name: "JH Nutrition Systoright 350mg", desc: "Red Yeast Rice + CoQ10 natural cholesterol control" },
+    { name: "Livemore Neomega Fish Oil 1200mg", desc: "High EPA/DHA for triglyceride and heart wellness" },
+    { name: "Livemore Methylcobalamin 600mcg", desc: "Active B12 for diabetic peripheral neuropathy & limb numbness" },
+    { name: "Livemore Ginoba 120mg", desc: "Standardized Ginkgo for brain memory & peripheral circulation" }
+  ],
+  jointBone: [
+    { name: "V-Infinity Neoflex Softgel", desc: "Triple joint formula (Glucosamine + Chondroitin + MSM) for cartilage repair" },
+    { name: "Nutribridge Flexsure Gold Milk", desc: "High calcium + collagen type II nutritional milk for bone & joint strength" },
+    { name: "Plaster BB Suan Tong Tie", desc: "Herbal analgesic plaster for rapid muscular & joint relief" }
+  ],
+  digestive: [
+    { name: "Remeco Pepticon Double Action Suspension", desc: "Sodium alginate raft for fast heartburn & GERD acid relief" },
+    { name: "Livemore Probiotics 50B", desc: "50 billion CFU + prebiotics for gut balance & bloating" },
+    { name: "Fastlief Mint Chewable Antacid", desc: "Pocket antacid for instant post-meal gastric discomfort" }
+  ],
+  pediatricImmunity: [
+    { name: "JH Nutrition Immucol Kids (Elderberry)", desc: "Clinically-proven black elderberry syrup/chewables for cold/flu defense" },
+    { name: "V-Infinity Vtrox Sore Throat Spray", desc: "Natural propolis soothing throat spray for fast throat relief" },
+    { name: "Chewy-C Vitamin C 100mg", desc: "Kid-friendly chewable Vitamin C for daily immune protection" }
+  ],
+  dermatology: [
+    { name: "VK Dermsolve Gentle Cleanser & Cream", desc: "Hypoallergenic soap-free moisturizing for eczema & sensitive skin" },
+    { name: "Truelife Skin-Fix Soothing Cream", desc: "Multi-repair cream for dry itchy patches & minor irritation" }
+  ],
+  nutrition: [
+    { name: "Nutribridge Goat Milk with Colostrum", desc: "Gentle, non-allergic protein with antibodies for digestive recovery" },
+    { name: "JH Nutrition Alpha Gold Complete", desc: "Complete balanced nutritional formula for elderly & diabetic meal replacement" }
+  ]
+};
+
+function getBranchProfile(branchName) {
+  if (!branchName) return null;
+  const name = String(branchName).toUpperCase();
+  if (name.includes("SENTOSA")) return BRANCH_PROFILES["KOTA_SENTOSA"];
+  if (name.includes("METROCITY")) return BRANCH_PROFILES["METROCITY"];
+  if (name.includes("MATANG JAYA")) return BRANCH_PROFILES["MATANG_JAYA"];
+  if (name.includes("MALIHAH")) return BRANCH_PROFILES["MALIHAH"];
+  if (name.includes("MOYAN")) return BRANCH_PROFILES["SUNGAI_MOYAN"];
+  if (name.includes("ASTANA")) return BRANCH_PROFILES["ASTANA"];
+  if (name.includes("SAMARIANG") || name.includes("SEMARIANG")) return BRANCH_PROFILES["SAMARIANG"];
+  return null;
+}
+
+// ─── GEMINI 3.5 AI STRATEGIST ENGINE ─────────────────────────────────────────
+async function generateGeminiOutletStrategy(branchName, summary, targets, daysLeft, tsReqPerDay, hbReqPerDay, hbRatio, profile) {
+  const apiKey = localStorage.getItem('pmg_gemini_key');
+  if (!apiKey || apiKey.trim().length < 10) return null;
+
   const mtdTs = summary.mtdTs || 0;
   const mtdHb = summary.mtdHb || 0;
   const targetTs = targets.ts || 0;
   const targetHb = targets.hb || 0;
+  const tsPct = targetTs > 0 ? ((mtdTs / targetTs) * 100).toFixed(1) : 0;
+  const hbPct = targetHb > 0 ? ((mtdHb / targetHb) * 100).toFixed(1) : 0;
+  const isTsOnTrack = tsReqPerDay === 0 || (mtdTs / (targetTs || 1)) >= ((30 - daysLeft) / 30);
+  const isHbOnTrack = hbReqPerDay === 0 || (mtdHb / (targetHb || 1)) >= ((30 - daysLeft) / 30);
 
+  const topHbList = profile && profile.topHouseBrands ? profile.topHouseBrands.join("; ") : "Nutribridge Flexsure Gold, Livemore Methylcobalamin, JH Nutrition Systoright, Vtrox Spray, Immucol Kids";
+  const pwpFocus = profile ? profile.pwpFocus : "OTC pain relief, Vitamin C rolls, or household sanitizer";
+  const clinicalFocus = profile ? profile.clinicalFocus : "Family health and chronic disease management";
+  const demographics = profile ? profile.demographics : "Local residential community";
+  const customerTip = profile ? profile.customerTip : "Provide caring, personalized consultation with 1+1 acute pairing.";
+
+  const prompt = `You are the Senior Retail Pharmacy Operations Strategist for PMG Pharmacy Sarawak.
+You are coaching the team at: ${profile ? profile.name : branchName}.
+
+STORE PROFILE & CONTEXT:
+- Demographics: ${demographics}
+- Clinical Strengths: ${clinicalFocus}
+- Top Recommended PMG House Brands: ${topHbList}
+- Counter PWP Add-on: ${pwpFocus}
+- Local Customer Nuance: ${customerTip}
+
+LIVE SALES NUMBERS:
+- Days Left in Month: ${daysLeft} days
+- Total Sales (TS): RM ${mtdTs.toLocaleString()} / RM ${targetTs.toLocaleString()} (${tsPct}% - Status: ${isTsOnTrack ? 'ON TRACK 🟢' : 'NEEDS RM ' + Math.round(tsReqPerDay).toLocaleString() + '/day 🔴'})
+- House Brand (HB): RM ${mtdHb.toLocaleString()} / RM ${targetHb.toLocaleString()} (${hbPct}% - Status: ${isHbOnTrack ? 'ON TRACK 🟢' : 'NEEDS RM ' + Math.round(hbReqPerDay).toLocaleString() + '/day 🔴'})
+- Current HB Ratio: ${hbRatio}%
+
+TASK:
+Write a human-like, energetic, highly practical 3-step action strategy for today's morning briefing to hit both TS & HB targets.
+
+STRICT CONSTRAINTS:
+1. Output EXACTLY 3 numbered bullet points formatted for WhatsApp (use *bold* headers and relevant emojis).
+2. Bullet 1 must be TS / Basket Builder strategy (tailored to this store's shoppers, mentioning the PWP add-on or chronic duration extension).
+3. Bullet 2 must be House Brand conversion strategy (specifically mention 1 or 2 PMG House Brand products from their profile list and how to pair with patient consults).
+4. Bullet 3 must be Shift Team Execution (break down today's HB target into manageable units per counter staff or hourly team pacing).
+5. Tone: Motivating, actionable, professional pharmacy manager. Total word count ~75 to 110 words.
+6. NO introduction, NO greeting, NO concluding text. Begin immediately with "1️⃣".`;
+
+  const candidateModels = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-1.5-flash'
+  ];
+
+  for (const model of candidateModels) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 600
+          }
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        const candidate = data.candidates && data.candidates[0];
+        const generatedText = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text;
+        if (generatedText && generatedText.trim().length > 30) {
+          let cleaned = generatedText.trim();
+          let header = `*💡 Outlet Overall Action Strategy (${daysLeft} Days Remaining) [⚡ Gemini AI]:*\n`;
+          return header + cleaned + "\n\n";
+        }
+      }
+    } catch (err) {
+      console.warn(`Gemini model ${model} failed, trying fallback...`, err);
+    }
+  }
+
+  return null; // Triggers offline rule fallback
+}
+
+// ─── PROFILE-AWARE DYNAMIC RULE ENGINE (OFFLINE FALLBACK) ────────────────────
+function generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPerDay, daysLeft, expectedTs, expectedHb, profile) {
+  const mtdTs = summary.mtdTs || 0;
+  const mtdHb = summary.mtdHb || 0;
   const isTsOnTrack = mtdTs >= expectedTs;
   const isHbOnTrack = mtdHb >= expectedHb;
   const hbRatio = mtdTs > 0 ? ((mtdHb / mtdTs) * 100).toFixed(1) : "0.0";
+
+  const topHb1 = profile && profile.topHouseBrands && profile.topHouseBrands[0] ? profile.topHouseBrands[0] : "PMG House Brand essentials";
+  const topHb2 = profile && profile.topHouseBrands && profile.topHouseBrands[1] ? profile.topHouseBrands[1] : "PMG Vitamin C / Probiotics";
+  const pwpItem = profile && profile.pwpFocus ? profile.pwpFocus : "counter PWP essentials";
 
   let header = `*💡 Outlet Overall Action Strategy (${daysLeft} Days Remaining):*\n`;
   let content = "";
 
   if (!isTsOnTrack && !isHbOnTrack) {
     content += `📊 *Pacing Focus:* Need ${formatRM(tsReqPerDay)}/day TS & ${formatRM(hbReqPerDay)}/day HB (Current HB Ratio: ${hbRatio}%)\n`;
-    content += `1️⃣ *Easy TS Basket Builder (PWP):* Offer counter PWP on every receipt over RM30. During every consult, ask 1 extra question: _"Any household first-aid or OTC basics to restock (Panadol, plasters, oral care)?"_\n`;
-    content += `2️⃣ *Sensible HB Dual-Pairing:* Apply the 1+1 Rule — whenever dispensing for acute symptoms (cough, flu, sore throat, gastric, ache), always pair with 1 PMG House Brand essential (e.g. Vitamin C 1000mg with flu, Probiotics with gastric).\n`;
-    content += `3️⃣ *Team Shift Target:* Divide today's ${formatRM(hbReqPerDay)} HB target among counter teammates (~2 to 3 HB items per staff member). Pace hourly together! 💪`;
+    content += `1️⃣ *Easy TS Basket Builder (PWP):* Actively offer ${pwpItem} on every basket over RM30. Ask every customer: _"Any first-aid or household OTC items to restock today?"_\n`;
+    content += `2️⃣ *Sensible HB Dual-Pairing:* Apply the 1+1 Rule — pair acute treatments with ${topHb1} or ${topHb2} for faster recovery and better health outcomes.\n`;
+    content += `3️⃣ *Team Shift Target:* Divide today's ${formatRM(hbReqPerDay)} HB target across counter teammates (~2 to 3 HB items per staff member). Pace hourly together! 💪`;
   } else if (!isHbOnTrack && isTsOnTrack) {
     content += `📊 *Pacing Focus:* TS is on track! Priority is House Brand conversion (Need ${formatRM(hbReqPerDay)}/day | Current HB Ratio: ${hbRatio}%)\n`;
-    content += `1️⃣ *Sensible Brand Switch at Counter:* Foot traffic is strong! When customers ask for branded OTC (e.g. Panadol, eye drops, antacids), introduce the PMG House Brand alternative — emphasize equal efficacy, better value & PMG quality assurance.\n`;
-    content += `2️⃣ *Prescription & Dispensing Add-on:* Offer 1 PMG House Brand wellness item (Vitamin C, Lozenges, Cooling patch) to every dispensing patient.\n`;
-    content += `3️⃣ *Grab-and-Go POS Display:* Keep top 3 PMG House Brand fast-movers right next to the POS scanner for effortless checkout add-ons. 🎯`;
+    content += `1️⃣ *Sensible Brand Switch at Counter:* Foot traffic is strong! Introduce ${topHb1} as a high-efficacy, pharmacist-recommended PMG House Brand alternative with better value.\n`;
+    content += `2️⃣ *Prescription & Dispensing Add-on:* Pair every chronic or acute dispensing with ${topHb2} to enhance patient therapy.\n`;
+    content += `3️⃣ *Grab-and-Go POS Display:* Keep fast-moving PMG House Brand items right next to the POS scanner for effortless checkout add-ons. 🎯`;
   } else if (!isTsOnTrack && isHbOnTrack) {
     content += `📊 *Pacing Focus:* HB is strong at ${hbRatio}%! Priority is Total Sales expansion (Need ${formatRM(tsReqPerDay)}/day)\n`;
-    content += `1️⃣ *Course Duration Upgrade:* For acute medications, convert 1-week supplies into complete 30-day recovery courses. For supplements and chronic care, recommend 2-3 month bundle savings.\n`;
-    content += `2️⃣ *Chronic Patient Re-engagement:* Check system for regular chronic, diaper, or milk replenishment customers due for refill and send WhatsApp follow-ups.\n`;
-    content += `3️⃣ *Cross-Category Consult:* Pair routine BP and blood glucose checks with complete care regimens (e.g. CoQ10 + Omega-3 for cardiovascular support). 🚀`;
+    content += `1️⃣ *Course Duration Upgrade:* Upgrade 1-week acute relief supplies into full 30-day recovery regimens, and recommend 2-3 month bundles for chronic supplements.\n`;
+    content += `2️⃣ *Chronic Patient Re-engagement:* Review regular chronic, diaper, and milk customers due for refill and send warm WhatsApp reminders.\n`;
+    content += `3️⃣ *Clinical Cross-Care:* Pair routine BP and glucose checks with full cardiovascular & mobility wellness regimens. 🚀`;
   } else {
     content += `📊 *Pacing Focus:* Store is ON TRACK for both TS & HB! 🌟 (Current HB Ratio: ${hbRatio}%)\n`;
-    content += `1️⃣ *Lock In Month-End Buffer:* Maintain consistent dual-pairing on every acute consultation to build an extra cushion.\n`;
-    content += `2️⃣ *Cashier PWP & PMG App:* Ensure 100% of eligible receipts are offered the PWP item and guided to install the PMG App for repeat visits.\n`;
-    content += `3️⃣ *High-Standard Shift Execution:* Acknowledge shift leaders and keep energetic counter presence during afternoon and evening peaks! 🏆`;
+    content += `1️⃣ *Lock In Month-End Buffer:* Maintain consistent dual-pairing with ${topHb1} on every consultation to build an extra cushion.\n`;
+    content += `2️⃣ *Cashier PWP & PMG App:* Ensure 100% of eligible receipts receive ${pwpItem} and guide customers to register on the PMG App for repeat visits.\n`;
+    content += `3️⃣ *High-Standard Shift Execution:* Acknowledge shift leaders and maintain energetic counter service during peak afternoon and evening hours! 🏆`;
   }
 
   return header + content + "\n\n";
 }
 
-function copyWhatsAppBriefing() {
+// ─── BRIEFING GENERATOR WITH AI & FALLBACK ────────────────────────────────────
+async function copyWhatsAppBriefing() {
   if (!currentData || !selectedBranch) return;
   const branchUpper = String(selectedBranch).toUpperCase();
   const summary = currentData.summary[branchUpper] || {};
@@ -621,6 +875,18 @@ function copyWhatsAppBriefing() {
   let tsStatus = (summary.mtdTs >= expectedTs) ? "🟢 On Track" : `🔴 Off Track (Need ${formatRM(tsReqPerDay)}/day)`;
   let hbStatus = (summary.mtdHb >= expectedHb) ? "🟢 On Track" : `🔴 Off Track (Need ${formatRM(hbReqPerDay)}/day)`;
   
+  const profile = getBranchProfile(selectedBranch);
+  const hbRatio = (summary.mtdTs || 0) > 0 ? (((summary.mtdHb || 0) / summary.mtdTs) * 100).toFixed(1) : "0.0";
+
+  const btn = document.getElementById("copyBriefingBtn");
+  const origBtnText = btn ? btn.innerText : "";
+  const apiKey = localStorage.getItem('pmg_gemini_key');
+
+  if (btn && apiKey && apiKey.trim().length > 10) {
+    btn.innerText = "🤖 Generating AI Strategy...";
+    btn.disabled = true;
+  }
+
   let text = `*📊 ${selectedBranch} Daily Briefing*\n`;
   text += `Date: ${new Date().toLocaleDateString()}\n\n`;
   
@@ -650,12 +916,110 @@ function copyWhatsAppBriefing() {
     text += `No personal hits yesterday — let's rally together and put everyone on the board today! 💪\n\n`;
   }
   
-  // Dynamic, Sensible & Easy Outlet Overall Suggestion to Achieve TS & HB
-  text += generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPerDay, daysLeft, expectedTs, expectedHb);
-  
+  // Dynamic AI Strategy or Profile-Aware Offline Rule
+  let strategyText = null;
+  if (apiKey && apiKey.trim().length > 10) {
+    try {
+      strategyText = await generateGeminiOutletStrategy(selectedBranch, summary, targets, daysLeft, tsReqPerDay, hbReqPerDay, hbRatio, profile);
+    } catch (e) {
+      console.warn("AI generation failed, using rule fallback", e);
+    }
+  }
+
+  if (!strategyText) {
+    strategyText = generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPerDay, daysLeft, expectedTs, expectedHb, profile);
+  }
+
+  text += strategyText;
   text += `🔗 *View Full Dashboard:* ${WEBAPP_LINK}`;
+
+  if (btn) {
+    btn.innerText = origBtnText || "📱 Copy WhatsApp Briefing";
+    btn.disabled = false;
+  }
+
   navigator.clipboard.writeText(text);
   alert("WhatsApp Daily Briefing copied to clipboard!");
+}
+
+// ─── GEMINI API KEY MANAGEMENT & TEST ─────────────────────────────────────────
+function saveGeminiApiKey(key) {
+  if (key && key.trim()) {
+    localStorage.setItem('pmg_gemini_key', key.trim());
+  } else {
+    localStorage.removeItem('pmg_gemini_key');
+  }
+  updateGeminiBadge();
+}
+
+function updateGeminiBadge() {
+  const badge = document.getElementById("geminiStatusBadge");
+  const input = document.getElementById("geminiApiKeyInput");
+  const key = localStorage.getItem('pmg_gemini_key');
+  if (input && key && !input.value) {
+    input.value = key;
+  }
+  if (badge) {
+    if (key && key.trim().length > 10) {
+      badge.innerText = "⚡ Gemini 3.5 Active";
+      badge.style.background = "#dcfce7";
+      badge.style.color = "#15803d";
+      badge.style.border = "1px solid #86efac";
+    } else {
+      badge.innerText = "Offline Rule";
+      badge.style.background = "#f3f4f6";
+      badge.style.color = "#4b5563";
+      badge.style.border = "1px solid #d1d5db";
+    }
+  }
+}
+
+async function testGeminiConnection() {
+  const input = document.getElementById("geminiApiKeyInput");
+  const key = (input ? input.value : "") || localStorage.getItem('pmg_gemini_key');
+  if (!key || key.trim().length < 10) {
+    alert("Please paste a valid Gemini API key first.");
+    return;
+  }
+
+  const badge = document.getElementById("geminiStatusBadge");
+  if (badge) badge.innerText = "Testing...";
+
+  const candidateModels = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-1.5-flash'
+  ];
+
+  let successModel = null;
+  for (const m of candidateModels) {
+    try {
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key.trim()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: "Respond with 'READY'." }] }]
+        })
+      });
+      if (resp.ok) {
+        successModel = m;
+        break;
+      }
+    } catch (err) {
+      // Continue to try next candidate model
+    }
+  }
+
+  if (successModel) {
+    localStorage.setItem('pmg_gemini_key', key.trim());
+    updateGeminiBadge();
+    alert(`✅ Connected to Gemini API successfully!\nActive Engine: ${successModel}\nYour AI Retail Strategist is ready.`);
+  } else {
+    updateGeminiBadge();
+    alert("❌ Connection failed. Please ensure the API key is active and has access to Gemini models.");
+  }
 }
 
 function copyAMWhatsAppBriefing() {
@@ -992,4 +1356,11 @@ document.addEventListener('touchend', (e) => {
     }
   }
 }, { passive: true });
+
+// Initialize Gemini AI Strategist Badge if present
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof updateGeminiBadge === 'function') updateGeminiBadge();
+  });
+}
 
