@@ -560,6 +560,44 @@ async function saveAmNote() {
   }
 }
 
+function generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPerDay, daysLeft, expectedTs, expectedHb) {
+  const mtdTs = summary.mtdTs || 0;
+  const mtdHb = summary.mtdHb || 0;
+  const targetTs = targets.ts || 0;
+  const targetHb = targets.hb || 0;
+
+  const isTsOnTrack = mtdTs >= expectedTs;
+  const isHbOnTrack = mtdHb >= expectedHb;
+  const hbRatio = mtdTs > 0 ? ((mtdHb / mtdTs) * 100).toFixed(1) : "0.0";
+
+  let header = `*💡 Outlet Overall Action Strategy (${daysLeft} Days Remaining):*\n`;
+  let content = "";
+
+  if (!isTsOnTrack && !isHbOnTrack) {
+    content += `📊 *Pacing Focus:* Need ${formatRM(tsReqPerDay)}/day TS & ${formatRM(hbReqPerDay)}/day HB (Current HB Ratio: ${hbRatio}%)\n`;
+    content += `1️⃣ *Easy TS Basket Builder (PWP):* Offer counter PWP on every receipt over RM30. During every consult, ask 1 extra question: _"Any household first-aid or OTC basics to restock (Panadol, plasters, oral care)?"_\n`;
+    content += `2️⃣ *Sensible HB Dual-Pairing:* Apply the 1+1 Rule — whenever dispensing for acute symptoms (cough, flu, sore throat, gastric, ache), always pair with 1 PMG House Brand essential (e.g. Vitamin C 1000mg with flu, Probiotics with gastric).\n`;
+    content += `3️⃣ *Team Shift Target:* Divide today's ${formatRM(hbReqPerDay)} HB target among counter teammates (~2 to 3 HB items per staff member). Pace hourly together! 💪`;
+  } else if (!isHbOnTrack && isTsOnTrack) {
+    content += `📊 *Pacing Focus:* TS is on track! Priority is House Brand conversion (Need ${formatRM(hbReqPerDay)}/day | Current HB Ratio: ${hbRatio}%)\n`;
+    content += `1️⃣ *Sensible Brand Switch at Counter:* Foot traffic is strong! When customers ask for branded OTC (e.g. Panadol, eye drops, antacids), introduce the PMG House Brand alternative — emphasize equal efficacy, better value & PMG quality assurance.\n`;
+    content += `2️⃣ *Prescription & Dispensing Add-on:* Offer 1 PMG House Brand wellness item (Vitamin C, Lozenges, Cooling patch) to every dispensing patient.\n`;
+    content += `3️⃣ *Grab-and-Go POS Display:* Keep top 3 PMG House Brand fast-movers right next to the POS scanner for effortless checkout add-ons. 🎯`;
+  } else if (!isTsOnTrack && isHbOnTrack) {
+    content += `📊 *Pacing Focus:* HB is strong at ${hbRatio}%! Priority is Total Sales expansion (Need ${formatRM(tsReqPerDay)}/day)\n`;
+    content += `1️⃣ *Course Duration Upgrade:* For acute medications, convert 1-week supplies into complete 30-day recovery courses. For supplements and chronic care, recommend 2-3 month bundle savings.\n`;
+    content += `2️⃣ *Chronic Patient Re-engagement:* Check system for regular chronic, diaper, or milk replenishment customers due for refill and send WhatsApp follow-ups.\n`;
+    content += `3️⃣ *Cross-Category Consult:* Pair routine BP and blood glucose checks with complete care regimens (e.g. CoQ10 + Omega-3 for cardiovascular support). 🚀`;
+  } else {
+    content += `📊 *Pacing Focus:* Store is ON TRACK for both TS & HB! 🌟 (Current HB Ratio: ${hbRatio}%)\n`;
+    content += `1️⃣ *Lock In Month-End Buffer:* Maintain consistent dual-pairing on every acute consultation to build an extra cushion.\n`;
+    content += `2️⃣ *Cashier PWP & PMG App:* Ensure 100% of eligible receipts are offered the PWP item and guided to install the PMG App for repeat visits.\n`;
+    content += `3️⃣ *High-Standard Shift Execution:* Acknowledge shift leaders and keep energetic counter presence during afternoon and evening peaks! 🏆`;
+  }
+
+  return header + content + "\n\n";
+}
+
 function copyWhatsAppBriefing() {
   if (!currentData || !selectedBranch) return;
   const branchUpper = String(selectedBranch).toUpperCase();
@@ -580,8 +618,8 @@ function copyWhatsAppBriefing() {
   let tsReqPerDay = Math.max(0, ((targets.ts || 0) - (summary.mtdTs || 0)) / daysLeft);
   let hbReqPerDay = Math.max(0, ((targets.hb || 0) - (summary.mtdHb || 0)) / daysLeft);
 
-  let tsStatus = (summary.mtdTs >= expectedTs) ? "🟢 On Track" : `🔴 Off Track (Need RM ${formatRM(tsReqPerDay)}/day)`;
-  let hbStatus = (summary.mtdHb >= expectedHb) ? "🟢 On Track" : `🔴 Off Track (Need RM ${formatRM(hbReqPerDay)}/day)`;
+  let tsStatus = (summary.mtdTs >= expectedTs) ? "🟢 On Track" : `🔴 Off Track (Need ${formatRM(tsReqPerDay)}/day)`;
+  let hbStatus = (summary.mtdHb >= expectedHb) ? "🟢 On Track" : `🔴 Off Track (Need ${formatRM(hbReqPerDay)}/day)`;
   
   let text = `*📊 ${selectedBranch} Daily Briefing*\n`;
   text += `Date: ${new Date().toLocaleDateString()}\n\n`;
@@ -596,29 +634,24 @@ function copyWhatsAppBriefing() {
   
   text += `*🏆 Congratulation Board:*\n`;
   let achievers = 0;
-  
-  // Actionable Tips Array
-  const tips = [
-    "Tip: Pair Vitamin C with every cough/cold consult today.",
-    "Tip: Suggest a 30-day joint supplement pack for pain relief.",
-    "Tip: Recommend probiotics with every antibiotic script.",
-    "Tip: Offer a PWP item at checkout for baskets over RM30.",
-    "Tip: Upgrade 15-day supplies to 30-day for better compliance."
-  ];
 
-  currentData.staff.forEach(s => {
+  (currentData.staff || []).forEach(s => {
     let hits = [];
     if(s.dailyTs >= s.targetTs) hits.push("TS");
     if(s.dailyHb >= s.targetHb) hits.push("HB");
     
     if(hits.length > 0) {
       achievers++;
-      let randomTip = tips[Math.floor(Math.random() * tips.length)];
-      text += `• *${s.name}*: Hit ${hits.join(" & ")}! 🌟 ${randomTip}\n\n`;
+      text += `• *${s.name}*: Hit ${hits.join(" & ")}! 🌟🎉\n\n`;
     }
   });
   
-  if(achievers === 0) text += `Let's push hard today to get everyone on the board! Focus on PWP at checkout. 💪\n\n`;
+  if(achievers === 0) {
+    text += `No personal hits yesterday — let's rally together and put everyone on the board today! 💪\n\n`;
+  }
+  
+  // Dynamic, Sensible & Easy Outlet Overall Suggestion to Achieve TS & HB
+  text += generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPerDay, daysLeft, expectedTs, expectedHb);
   
   text += `🔗 *View Full Dashboard:* ${WEBAPP_LINK}`;
   navigator.clipboard.writeText(text);
