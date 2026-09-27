@@ -576,8 +576,8 @@ const BRANCH_PROFILES = {
       "V-Infinity Neoflex Softgel (Glucosamine + Chondroitin + MSM)",
       "Plaster BB Suan Tong Tie (Herbal pain relief patch)"
     ],
-    pwpFocus: "Medicated pain plaster, Methylcobalamin trial blister, BP logbook with PMG App",
-    customerTip: "Seniors value personalized dosage advice, blood pressure/glucose reviews, and 2-3 month bundle savings on nerve & heart wellness."
+    pwpFocus: "Medicated pain plaster, Methylcobalamin trial blister, manual BP recording card (follow-up via Zentalog / Patient Care webapp)",
+    customerTip: "Seniors value personalized dosage advice, manual BP card reviews, and 2-3 month bundle savings on nerve & heart wellness. For follow-up consults, record on physical card or William's Patient Care webapp / Zentalog."
   },
   "METROCITY": {
     name: "PMG PHARMACY METROCITY",
@@ -593,7 +593,7 @@ const BRANCH_PROFILES = {
       "Truelife Skin-Fix Soothing Cream"
     ],
     pwpFocus: "Derma gentle facial wipes, Collagen drink sample vial, Travel sanitizer",
-    customerTip: "Fast-paced evening crowd (6-9 PM). Keep grab-and-go counters stocked with skincare/wellness trials; highlight PMG App loyalty reward points."
+    customerTip: "Fast-paced evening crowd (6-9 PM). Keep grab-and-go counters stocked with skincare/wellness trials; focus on friendly counter consultations."
   },
   "MATANG_JAYA": {
     name: "PMG PHARMACY MATANG JAYA",
@@ -757,13 +757,16 @@ LIVE SALES NUMBERS:
 TASK:
 Write a human-like, energetic, highly practical 3-step action strategy for today's morning briefing to hit both TS & HB targets.
 
-STRICT CONSTRAINTS:
+STRICT CONSTRAINTS & REAL-WORLD RULES:
 1. Output EXACTLY 3 numbered bullet points formatted for WhatsApp (use *bold* headers and relevant emojis).
-2. Bullet 1 must be TS / Basket Builder strategy (tailored to this store's shoppers, mentioning the PWP add-on or chronic duration extension).
-3. Bullet 2 must be House Brand conversion strategy (specifically mention 1 or 2 PMG House Brand products from their profile list and how to pair with patient consults).
-4. Bullet 3 must be Shift Team Execution (break down today's HB target into manageable units per counter staff or hourly team pacing).
-5. Tone: Motivating, actionable, professional pharmacy manager. Total word count ~75 to 110 words.
-6. NO introduction, NO greeting, NO concluding text. Begin immediately with "1️⃣".`;
+2. DO NOT mention "PMG App" or "app installs" — PMG App is in its early stages. 
+   - Blood pressure tracking is done via manual physical BP record cards or follow-up consultations with the pharmacist (using the Patient Care webapp / Zentalog).
+3. NEVER mention "Gemini", "AI", "bot", or machine intelligence anywhere in the text or headers. Write in a warm, direct, encouraging tone as William / the pharmacy manager coaching their counter team.
+4. Bullet 1 must be TS / Basket Builder strategy (tailored to this store's shoppers, mentioning the PWP add-on, chronic duration extension to 60-90 days, or manual BP check follow-up).
+5. Bullet 2 must be House Brand conversion strategy (specifically mention 1 or 2 PMG House Brand products from their profile list and how to pair with patient consults).
+6. Bullet 3 must be Shift Team Execution (break down today's HB target into manageable units per counter staff or hourly team pacing on the counter/whiteboard).
+7. Tone: Motivating, actionable, professional pharmacy manager. Total word count ~75 to 110 words.
+8. NO introduction, NO greeting, NO concluding text. Begin immediately with "1️⃣".`;
 
   const candidateModels = [
     'gemini-3.5-flash-lite',
@@ -799,7 +802,7 @@ STRICT CONSTRAINTS:
         const generatedText = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text;
         if (generatedText && generatedText.trim().length > 30) {
           let cleaned = generatedText.trim();
-          let header = `*💡 Outlet Overall Action Strategy (${daysLeft} Days Remaining) [⚡ Gemini AI]:*\n`;
+          let header = `*💡 Outlet Overall Action Strategy (${daysLeft} Days Remaining):*\n`;
           return header + cleaned + "\n\n";
         }
       }
@@ -844,7 +847,7 @@ function generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPer
   } else {
     content += `📊 *Pacing Focus:* Store is ON TRACK for both TS & HB! 🌟 (Current HB Ratio: ${hbRatio}%)\n`;
     content += `1️⃣ *Lock In Month-End Buffer:* Maintain consistent dual-pairing with ${topHb1} on every consultation to build an extra cushion.\n`;
-    content += `2️⃣ *Cashier PWP & PMG App:* Ensure 100% of eligible receipts receive ${pwpItem} and guide customers to register on the PMG App for repeat visits.\n`;
+    content += `2️⃣ *Cashier PWP & Follow-up:* Ensure 100% of eligible receipts receive ${pwpItem} and offer friendly follow-up advice for repeat visits.\n`;
     content += `3️⃣ *High-Standard Shift Execution:* Acknowledge shift leaders and maintain energetic counter service during peak afternoon and evening hours! 🏆`;
   }
 
@@ -893,7 +896,10 @@ async function copyWhatsAppBriefing() {
   text += `*🎯 Target Achievement:*\n`;
   text += `TS: RM ${(summary.mtdTs||0).toLocaleString()} / RM ${(targets.ts||0).toLocaleString()} (${tsPct}%) - ${tsStatus}\n`;
   text += `HB: RM ${(summary.mtdHb||0).toLocaleString()} / RM ${(targets.hb||0).toLocaleString()} (${hbPct}%) - ${hbStatus}\n`;
-  text += `📱 PMG App Installs Today: ${summary.pmgApp || 0}\n\n`;
+  if (summary.pmgApp && Number(summary.pmgApp) > 0) {
+    text += `📱 PMG App Installs Today: ${summary.pmgApp}\n`;
+  }
+  text += `\n`;
   
   text += `*🎯 Strategy Plan:*\n`;
   text += `W1: ${ap.w1 || '-'}\nW2: ${ap.w2 || '-'}\nW3: ${ap.w3 || '-'}\nW4: ${ap.w4 || '-'}\n\n`;
