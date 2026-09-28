@@ -569,9 +569,10 @@ const BRANCH_PROFILES = {
     demographics: "Historic commercial crossroads connecting Kuching-Serian. High elderly Chinese population, long-term chronic regulars, plus daily commuting workforce from Padawan.",
     clinicalFocus: "Chronic Disease Management (Hypertension, Hyperlipidemia, Diabetes), Geriatric Joint & Mobility, Peripheral Neuropathy (nerve numbness), Stroke Prevention.",
     topHouseBrands: [
-      "Livemore Methylcobalamin 600mcg (Nerve tingling & numbness)",
-      "JH Nutrition Systoright 350mg (Red Yeast + CoQ10 lipid care)",
-      "Livemore Neomega Fish Oil 1200mg (High EPA/DHA)",
+      "Livemore Methylcobalamin 600mcg (Active B12 for nerve tingling & numbness)",
+      "Livemore Lipi-K (Red Yeast Rice + CoQ10 for natural cholesterol & lipid balance)",
+      "JH Nutrition Systoright 300mg (Grape Seed Extract for venous circulation & vascular elasticity)",
+      "Livemore Neomega Plus (High-strength 700mg EPA / 350mg DHA Omega-3 fish oil)",
       "Nutribridge Flexsure Gold Milk (Joint & Bone mobility)",
       "V-Infinity Neoflex Softgel (Glucosamine + Chondroitin + MSM)",
       "Plaster BB Suan Tong Tie (Herbal pain relief patch)"
@@ -634,7 +635,8 @@ const BRANCH_PROFILES = {
       "V-Infinity Neoflex Softgel (Triple joint cartilage formula)",
       "Nutribridge Flexsure Gold (High-calcium joint milk)",
       "Livemore Ginoba 120mg (Ginkgo cerebral & blood circulation)",
-      "JH Nutrition Systoright 350mg (Cardiovascular lipid support)",
+      "JH Nutrition Systoright 300mg (Grape Seed Extract for venous circulation)",
+      "Livemore Lipi-K (Red Yeast Rice + CoQ10 for natural cholesterol support)",
       "Plaster BB Suan Tong Tie (Medicated herbal pain plaster)"
     ],
     pwpFocus: "Medicated pain plaster, Menthol muscle rub, Adult nutritional milk trial sachet",
@@ -646,8 +648,9 @@ const BRANCH_PROFILES = {
     demographics: "Government administrative and civil service hub near Wisma Bapa Malaysia. Civil servant officers, teachers, professional families, predominantly Malay community.",
     clinicalFocus: "Cardiovascular & Lipid Health, Executive Stress & Fatigue, Halal Health Supplements, Digestion & Acid Reflux.",
     topHouseBrands: [
-      "JH Nutrition Systoright 350mg (Red Yeast Rice + CoQ10)",
-      "Livemore Neomega Fish Oil 1200mg (High EPA/DHA concentrated)",
+      "Livemore Lipi-K (Red Yeast Rice + CoQ10 natural cholesterol control)",
+      "JH Nutrition Systoright 300mg (Grape Seed Extract for circulation & vascular elasticity)",
+      "Livemore Neomega Plus (High EPA/DHA concentrated fish oil)",
       "Livemore Methylcobalamin 600mcg (Active nerve recovery)",
       "Remeco Pepticon Double Action Suspension (Instant reflux barrier)",
       "Livemore Probiotics 50B (Gut wellness & bloating)"
@@ -675,8 +678,9 @@ const BRANCH_PROFILES = {
 // PMG House Brand Master Catalog Reference
 const PMG_HOUSE_BRANDS = {
   cardioNerve: [
-    { name: "JH Nutrition Systoright 350mg", desc: "Red Yeast Rice + CoQ10 natural cholesterol control" },
-    { name: "Livemore Neomega Fish Oil 1200mg", desc: "High EPA/DHA for triglyceride and heart wellness" },
+    { name: "Livemore Lipi-K", desc: "Red Yeast Rice + Olive Extract + CoQ10 for natural cholesterol & lipid management" },
+    { name: "JH Nutrition Systoright 300mg", desc: "Standardized Grape Seed Extract (Semen Vitis Vinifera) for blood circulation & vascular elasticity" },
+    { name: "Livemore Neomega Plus", desc: "High-strength 700mg EPA / 350mg DHA Omega-3 fish oil for heart wellness" },
     { name: "Livemore Methylcobalamin 600mcg", desc: "Active B12 for diabetic peripheral neuropathy & limb numbness" },
     { name: "Livemore Ginoba 120mg", desc: "Standardized Ginkgo for brain memory & peripheral circulation" }
   ],
@@ -759,14 +763,20 @@ Write a human-like, energetic, highly practical 3-step action strategy for today
 
 STRICT CONSTRAINTS & REAL-WORLD RULES:
 1. Output EXACTLY 3 numbered bullet points formatted for WhatsApp (use *bold* headers and relevant emojis).
-2. DO NOT mention "PMG App" or "app installs" — PMG App is in its early stages. 
+2. ACCURATE PRODUCT FORMULATIONS (NEVER mix up or hallucinate ingredients):
+   - JH Nutrition Systoright = Grape Seed Extract (Semen Vitis Vinifera) 300mg for venous blood circulation, heavy legs, vascular elasticity & blood pressure support. It contains NO omega, NO fish oil, NO red yeast rice!
+   - Livemore Lipi-K = Red Yeast Rice Extract + CoQ10 + Olive Extract for natural cholesterol and lipid management.
+   - Livemore Neomega Plus / Neomega = Concentrated Omega-3 Fish Oil (High EPA/DHA) for triglycerides and heart wellness.
+   - Livemore Methylcobalamin = Active B12 for diabetic nerve tingling & peripheral numbness.
+   - V-Infinity Neoflex = Glucosamine + Chondroitin + MSM for joints.
+3. DO NOT mention "PMG App" or "app installs" — PMG App is in its early stages. 
    - Blood pressure tracking is done via manual physical BP record cards or follow-up consultations with the pharmacist (using the Patient Care webapp / Zentalog).
-3. NEVER mention "Gemini", "AI", "bot", or machine intelligence anywhere in the text or headers. Write in a warm, direct, encouraging tone as William / the pharmacy manager coaching their counter team.
-4. Bullet 1 must be TS / Basket Builder strategy (tailored to this store's shoppers, mentioning the PWP add-on, chronic duration extension to 60-90 days, or manual BP check follow-up).
-5. Bullet 2 must be House Brand conversion strategy (specifically mention 1 or 2 PMG House Brand products from their profile list and how to pair with patient consults).
-6. Bullet 3 must be Shift Team Execution (break down today's HB target into manageable units per counter staff or hourly team pacing on the counter/whiteboard).
-7. Tone: Motivating, actionable, professional pharmacy manager. Total word count ~75 to 110 words.
-8. NO introduction, NO greeting, NO concluding text. Begin immediately with "1️⃣".`;
+4. NEVER mention "Gemini", "AI", "bot", or machine intelligence anywhere in the text or headers. Write in a warm, direct, encouraging tone as William / the pharmacy manager coaching their counter team.
+5. Bullet 1 must be TS / Basket Builder strategy (tailored to this store's shoppers, mentioning the PWP add-on, chronic duration extension to 60-90 days, or manual BP check follow-up).
+6. Bullet 2 must be House Brand conversion strategy (specifically mention 1 or 2 PMG House Brand products with their TRUE clinical benefit from the list above and how to pair with patient consults).
+7. Bullet 3 must be Shift Team Execution (break down today's HB target into manageable units per counter staff or hourly team pacing on the counter/whiteboard).
+8. Tone: Motivating, actionable, professional pharmacy manager. Total word count ~75 to 110 words.
+9. NO introduction, NO greeting, NO concluding text. Begin immediately with "1️⃣".`;
 
   const candidateModels = [
     'gemini-3.5-flash-lite',
@@ -1395,22 +1405,34 @@ function filterHouseBrands() {
   }
 
   listContainer.innerHTML = filtered.map(p => {
-    const tagsHtml = (p.indication || []).map(t => 
+    const tagsList = p.tags || p.indication || [];
+    const tagsHtml = tagsList.map(t => 
       `<span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:600;">${t}</span>`
     ).join(" ");
+
+    const ingredientsHtml = p.ingredients ? `<div style="font-size: 0.74rem; color: #0d9488; margin-top: 4px; line-height: 1.35;"><b>🧪 Active Formulation:</b> ${p.ingredients}</div>` : '';
+    const indicationHtml = p.clinicalIndication ? `<div style="font-size: 0.73rem; color: #334155; margin-top: 3px; line-height: 1.35;"><b>🩺 Clinical Indication:</b> ${p.clinicalIndication}</div>` : '';
+    const packHtml = p.packSize ? `<span style="background:#f1f5f9; color:#475569; padding:2px 6px; border-radius:4px; font-size:0.65rem;">📦 ${p.packSize}</span>` : '';
+    const malHtml = p.mal ? `<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-size:0.65rem; font-weight:600;">${p.mal}</span>` : '';
 
     return `
       <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
           <div>
-            <span style="font-size:0.65rem; font-weight:bold; color:#0f766e; background:#ccfbf1; padding:2px 6px; border-radius:4px; text-transform:uppercase;">${p.brand}</span>
-            <h4 style="margin: 4px 0; font-size: 0.92rem; color: #1e293b; font-weight: 700;">${p.title}</h4>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <span style="font-size:0.65rem; font-weight:bold; color:#0f766e; background:#ccfbf1; padding:2px 6px; border-radius:4px; text-transform:uppercase;">${p.brand}</span>
+              ${packHtml}
+              ${malHtml}
+            </div>
+            <h4 style="margin: 4px 0 2px 0; font-size: 0.92rem; color: #1e293b; font-weight: 700;">${p.title}</h4>
           </div>
           <a href="${p.link}" target="_blank" rel="noopener noreferrer" style="font-size:0.7rem; color:#0d9488; text-decoration:none; font-weight:bold; white-space:nowrap; border:1px solid #99f6e4; padding:2px 7px; border-radius:6px; background:#f0fdfa;">
             Official ↗
           </a>
         </div>
-        <div style="font-size: 0.76rem; color: #475569; line-height: 1.35; margin: 4px 0 6px 0;">
+        ${ingredientsHtml}
+        ${indicationHtml}
+        <div style="font-size: 0.74rem; color: #64748b; line-height: 1.35; margin: 4px 0 6px 0;">
           ${p.summary}
         </div>
         <div style="display: flex; gap: 4px; flex-wrap: wrap;">

@@ -2,6 +2,13 @@
  * PMG House Brands Ongoing Sync Engine
  * Extracts all official PMG House Brand products directly from Jase Healthcare
  * (https://jasehealthcare.com/products/ via WordPress REST API)
+ * 
+ * Accurately parses:
+ * - Active Ingredients & Dosages
+ * - True Clinical Indications
+ * - Pack Sizes & Dosage Forms
+ * - MAL Registration Numbers
+ * - Filter Tags without brand keyword contamination
  */
 const fs = require('fs');
 const path = require('path');
@@ -44,7 +51,7 @@ async function syncHouseBrands() {
     return;
   }
 
-  // Clean and categorize products
+  // Clean and accurately categorize products
   const formattedCatalog = allProducts.map(p => {
     const cleanTitle = p.title.rendered
       .replace(/&#8211;/g, '–')
@@ -76,9 +83,8 @@ async function syncHouseBrands() {
       ? p.excerpt.rendered.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
       : '';
 
-    const cleanContent = p.content && p.content.rendered
-      ? p.content.rendered.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
-      : '';
+    const rawContent = p.content && p.content.rendered ? p.content.rendered : '';
+    const parsed = parseProductDetails(rawContent, cleanExcerpt, cleanTitle);
 
     return {
       id: p.id,
@@ -86,8 +92,12 @@ async function syncHouseBrands() {
       title: cleanTitle,
       slug: p.slug,
       link: p.link,
-      summary: cleanExcerpt || cleanContent.substring(0, 200),
-      indication: extractIndication(cleanContent, cleanExcerpt)
+      summary: cleanExcerpt || parsed.indication || 'High-quality PMG House Brand formulation.',
+      ingredients: parsed.ingredients,
+      clinicalIndication: parsed.indication,
+      packSize: parsed.packSize,
+      mal: parsed.mal,
+      tags: parsed.tags
     };
   });
 
@@ -118,23 +128,118 @@ window.PMG_HOUSE_BRANDS_CATALOG = ${JSON.stringify(formattedCatalog, null, 2)};
   });
   console.log('\n📊 Brand Breakdown:');
   console.table(summaryByBrand);
+
+  // Spot-check Systoright
+  const systo = formattedCatalog.find(p => p.slug === 'jh-nutrition-systoright');
+  if (systo) {
+    console.log('\n✅ Verified Systoright Data:');
+    console.log('   Title:', systo.title);
+    console.log('   Ingredients:', systo.ingredients);
+    console.log('   Indication:', systo.clinicalIndication);
+    console.log('   Tags:', systo.tags.join(', '));
+  }
 }
 
-function extractIndication(content, excerpt) {
-  const text = (excerpt + ' ' + content).toLowerCase();
-  const tags = [];
-  if (text.includes('joint') || text.includes('cartilage') || text.includes('osteoarthritis') || text.includes('bone')) tags.push('Joint & Bone');
-  if (text.includes('cholesterol') || text.includes('heart') || text.includes('cardio') || text.includes('omega') || text.includes('blood pressure')) tags.push('Cardiovascular');
-  if (text.includes('nerve') || text.includes('tingling') || text.includes('numbness') || text.includes('b12') || text.includes('neuropathy')) tags.push('Nerve Health');
-  if (text.includes('digest') || text.includes('probiotic') || text.includes('gut') || text.includes('gastric') || text.includes('reflux') || text.includes('gerd')) tags.push('Digestive & Gut');
-  if (text.includes('skin') || text.includes('eczema') || text.includes('collagen') || text.includes('moistur') || text.includes('derma')) tags.push('Dermatology & Beauty');
-  if (text.includes('cough') || text.includes('cold') || text.includes('throat') || text.includes('immune') || text.includes('elderberry') || text.includes('flu')) tags.push('Immunity & Respiratory');
-  if (text.includes('child') || text.includes('kid') || text.includes('baby') || text.includes('gummy')) tags.push('Pediatric');
-  if (text.includes('dental') || text.includes('tooth') || text.includes('mouthwash') || text.includes('floss')) tags.push('Oral Care');
-  if (text.includes('plaster') || text.includes('patch') || text.includes('pain') || text.includes('ache') || text.includes('muscle')) tags.push('Pain Relief & Plaster');
-  if (text.includes('milk') || text.includes('nutrition') || text.includes('colostrum') || text.includes('protein')) tags.push('Nutrition & Specialty Milk');
+function parseProductDetails(contentHtml, cleanExcerpt, cleanTitle) {
+  let text = (contentHtml || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#8211;/gi, '–')
+    .replace(/&#038;/gi, '&')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#8217;/gi, "'");
 
-  return tags.length > 0 ? tags : ['General Wellness'];
+  // Merge adjacent bold tags like <strong>Pack</strong><strong> Size</strong>
+  text = text.replace(/<\/(?:strong|b)>\s*<(?:strong|b)>/gi, '');
+
+  const sections = {};
+  const regex = /<(?:strong|b|h[1-6])[^>]*>\s*([A-Za-z\s]+?):?\s*<\/(?:strong|b|h[1-6])>([\s\S]*?)(?=(?:<(?:strong|b|h[1-6])[^>]*>|$))/gi;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const key = match[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const val = match[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (val && !sections[key]) {
+      sections[key] = val;
+    }
+  }
+
+  const parsed = {
+    ingredients: sections['ingredients'] || sections['active ingredients'] || sections['ingredient'] || '',
+    indication: sections['indication'] || sections['indications'] || '',
+    packSize: sections['pack size'] || sections['pack'] || sections['packaging'] || '',
+    mal: sections['mal registration number'] || sections['mal'] || '',
+    targetAudience: sections['target audience'] || ''
+  };
+
+  parsed.tags = extractIndication(cleanTitle, text, cleanExcerpt, parsed);
+  return parsed;
+}
+
+function extractIndication(cleanTitle, content, excerpt, parsed) {
+  const combined = (cleanTitle + ' ' + excerpt + ' ' + (parsed.indication || '') + ' ' + (parsed.ingredients || '') + ' ' + (parsed.targetAudience || '')).toLowerCase();
+  const tags = [];
+  
+  // Joint & Bone
+  if (combined.includes('joint') || combined.includes('cartilage') || combined.includes('osteoarthritis') || combined.includes('bone') || combined.includes('flex')) {
+    tags.push('Joint & Bone');
+  }
+
+  // Cholesterol & Lipid (Lipi-K, Lipicholin, BG-Pro)
+  if (combined.includes('cholesterol') || combined.includes('lipid') || combined.includes('red yeast') || combined.includes('triglyceride')) {
+    tags.push('Cholesterol & Lipid');
+  }
+
+  // Blood Circulation & Blood Pressure (Systoright, Ginoba, etc.)
+  if (combined.includes('circulation') || combined.includes('blood pressure') || combined.includes('vascular') || combined.includes('vitis vinifera') || combined.includes('ginkgo') || combined.includes('ginoba')) {
+    tags.push('Blood Circulation & BP');
+  }
+
+  // Omega-3 & Heart Wellness (Fish oil, EPA/DHA)
+  if (combined.includes('fish oil') || combined.includes('omega') || combined.includes('epa') || combined.includes('dha') || combined.includes('coq10')) {
+    tags.push('Omega & Heart Support');
+  }
+
+  // Nerve Health (Methylcobalamin, B12, tingling, numbness)
+  if (combined.includes('nerve') || combined.includes('tingling') || combined.includes('numbness') || combined.includes('methylcobalamin') || combined.includes('b12') || combined.includes('neuropathy')) {
+    tags.push('Nerve Health');
+  }
+
+  // Digestive & Gut (Probiotics, Gastric, Pepticon)
+  if (combined.includes('probiotic') || combined.includes('gut') || combined.includes('gastric') || combined.includes('reflux') || combined.includes('gerd') || combined.includes('enzyme') || combined.includes('pepticon') || combined.includes('inulin')) {
+    tags.push('Digestive & Gut');
+  }
+
+  // Dermatology & Skin
+  if (combined.includes('eczema') || combined.includes('collagen') || combined.includes('placenta') || combined.includes('moistur') || combined.includes('derma') || combined.includes('cleanser') || combined.includes('skin')) {
+    tags.push('Dermatology & Skin');
+  }
+
+  // Immunity & Respiratory
+  if (combined.includes('cough') || combined.includes('cold') || combined.includes('throat') || combined.includes('elderberry') || combined.includes('flu') || combined.includes('propolis') || combined.includes('immune')) {
+    tags.push('Immunity & Respiratory');
+  }
+
+  // Pediatric & Kids
+  if (combined.includes('kid') || combined.includes('child') || combined.includes('gummy') || combined.includes('baby') || cleanTitle.toLowerCase().includes('kids')) {
+    tags.push('Pediatric');
+  }
+
+  // Oral Care
+  if (combined.includes('tooth') || combined.includes('dental') || combined.includes('mouthwash') || combined.includes('floss')) {
+    tags.push('Oral Care');
+  }
+
+  // Pain Relief & Plaster
+  if (combined.includes('plaster') || combined.includes('patch') || combined.includes('pain relief') || combined.includes('muscular pain')) {
+    tags.push('Pain Relief & Plaster');
+  }
+
+  // Nutrition & Specialty Milk (ONLY if truly milk or meal replacement formula!)
+  if (combined.includes('goat milk') || combined.includes('formula milk') || combined.includes('colostrum milk') || combined.includes('alpha gold') || combined.includes('flexsure gold') || combined.includes('kidsgrow') || combined.includes('meal replacement') || (combined.includes('milk') && !combined.includes('milk thistle'))) {
+    tags.push('Nutrition & Specialty Milk');
+  }
+
+  return tags.length > 0 ? tags : ['General Health'];
 }
 
 if (require.main === module) {
