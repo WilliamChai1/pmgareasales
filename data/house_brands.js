@@ -1,4 +1,4 @@
-// Auto-generated PMG House Brand Catalog from Jase Healthcare (2026-09-27T09:20:37.081Z)
+// Auto-generated PMG House Brand Catalog from Jase Healthcare (2026-09-28T04:22:00.866Z)
 window.PMG_HOUSE_BRANDS_CATALOG = [
   {
     "id": 1580,
