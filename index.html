@@ -161,42 +161,6 @@
     </div>
   </div>
 
-  <!-- AREA MANAGER OVERVIEW -->
-  <div id="areaManagerControls" class="card" style="display:none; background: #ffebee; border: 1px solid #ef5350;">
-    <h3 style="margin-top:0; color: #c62828;">🌐 Area Manager Overview</h3>
-
-    <!-- PENDING REGISTRATIONS APPROVAL SECTION -->
-    <div id="pendingApprovalsSection" style="display:none; background: #fffde7; border: 1px solid #ffd54f; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span style="font-size: 0.85rem; font-weight: bold; color: #f57f17;">🔔 Pending Teammate Registrations</span>
-        <span id="pendingCountBadge" style="background: #f57f17; color: white; border-radius: 12px; font-size: 0.7rem; font-weight: bold; padding: 2px 8px;">0</span>
-      </div>
-      <div id="pendingUsersList" style="display: flex; flex-direction: column; gap: 8px;"></div>
-    </div>
-    
-    <table id="amOverviewTable" style="width: 100%; margin-bottom: 15px; font-size: 0.8rem; border-collapse: collapse;">
-      <thead>
-        <tr style="border-bottom: 2px solid #ef5350; color: #c62828;">
-          <th style="text-align: left; padding: 5px;">Branch</th>
-          <th style="text-align: right; padding: 5px;">MTD TS</th>
-          <th style="text-align: right; padding: 5px;">MTD HB</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-
-    <div style="margin-bottom: 15px;">
-      <label style="font-size: 0.8rem; font-weight: bold; color: #c62828;">📝 My Personal Reminders (AM Notes):</label>
-      <textarea id="amNoteInput" class="input-field" rows="3" placeholder="Type your notes here..."></textarea>
-      <div style="display: flex; gap: 10px; margin-top: 8px;">
-        <button class="btn" id="saveAmNoteBtn" style="background: #c62828; margin-top: 0;" onclick="saveAmNote()">Save Note</button>
-        <button class="btn btn-copy" style="margin-top: 0;" onclick="copyAMWhatsAppBriefing()">📱 Copy AM Briefing</button>
-      </div>
-    </div>
-
-    <label style="font-size: 0.8rem; font-weight: bold; color: #c62828;">Select Branch to View Details:</label>
-    <select id="branchSelector" class="input-field" onchange="changeBranch()"></select>
-  </div>
 
   <!-- Main Dashboard -->
   <div id="dashboardView">
@@ -293,7 +257,6 @@
           <button id="editActionPlanBtn" class="btn-logout" style="display:none; background: #1976d2;" onclick="openActionPlanModal()">Update Info</button>
         </div>
         <div id="aiRecommendationText" style="margin-top:8px; font-size: 0.8rem;">Loading insights...</div>
-        <button type="button" class="btn" style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); color: white; margin-top: 10px; font-size: 0.78rem; padding: 8px 12px; width: 100%; border-radius: 8px; font-weight: bold;" onclick="openHouseBrandModal()">🌿 Search 220+ House Brand Catalog</button>
       </div>
     </div>
 
@@ -344,6 +307,6 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./app.js?v=24.0"></script>
+  <script src="./app.js?v=25.0"></script>
 </body>
 </html>

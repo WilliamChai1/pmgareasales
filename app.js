@@ -49,9 +49,6 @@ async function executeLogin() {
       selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
       document.getElementById("loginOverlay").style.display = "none";
       
-      const role = (currentUser.position || currentUser.role || '').toLowerCase();
-      document.getElementById("areaManagerControls").style.display = (role === 'area manager') ? "block" : "none";
-      
       loadDashboardData();
     } else {
       const errEl = document.getElementById("loginError");
@@ -204,7 +201,6 @@ function logout() {
   toggleAuthView('login');
   document.getElementById("username").value = "";
   document.getElementById("password").value = "";
-  document.getElementById("areaManagerControls").style.display = "none";
   document.getElementById("personalDashboard").style.display = "none";
   document.getElementById("managerReportsSection").style.display = "none";
   document.getElementById("editActionPlanBtn").style.display = "none";
@@ -218,8 +214,6 @@ function initSession() {
       currentUser = JSON.parse(saved);
       selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
       document.getElementById("loginOverlay").style.display = "none";
-      const role = (currentUser.position || currentUser.role || '').toLowerCase();
-      document.getElementById("areaManagerControls").style.display = (role === 'area manager') ? "block" : "none";
       loadDashboardData();
     }
   } catch (e) {
@@ -250,17 +244,6 @@ async function loadDashboardData() {
       throw new Error(currentData.message);
     }
 
-    const role = (currentUser.position || currentUser.role || '').toLowerCase();
-    if (role === 'area manager' && !selectedBranch) {
-      const selector = document.getElementById("branchSelector");
-      selector.innerHTML = "";
-      currentData.branches.forEach(b => {
-        selector.innerHTML += `<option value="${b}">${b}</option>`;
-      });
-      selectedBranch = currentData.branches[0];
-      return loadDashboardData(); 
-    }
-    
     renderDashboard();
     document.getElementById("lastUpdated").innerText = `🟢 Live Sync • ${new Date().toLocaleTimeString()}`;
   } catch (e) {
@@ -283,13 +266,12 @@ function renderDashboard() {
   const staff = currentData.staff || [];
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
   const role = (currentUser.position || currentUser.role || '').toLowerCase();
-  const isAreaManager = role === 'area manager';
   const isBranchManager = role === 'branch manager' || role === 'assistant branch manager';
   const isPharmacist = role.includes('pharmacist');
-  const canEditActionPlan = isAreaManager || isBranchManager;
-  const canViewReports = isAreaManager || isBranchManager;
-  const canViewStaffPerformance = isAreaManager || isBranchManager || isPharmacist;
-  
+  const canEditActionPlan = isBranchManager;
+  const canViewReports = isBranchManager;
+  const canViewStaffPerformance = isBranchManager || isPharmacist;
+
   // Dynamically populate signup branch list if branches data is available
   const signupBranchSelect = document.getElementById("signupBranch");
   if (signupBranchSelect && currentData.branches && currentData.branches.length > 0) {
@@ -300,93 +282,13 @@ function renderDashboard() {
     }
   }
 
-  // --- AREA MANAGER OVERVIEW TABLE ---
-  if (isAreaManager) {
-    document.getElementById("areaManagerControls").style.display = "block";
-
-    // --- PENDING REGISTRATIONS APPROVAL SECTION ---
-    const pendingSection = document.getElementById("pendingApprovalsSection");
-    const pendingList = document.getElementById("pendingUsersList");
-    const pendingBadge = document.getElementById("pendingCountBadge");
-
-    if (currentData.pendingUsers && currentData.pendingUsers.length > 0) {
-      if (pendingSection) pendingSection.style.display = "block";
-      if (pendingBadge) pendingBadge.innerText = currentData.pendingUsers.length;
-      if (pendingList) {
-        pendingList.innerHTML = "";
-        currentData.pendingUsers.forEach(u => {
-          pendingList.innerHTML += `
-            <div style="background: white; border-radius: 6px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ffe082;">
-              <div>
-                <div style="font-weight: bold; font-size: 0.85rem; color: #333;">${u.name} <span style="font-size:0.7rem; color:#666;">(@${u.username})</span></div>
-                <div style="font-size: 0.72rem; color: #777;">${u.role} · ${u.branch} · ${u.empId || 'No ID'} · ${u.race || ''}</div>
-              </div>
-              <button class="btn" style="width: auto; padding: 5px 12px; margin: 0; font-size: 0.75rem; background: #2e7d32;" onclick="executeApproveUser('${u.username}')">Approve</button>
-            </div>
-          `;
-        });
-      }
-    } else if (pendingSection) {
-      pendingSection.style.display = "none";
-    }
-
-    const amTbody = document.querySelector("#amOverviewTable tbody");
-    amTbody.innerHTML = "";
-    
-    let totalTs = 0;
-    let totalHb = 0;
-    let totalTsTarget = 0;
-    let totalHbTarget = 0;
-
-    currentData.branches.forEach(b => {
-      let bUpper = b.toUpperCase();
-      let bSum = currentData.summary[bUpper] || {};
-      let bTarget = currentData.targets[bUpper] || {};
-      
-      totalTs += (bSum.mtdTs || 0);
-      totalHb += (bSum.mtdHb || 0);
-      totalTsTarget += (bTarget.ts || 0);
-      totalHbTarget += (bTarget.hb || 0);
-      
-      let tsPct = bTarget.ts ? (((bSum.mtdTs || 0) / bTarget.ts) * 100).toFixed(1) : 0;
-      let hbPct = bTarget.hb ? (((bSum.mtdHb || 0) / bTarget.hb) * 100).toFixed(1) : 0;
-      
-      amTbody.innerHTML += `
-        <tr style="border-bottom: 1px solid #ffcdd2;">
-          <td style="text-align: left; padding: 8px 5px; font-weight: bold;">${b}</td>
-          <td style="text-align: right; padding: 8px 5px;">
-            ${formatRM(bSum.mtdTs || 0)}<br>
-            <span style="font-size:0.65rem; color:#666;">(${tsPct}%)</span>
-          </td>
-          <td style="text-align: right; padding: 8px 5px; color: #2e7d32; font-weight: bold;">
-            ${formatRM(bSum.mtdHb || 0)}<br>
-            <span style="font-size:0.65rem; color:#666;">(${hbPct}%)</span>
-          </td>
-        </tr>
-      `;
-    });
-    
-    let overallTsPct = totalTsTarget ? ((totalTs / totalTsTarget) * 100).toFixed(1) : 0;
-    let overallHbPct = totalHbTarget ? ((totalHb / totalHbTarget) * 100).toFixed(1) : 0;
-
-    amTbody.innerHTML += `
-      <tr style="border-top: 2px solid #ef5350; background: #ffebee; font-weight: bold;">
-        <td style="text-align: left; padding: 8px 5px;">TOTAL</td>
-        <td style="text-align: right; padding: 8px 5px;">
-          ${formatRM(totalTs)}<br>
-          <span style="font-size:0.65rem; color:#c62828;">(${overallTsPct}%)</span>
-        </td>
-        <td style="text-align: right; padding: 8px 5px; color: #2e7d32;">
-          ${formatRM(totalHb)}<br>
-          <span style="font-size:0.65rem; color:#2e7d32;">(${overallHbPct}%)</span>
-        </td>
-      </tr>
-    `;
-    
-    document.getElementById("amNoteInput").value = currentData.amNote || "";
-  } else {
-    document.getElementById("areaManagerControls").style.display = "none";
-  }
+  // Detect whether the daily data from the backend matches today's actual date
+  // currentData.currentDay is the day number the GAS last wrote daily data for
+  const todayActual = new Date().getDate();
+  const todayMonth = new Date().getMonth() + 1; // 1-indexed
+  const backendDay = currentData.currentDay || 0;
+  const backendMonth = currentData.currentMonth || todayMonth;
+  const dailyDataIsStale = (backendDay !== todayActual) || (backendMonth !== todayMonth);
 
   document.getElementById("branchNameHeader").innerText = `🏥 ${selectedBranch} Performance`;
   
@@ -395,16 +297,22 @@ function renderDashboard() {
     document.getElementById("personalDashboard").style.display = "block";
     document.getElementById("userNameHeader").innerText = `👤 ${myStats.name} (${myStats.role})`;
     
-    document.getElementById("valTS").innerText = formatRM(myStats.dailyTs);
-    document.getElementById("valHB").innerText = formatRM(myStats.dailyHb);
-    document.getElementById("valHM").innerText = formatRM(myStats.dailyHm);
-    document.getElementById("valCust").innerText = myStats.dailyCust;
+    // Show 0 for daily fields if backend data is from a different day/month
+    const dTs   = dailyDataIsStale ? 0 : (myStats.dailyTs || 0);
+    const dHb   = dailyDataIsStale ? 0 : (myStats.dailyHb || 0);
+    const dHm   = dailyDataIsStale ? 0 : (myStats.dailyHm || 0);
+    const dCust = dailyDataIsStale ? 0 : (myStats.dailyCust || 0);
+
+    document.getElementById("valTS").innerText = formatRM(dTs);
+    document.getElementById("valHB").innerText = formatRM(dHb);
+    document.getElementById("valHM").innerText = formatRM(dHm);
+    document.getElementById("valCust").innerText = dCust;
     
     document.getElementById("valMtdTS").innerText = formatRM(myStats.mtdTs);
     let myHbPct = myStats.mtdTs > 0 ? ((myStats.mtdHb / myStats.mtdTs) * 100).toFixed(1) : 0;
     document.getElementById("valMtdHB").innerText = `${formatRM(myStats.mtdHb)} (${myHbPct}%)`;
     document.getElementById("valMtdHM").innerText = formatRM(myStats.mtdHm);
-    document.getElementById("valMtdCust").innerText = myStats.dailyCust; 
+    document.getElementById("valMtdCust").innerText = myStats.mtdCust || 0;
 
     const daysInMonth = currentData.daysInMonth || 30;
     let fullTsTarget = (myStats.targetTs || 0) * daysInMonth;
@@ -421,7 +329,7 @@ function renderDashboard() {
       • HM Target Left: <b>${formatRM(hmRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullHmTarget)})</span>
     `;
 
-    let dailyComm = myStats.dailyHb * 0.035;
+    let dailyComm = dHb * 0.035;
     let mtdComm = myStats.mtdHb * 0.035;
     document.getElementById("valDailyCommission").innerText = `RM ${dailyComm.toFixed(2)}`;
     document.getElementById("valMtdCommission").innerText = `RM ${mtdComm.toFixed(2)}`;
@@ -477,13 +385,18 @@ function renderDashboard() {
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
   staff.forEach(s => {
+    // Show 0 for daily fields if backend data is stale (wrong day or wrong month)
+    const sDts   = dailyDataIsStale ? 0 : (s.dailyTs || 0);
+    const sDhb   = dailyDataIsStale ? 0 : (s.dailyHb || 0);
+    const sDhm   = dailyDataIsStale ? 0 : (s.dailyHm || 0);
+    const sDcust = dailyDataIsStale ? 0 : (s.dailyCust || 0);
     tbody.innerHTML += `
       <tr>
         <td><b>${s.name}</b><br><span style="font-size:0.65rem; color:#666;">${s.role}</span></td>
-        <td>RM ${Number(s.dailyTs).toLocaleString()}</td>
-        <td>RM ${Number(s.dailyHb).toLocaleString()}</td>
-        <td>RM ${Number(s.dailyHm).toLocaleString()}</td>
-        <td>${s.dailyCust}</td>
+        <td>RM ${Number(sDts).toLocaleString()}</td>
+        <td>RM ${Number(sDhb).toLocaleString()}</td>
+        <td>RM ${Number(sDhm).toLocaleString()}</td>
+        <td>${sDcust}</td>
       </tr>
     `;
   });
@@ -1109,13 +1022,43 @@ function openReportModal(type) {
   const staff = currentData.staff || [];
   const ap = currentData.actionPlan || {};
   
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const today = new Date();
+  const todayDay = today.getDate();
+  const todayMonth = today.getMonth(); // 0-indexed
+
   const formatShortDate = (dateString) => {
     const d = new Date(dateString);
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     return d.getDate() + "-" + months[d.getMonth()];
   };
 
-  let reportDate = historyData.length > 0 ? formatShortDate(historyData[historyData.length-1].date).toUpperCase() + "-2026" : new Date().toLocaleDateString();
+  // Always build the report date from the actual current date (not backend data)
+  const reportDateDisplay = `${todayDay}-${months[todayMonth].toUpperCase()}-${today.getFullYear()}`;
+
+  // Build 7-day columns based on the actual current date so the report always
+  // reflects the current month's days rather than stale backend history dates.
+  const build7DayColumns = () => {
+    const cols = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(todayDay - i);
+      // Find matching history entry by day-of-month
+      const dayNum = d.getDate();
+      const monthNum = d.getMonth();
+      const matched = historyData.find(h => {
+        const hd = new Date(h.date);
+        return hd.getDate() === dayNum && hd.getMonth() === monthNum;
+      });
+      cols.push({
+        label: `${dayNum}-${months[monthNum]}`,
+        isLast: i === 0,
+        data: matched || { ts: 0, hb: 0, hm: 0, cust: 0, pmgApp: 0 }
+      });
+    }
+    return cols;
+  };
+
+  const sevenDayCols = build7DayColumns();
 
   if (type === 'director') {
     let tsGap = summary.mtdTs - targets.ts;
@@ -1135,7 +1078,7 @@ function openReportModal(type) {
 
     let html = `
     <div class="excel-report" id="captureArea" style="min-width: 860px; width: max-content;">
-      <div class="excel-title">PMG PHARMACY ${selectedBranch.toUpperCase()} - DIRECTORS' DAILY SALES REPORT (${reportDate})</div>
+      <div class="excel-title">PMG PHARMACY ${selectedBranch.toUpperCase()} - DIRECTORS' DAILY SALES REPORT (${reportDateDisplay})</div>
       
       <div class="excel-grid">
         <div class="excel-col-left">
@@ -1150,7 +1093,7 @@ function openReportModal(type) {
           </table>
 
           <table class="excel-table" style="margin-top:10px;">
-            <tr class="header-yellow"><th colspan="4">From 1st to ${reportDate}</th></tr>
+            <tr class="header-yellow"><th colspan="4">From 1st to ${reportDateDisplay}</th></tr>
             <tr class="header-yellow"><th></th><th>MTD Sales</th><th>Last Year Sales</th><th>Target</th></tr>
             <tr><td><b>Total</b></td><td>${formatRM(summary.mtdTs)}</td><td>${formatRM(summary.lyMtd)}</td><td>${formatRM(targets.ts)}</td></tr>
             <tr><td>HB</td><td>${formatRM(summary.mtdHb)}</td><td>${formatRM(summary.lyMtdHb || 0)}</td><td>${formatRM(targets.hb)}</td></tr>
@@ -1159,7 +1102,7 @@ function openReportModal(type) {
           </table>
 
           <div class="action-plan-box">
-            <b>Action Plan (${new Date().toLocaleString('default', { month: 'short' })}):</b><br>
+            <b>Action Plan (${months[todayMonth]}):</b><br>
             <b>Week 1:</b> ${ap.w1 || '-'}<br>
             <b>Week 2:</b> ${ap.w2 || '-'}<br>
             <b>Week 3:</b> ${ap.w3 || '-'}<br>
@@ -1171,18 +1114,18 @@ function openReportModal(type) {
           <table class="excel-table">
             <tr class="header-blue">
               <th>Metric</th>
-              ${historyData.map((h, i) => `<th class="${i === historyData.length-1 ? 'header-orange' : ''}">${formatShortDate(h.date)}${i === historyData.length-1 ? ' *' : ''}</th>`).join('')}
+              ${sevenDayCols.map(c => `<th class="${c.isLast ? 'header-orange' : ''}">${c.label}${c.isLast ? ' *' : ''}</th>`).join('')}
             </tr>
-            <tr><td><b>Total Sales</b></td>${historyData.map(h => `<td>${formatRM(h.ts)}</td>`).join('')}</tr>
-            <tr><td><b>HB</b></td>${historyData.map(h => `<td>${formatRM(h.hb)}</td>`).join('')}</tr>
-            <tr><td><b>HB%</b></td>${historyData.map(h => `<td>${h.ts > 0 ? ((h.hb/h.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
-            <tr><td><b>HM</b></td>${historyData.map(h => `<td>${formatRM(h.hm)}</td>`).join('')}</tr>
-            <tr><td><b>HM%</b></td>${historyData.map(h => `<td>${h.ts > 0 ? ((h.hm/h.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
-            <tr><td><b>No. of tranx</b></td>${historyData.map(h => `<td>${h.cust}</td>`).join('')}</tr>
-            <tr><td><b>Total Sales BS</b></td>${historyData.map(h => `<td>${h.cust > 0 ? formatRM(h.ts/h.cust) : 0}</td>`).join('')}</tr>
-            <tr><td><b>HB BS</b></td>${historyData.map(h => `<td>${h.cust > 0 ? formatRM(h.hb/h.cust) : 0}</td>`).join('')}</tr>
-            <tr><td><b>PMG APP</b></td>${historyData.map(h => `<td>${h.pmgApp || 0}</td>`).join('')}</tr>
-            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${historyData.map(h => `<td style="font-size:0.65rem; white-space:normal; text-align:left; max-width:130px; word-wrap:break-word;">${getConstructiveComment(h.ts, h.hb)}</td>`).join('')}</tr>
+            <tr><td><b>Total Sales</b></td>${sevenDayCols.map(c => `<td>${formatRM(c.data.ts)}</td>`).join('')}</tr>
+            <tr><td><b>HB</b></td>${sevenDayCols.map(c => `<td>${formatRM(c.data.hb)}</td>`).join('')}</tr>
+            <tr><td><b>HB%</b></td>${sevenDayCols.map(c => `<td>${c.data.ts > 0 ? ((c.data.hb/c.data.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
+            <tr><td><b>HM</b></td>${sevenDayCols.map(c => `<td>${formatRM(c.data.hm)}</td>`).join('')}</tr>
+            <tr><td><b>HM%</b></td>${sevenDayCols.map(c => `<td>${c.data.ts > 0 ? ((c.data.hm/c.data.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
+            <tr><td><b>No. of tranx</b></td>${sevenDayCols.map(c => `<td>${c.data.cust}</td>`).join('')}</tr>
+            <tr><td><b>Total Sales BS</b></td>${sevenDayCols.map(c => `<td>${c.data.cust > 0 ? formatRM(c.data.ts/c.data.cust) : 0}</td>`).join('')}</tr>
+            <tr><td><b>HB BS</b></td>${sevenDayCols.map(c => `<td>${c.data.cust > 0 ? formatRM(c.data.hb/c.data.cust) : 0}</td>`).join('')}</tr>
+            <tr><td><b>PMG APP</b></td>${sevenDayCols.map(c => `<td>${c.data.pmgApp || 0}</td>`).join('')}</tr>
+            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${sevenDayCols.map(c => `<td style="font-size:0.65rem; white-space:normal; text-align:left; max-width:130px; word-wrap:break-word;">${getConstructiveComment(c.data.ts, c.data.hb)}</td>`).join('')}</tr>
           </table>
         </div>
       </div>
@@ -1190,9 +1133,12 @@ function openReportModal(type) {
     content.innerHTML = html;
   } 
   else if (type === 'teammates') {
+    // Use actual calendar day for gap calculation — not backend currentDay which may be stale
+    const effectiveDay = todayDay;
+
     let html = `
     <div class="excel-report" id="captureArea" style="min-width: 840px; width: max-content;">
-      <div class="excel-title">PMG ${selectedBranch.toUpperCase()} - TEAMMATE PERFORMANCE & TARGET GAP (${reportDate} MTD)</div>
+      <div class="excel-title">PMG ${selectedBranch.toUpperCase()} - TEAMMATE PERFORMANCE & TARGET GAP (${reportDateDisplay} MTD)</div>
       <table class="excel-table">
         <tr class="header-red">
           <th>Teammate Name</th>
@@ -1208,11 +1154,11 @@ function openReportModal(type) {
     let totalCust=0, totalTs=0, totalHb=0, totalHm=0, totalTsGap=0, totalHbGap=0;
 
     staff.forEach(s => {
-      let tsGap = s.mtdTs - (s.targetTs * currentData.currentDay);
-      let hbGap = s.mtdHb - (s.targetHb * currentData.currentDay);
+      let tsGap = s.mtdTs - (s.targetTs * effectiveDay);
+      let hbGap = s.mtdHb - (s.targetHb * effectiveDay);
       let hbPct = s.mtdTs > 0 ? ((s.mtdHb / s.mtdTs) * 100).toFixed(1) : 0;
       
-      totalCust += s.mtdCust || 0;   // MTD total transactions
+      totalCust += s.mtdCust || 0;
       totalTs += s.mtdTs; totalHb += s.mtdHb; totalHm += s.mtdHm;
       totalTsGap += tsGap; totalHbGap += hbGap;
 
