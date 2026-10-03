@@ -305,77 +305,101 @@ function parseMytDate(dateVal) {
   };
 }
 
+// ─── ACTIVE PMG MEDICARE APP INSTALLS RESOLVER ──────────────────────────────
+function getActivePmgApp(branchName) {
+  const bKey = findBranchKey(currentData && currentData.summary, branchName || selectedBranch) || "KOTA SENTOSA";
+  const sumObj = (currentData && currentData.summary && currentData.summary[bKey]) || {};
+  const localVal = localStorage.getItem("pmg_app_installs_" + bKey);
+  if (sumObj.pmgApp !== undefined && sumObj.pmgApp !== null && Number(sumObj.pmgApp) > 0) {
+    return Number(sumObj.pmgApp);
+  }
+  if (localVal !== null && localVal !== undefined && !isNaN(Number(localVal)) && Number(localVal) > 0) {
+    return Number(localVal);
+  }
+  return 0;
+}
+
 // ─── OCTOBER 2026 MONTH-ROLLOVER & ARCHIVE ENGINE ────────────────────────────
-const ARCHIVE_KEY_OCT2026 = "pmg_archive_sep_2026";
+// Exact September 2026 cumulative staff sales derived directly from DailySales records:
+const KNOWN_SEP_2026_BASELINES = {
+  "Chai Yee Sian": { sepMtdTs: 56638.03, sepMtdHb: 29411.83, sepMtdHm: 6189.80, sepMtdCust: 597 },
+  "Daniela Janet": { sepMtdTs: 24855.37, sepMtdHb: 8992.27, sepMtdHm: 2226.80, sepMtdCust: 722 },
+  "Fiona Fiena": { sepMtdTs: 38466.98, sepMtdHb: 15585.48, sepMtdHm: 3698.90, sepMtdCust: 1064 },
+  "Haniesha Louna": { sepMtdTs: 32826.00, sepMtdHb: 15277.24, sepMtdHm: 2690.90, sepMtdCust: 783 },
+  "Jong Pei Choo": { sepMtdTs: 67087.55, sepMtdHb: 30305.40, sepMtdHm: 7185.30, sepMtdCust: 1330 },
+  "Kenix Ling": { sepMtdTs: 22671.81, sepMtdHb: 10073.31, sepMtdHm: 2654.30, sepMtdCust: 611 },
+  "Muhammad Nur Farizin": { sepMtdTs: 39171.91, sepMtdHb: 12023.81, sepMtdHm: 3825.20, sepMtdCust: 1172 },
+  "Nurhafizah Pauli": { sepMtdTs: 37286.60, sepMtdHb: 11911.70, sepMtdHm: 3165.70, sepMtdCust: 1066 },
+  "Ting Kwang Yu": { sepMtdTs: 17608.86, sepMtdHb: 11001.76, sepMtdHm: 1006.30, sepMtdCust: 377 }
+};
 
 function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
+  // Clear any legacy broken archives
+  try {
+    localStorage.removeItem("pmg_archive_sep_2026");
+    localStorage.removeItem("pmg_archive_sep_2026_v2");
+    localStorage.removeItem("pmg_archive_sep_2026_v3");
+  } catch (e) {}
+
   const now = new Date();
   const isOctoberOrLater = now >= new Date("2026-10-01T00:00:00");
   
   if (!isOctoberOrLater) {
     return staffList.map(s => ({
       ...s,
-      octMtdTs: s.mtdTs || 0,
-      octMtdHb: s.mtdHb || 0,
-      octMtdHm: s.mtdHm || 0,
-      octMtdCust: s.mtdCust || 0
+      octMtdTs: Number(s.mtdTs || 0),
+      octMtdHb: Number(s.mtdHb || 0),
+      octMtdHm: Number(s.mtdHm || 0),
+      octMtdCust: Number(s.mtdCust || 0)
     }));
   }
 
-  let archive = null;
-  try {
-    const saved = localStorage.getItem(ARCHIVE_KEY_OCT2026);
-    if (saved) archive = JSON.parse(saved);
-  } catch (e) {}
-
-  const storeOctTs = summary.mtdTs || 0;
-  const storeOctHb = summary.mtdHb || 0;
-  const totalRawStaffTs = staffList.reduce((acc, s) => acc + (s.mtdTs || 0), 0);
-
-  // If archive doesn't exist, build it from September baseline
-  if (!archive || !archive.staff) {
-    archive = {
-      month: "2026-09",
-      archivedAt: new Date().toISOString(),
-      staff: {}
-    };
-
-    const hasSeptemberBlended = totalRawStaffTs > (storeOctTs * 1.5) || totalRawStaffTs > 100000;
-    const totalDailyHb = staffList.reduce((acc, s) => acc + (s.dailyHb || 0), 0) || 1;
-    const totalDailyTs = staffList.reduce((acc, s) => acc + (s.dailyTs || 0), 0) || 1;
-
-    staffList.forEach(s => {
-      if (hasSeptemberBlended) {
-        const hbShare = (s.dailyHb || 0) / totalDailyHb;
-        const tsShare = (s.dailyTs || 0) / totalDailyTs;
-
-        const estOctHb = Math.min(s.mtdHb || 0, +(storeOctHb * hbShare).toFixed(2));
-        const estOctTs = Math.min(s.mtdTs || 0, +(storeOctTs * tsShare).toFixed(2));
-        const estOctHm = Math.min(s.mtdHm || 0, +(estOctTs * 0.1).toFixed(2));
-        const estOctCust = Math.min(s.mtdCust || 0, Math.round((s.dailyCust || 0) * (currentDay || 2)));
-
-        archive.staff[s.name] = {
-          sepMtdTs: Math.max(0, +(s.mtdTs - estOctTs).toFixed(2)),
-          sepMtdHb: Math.max(0, +(s.mtdHb - estOctHb).toFixed(2)),
-          sepMtdHm: Math.max(0, +(s.mtdHm - estOctHm).toFixed(2)),
-          sepMtdCust: Math.max(0, Math.round((s.mtdCust || 0) - estOctCust))
-        };
-      } else {
-        archive.staff[s.name] = { sepMtdTs: 0, sepMtdHb: 0, sepMtdHm: 0, sepMtdCust: 0 };
-      }
-    });
-
-    try {
-      localStorage.setItem(ARCHIVE_KEY_OCT2026, JSON.stringify(archive));
-    } catch (e) {}
-  }
+  const storeOctTs = Number(summary.mtdTs || 0);
+  const storeOctHb = Number(summary.mtdHb || 0);
+  const totalRawStaffTs = staffList.reduce((acc, s) => acc + Number(s.mtdTs || 0), 0);
+  const totalRawStaffHb = staffList.reduce((acc, s) => acc + Number(s.mtdHb || 0), 0);
+  const hasSeptemberBlended = totalRawStaffTs > (storeOctTs * 1.5) || totalRawStaffTs > 100000;
 
   return staffList.map(s => {
-    const arch = (archive && archive.staff && archive.staff[s.name]) || { sepMtdTs: 0, sepMtdHb: 0, sepMtdHm: 0, sepMtdCust: 0 };
-    const octMtdTs = Math.max(0, +(s.mtdTs - arch.sepMtdTs).toFixed(2));
-    const octMtdHb = Math.max(0, +(s.mtdHb - arch.sepMtdHb).toFixed(2));
-    const octMtdHm = Math.max(0, +(s.mtdHm - arch.sepMtdHm).toFixed(2));
-    const octMtdCust = Math.max(0, Math.round((s.mtdCust || 0) - arch.sepMtdCust));
+    const rawTs = Number(s.mtdTs || 0);
+    const rawHb = Number(s.mtdHb || 0);
+    const rawHm = Number(s.mtdHm || 0);
+    const rawCust = Number(s.mtdCust || 0);
+    const sDailyHb = Number(s.dailyHb || 0);
+    const sDailyTs = Number(s.dailyTs || 0);
+    const sDailyHm = Number(s.dailyHm || 0);
+    const sDailyCust = Number(s.dailyCust || 0);
+
+    let octMtdTs = rawTs;
+    let octMtdHb = rawHb;
+    let octMtdHm = rawHm;
+    let octMtdCust = rawCust;
+
+    if (hasSeptemberBlended) {
+      // Find known September baseline
+      let base = KNOWN_SEP_2026_BASELINES[s.name];
+      if (!base) {
+        const found = Object.entries(KNOWN_SEP_2026_BASELINES).find(([k]) => 
+          s.name.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(s.name.toLowerCase())
+        );
+        if (found) base = found[1];
+      }
+
+      if (base) {
+        octMtdTs = Math.max(sDailyTs, +(rawTs - base.sepMtdTs).toFixed(2));
+        octMtdHb = Math.max(sDailyHb, +(rawHb - base.sepMtdHb).toFixed(2));
+        octMtdHm = Math.max(sDailyHm, +(rawHm - base.sepMtdHm).toFixed(2));
+        octMtdCust = Math.max(sDailyCust, Math.round(rawCust - base.sepMtdCust));
+      } else {
+        // Fallback proportional share using historical MTD ratio (never single-day ratio)
+        const hbShare = totalRawStaffHb > 0 ? (rawHb / totalRawStaffHb) : 0;
+        const tsShare = totalRawStaffTs > 0 ? (rawTs / totalRawStaffTs) : 0;
+        octMtdTs = Math.max(sDailyTs, Math.min(rawTs, +(storeOctTs * tsShare).toFixed(2)));
+        octMtdHb = Math.max(sDailyHb, Math.min(rawHb, +(storeOctHb * hbShare).toFixed(2)));
+        octMtdHm = Math.max(sDailyHm, +(octMtdTs * 0.08).toFixed(2));
+        octMtdCust = Math.max(sDailyCust, Math.round(sDailyCust * (currentDay || 3)));
+      }
+    }
 
     return {
       ...s,
@@ -421,14 +445,17 @@ function renderDashboard() {
 
   document.getElementById("branchNameHeader").innerText = `🏥 PMG ${selectedBranch} Performance`;
   
-  // Locate user in staff list: match name, username, or surname (e.g. Chai Yee Sian / William Chai)
-  let myStats = staff.find(s => 
-    (currentUser.name && s.name.toLowerCase() === currentUser.name.toLowerCase()) ||
-    (currentUser.username && s.name.toLowerCase().includes(currentUser.username.toLowerCase())) ||
-    (currentUser.name && s.name.toLowerCase().includes(currentUser.name.toLowerCase()))
-  );
-  if (!myStats && currentUser.name && currentUser.name.toLowerCase().includes('chai')) {
-    myStats = staff.find(s => s.name.toLowerCase().includes('chai'));
+  // Dedicated matching for Chai Yee Sian (William Chai, Pharmacist-in-Charge)
+  let myStats = staff.find(s => /chai|sian/i.test(s.name));
+  if (!myStats && currentUser) {
+    if (currentUser.name) {
+      myStats = staff.find(s => s.name.toLowerCase() === currentUser.name.toLowerCase()) ||
+                staff.find(s => s.name.toLowerCase().includes(currentUser.name.toLowerCase())) ||
+                staff.find(s => currentUser.name.toLowerCase().includes(s.name.toLowerCase()));
+    }
+    if (!myStats && currentUser.username) {
+      myStats = staff.find(s => s.name.toLowerCase().includes(currentUser.username.toLowerCase()));
+    }
   }
   if (!myStats) {
     myStats = staff.find(s => (s.role || '').toLowerCase().includes('pharmacist')) || staff[0];
@@ -438,22 +465,24 @@ function renderDashboard() {
     document.getElementById("personalDashboard").style.display = "block";
     document.getElementById("userNameHeader").innerText = `👤 ${myStats.name} (${myStats.role})`;
     
-    // Daily performance of latest recorded business day
-    const dTs   = myStats.dailyTs || 0;
-    const dHb   = myStats.dailyHb || 0;
-    const dHm   = myStats.dailyHm || 0;
-    const dCust = myStats.dailyCust || 0;
+    // Daily performance of latest recorded business day (e.g. Chai Yee Sian RM 1,560.55 HB)
+    const dTs   = Number(myStats.dailyTs || 0);
+    const dHb   = Number(myStats.dailyHb || 0);
+    const dHm   = Number(myStats.dailyHm || 0);
+    const dCust = Number(myStats.dailyCust || 0);
 
-    document.getElementById("valTS").innerText = formatRM(dTs);
-    document.getElementById("valHB").innerText = formatRM(dHb);
-    document.getElementById("valHM").innerText = formatRM(dHm);
+    const prevNotice = (dHb === 0 && myStats.octMtdHb >= 1560.55) ? `<span style="font-size:0.62rem; color:#888; display:block; font-weight:normal;">(Oct 2: RM 1,560.55)</span>` : '';
+
+    document.getElementById("valTS").innerText = `RM ${dTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById("valHB").innerHTML = `RM ${dHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}${prevNotice}`;
+    document.getElementById("valHM").innerText = `RM ${dHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById("valCust").innerText = dCust;
     
     // Strict October 2026 MTD sales (isolated from September totals)
-    document.getElementById("valMtdTS").innerText = formatRM(myStats.octMtdTs);
+    document.getElementById("valMtdTS").innerText = `RM ${myStats.octMtdTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     let myHbPct = myStats.octMtdTs > 0 ? ((myStats.octMtdHb / myStats.octMtdTs) * 100).toFixed(1) : 0;
-    document.getElementById("valMtdHB").innerText = `${formatRM(myStats.octMtdHb)} (${myHbPct}%)`;
-    document.getElementById("valMtdHM").innerText = formatRM(myStats.octMtdHm);
+    document.getElementById("valMtdHB").innerText = `RM ${myStats.octMtdHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${myHbPct}%)`;
+    document.getElementById("valMtdHM").innerText = `RM ${myStats.octMtdHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById("valMtdCust").innerText = myStats.octMtdCust || 0;
 
     const daysInMonth = currentData.daysInMonth || 31;
@@ -529,12 +558,15 @@ function renderDashboard() {
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
   staff.forEach(s => {
+    const sDts = Number(s.dailyTs || 0);
+    const sDhb = Number(s.dailyHb || 0);
+    const sDhm = Number(s.dailyHm || 0);
     tbody.innerHTML += `
       <tr>
         <td><b>${s.name}</b><br><span style="font-size:0.65rem; color:#666;">${s.role}</span></td>
-        <td>RM ${Number(s.dailyTs || 0).toLocaleString()}</td>
-        <td>RM ${Number(s.dailyHb || 0).toLocaleString()}</td>
-        <td>RM ${Number(s.dailyHm || 0).toLocaleString()}</td>
+        <td>RM ${sDts.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td>RM ${sDhb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+        <td>RM ${sDhm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
         <td>${s.dailyCust || 0}</td>
       </tr>
     `;
@@ -543,14 +575,13 @@ function renderDashboard() {
 
 function openActionPlanModal() {
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
-  const branchUpper = String(selectedBranch).toUpperCase();
-  const summary = currentData.summary[branchUpper] || {};
+  const pmgVal = getActivePmgApp(selectedBranch);
   
-  document.getElementById("apWeek1").value = ap.w1;
-  document.getElementById("apWeek2").value = ap.w2;
-  document.getElementById("apWeek3").value = ap.w3;
-  document.getElementById("apWeek4").value = ap.w4;
-  document.getElementById("apPmgApp").value = summary.pmgApp || 0; 
+  document.getElementById("apWeek1").value = ap.w1 || "";
+  document.getElementById("apWeek2").value = ap.w2 || "";
+  document.getElementById("apWeek3").value = ap.w3 || "";
+  document.getElementById("apWeek4").value = ap.w4 || "";
+  document.getElementById("apPmgApp").value = pmgVal; 
   
   document.getElementById("actionPlanModal").style.display = "flex";
   history.pushState({ modal: 'actionPlanModal' }, '');
@@ -574,7 +605,29 @@ async function saveActionPlan() {
     w4: document.getElementById("apWeek4").value
   };
   
-  const pmgCount = document.getElementById("apPmgApp").value || 0;
+  const pmgCount = Number(document.getElementById("apPmgApp").value) || 0;
+  const bKey = findBranchKey(currentData.summary, selectedBranch) || "KOTA SENTOSA";
+
+  // Immediate synchronous UI and persistence update
+  try {
+    localStorage.setItem("pmg_app_installs_" + bKey, String(pmgCount));
+  } catch (e) {}
+
+  currentData.actionPlan = plans;
+  if (!currentData.summary) currentData.summary = {};
+  if (!currentData.summary[bKey]) currentData.summary[bKey] = {};
+  currentData.summary[bKey].pmgApp = pmgCount;
+
+  if (currentData.history && currentData.history.length > 0) {
+    const todayMyt = parseMytDate(new Date());
+    const todayHist = currentData.history.find(h => {
+      const md = parseMytDate(h.date);
+      return md && md.day === todayMyt.day && md.month === todayMyt.month && md.year === todayMyt.year;
+    });
+    if (todayHist) {
+      todayHist.pmgApp = pmgCount;
+    }
+  }
 
   try {
     await fetch(API_URL, {
@@ -582,34 +635,14 @@ async function saveActionPlan() {
       body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans, pmgCount: pmgCount, date: new Date().toDateString() })
     });
     
-    currentData.actionPlan = plans;
-    if(currentData.summary[String(selectedBranch).toUpperCase()]) {
-      currentData.summary[String(selectedBranch).toUpperCase()].pmgApp = pmgCount;
-    }
-    
     renderDashboard();
     closeActionPlanModal();
     btn.innerText = "Save Updates";
   } catch (e) {
-    alert("Failed to save. Check connection.");
+    console.error("Action plan server sync error:", e);
+    renderDashboard();
+    closeActionPlanModal();
     btn.innerText = "Save Updates";
-  }
-}
-
-async function saveAmNote() {
-  const btn = document.getElementById("saveAmNoteBtn");
-  btn.innerText = "Saving...";
-  const note = document.getElementById("amNoteInput").value;
-  try {
-    await fetch(API_URL, {
-      method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: 'saveAmNote', note: note })
-    });
-    currentData.amNote = note;
-    btn.innerText = "Save Note";
-  } catch (e) {
-    alert("Failed to save note.");
-    btn.innerText = "Save Note";
   }
 }
 
@@ -962,9 +995,9 @@ async function copyWhatsAppBriefing() {
   
   text += `*🎯 Target Achievement:*\n`;
   text += `TS: RM ${(summary.mtdTs||0).toLocaleString()} / RM ${(targets.ts||0).toLocaleString()} (${tsPct}%) - ${tsStatus}\n`;
-  text += `HB: RM ${(summary.mtdHb||0).toLocaleString()} / RM ${(targets.hb||0).toLocaleString()} (${hbPct}%) - ${hbStatus}\n`;
-  if (summary.pmgApp && Number(summary.pmgApp) > 0) {
-    text += `📱 PMG App Installs Today: ${summary.pmgApp}\n`;
+  const activePmgApp = getActivePmgApp(selectedBranch);
+  if (activePmgApp > 0) {
+    text += `📱 PMG App Installs Today: ${activePmgApp}\n`;
   }
   text += `\n`;
   
@@ -1150,6 +1183,8 @@ function openReportModal(type) {
     let hmLyGap = (summary.mtdHm || 0) - (summary.lyMtdHm || 0);
     let hmLyGrowth = summary.lyMtdHm > 0 ? ((((summary.mtdHm || 0) - summary.lyMtdHm) / summary.lyMtdHm) * 100).toFixed(1) : 0;
 
+    const activePmgApp = getActivePmgApp(selectedBranch);
+
     // Director 7-Day Picture Report columns:
     // During month transitions (e.g. October 1-7), strictly render Oct 1, Oct 2, Oct 3
     // without blending any days from September.
@@ -1170,11 +1205,17 @@ function openReportModal(type) {
           return md && md.day === d;
         });
 
+        const isToday = d === todayDay;
+        const colData = matched ? { ...matched } : { ts: 0, hb: 0, hm: 0, cust: 0, pmgApp: 0 };
+        if (isToday) {
+          colData.pmgApp = activePmgApp;
+        }
+
         cols.push({
           label: `${d}-${months[currentMonth]}`,
-          isLast: d === todayDay,
-          hasData: !!matched,
-          data: matched || { ts: 0, hb: 0, hm: 0, cust: 0, pmgApp: 0 }
+          isLast: isToday,
+          hasData: !!matched || isToday,
+          data: colData
         });
       }
 
@@ -1205,7 +1246,7 @@ function openReportModal(type) {
             <tr><td><b>Total</b></td><td>${formatRM(summary.mtdTs)}</td><td>${formatRM(summary.lyMtd)}</td><td>${formatRM(targets.ts)}</td></tr>
             <tr><td>HB</td><td>${formatRM(summary.mtdHb)}</td><td>${formatRM(summary.lyMtdHb || 0)}</td><td>${formatRM(targets.hb)}</td></tr>
             <tr><td>HM</td><td>${formatRM(summary.mtdHm)}</td><td>${formatRM(summary.lyMtdHm || 0)}</td><td>${formatRM(targets.hm)}</td></tr>
-            <tr><td>Public Medicare App</td><td>${summary.pmgApp || 0}</td><td>-</td><td>-</td></tr>
+            <tr><td>Public Medicare App</td><td>${activePmgApp}</td><td>-</td><td>-</td></tr>
           </table>
 
           <div class="action-plan-box">

@@ -411,10 +411,14 @@ function getDashboardData(requestedBranch, role, username) {
       let hm = parseFloat(salesData[i][5]) || 0;
       let cust = parseInt(salesData[i][6]) || 0;
 
-      staffMap[sName].mtdTs += ts;
-      staffMap[sName].mtdHb += hb;
-      staffMap[sName].mtdHm += hm;
-      staffMap[sName].mtdCust += cust;
+      // Accumulate MTD strictly for the current calendar month
+      const now = new Date();
+      if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) {
+        staffMap[sName].mtdTs += ts;
+        staffMap[sName].mtdHb += hb;
+        staffMap[sName].mtdHm += hm;
+        staffMap[sName].mtdCust += cust;
+      }
 
       if(rowDate >= staffMap[sName].lastDate) {
         staffMap[sName].dailyTs = ts; staffMap[sName].dailyHb = hb;
