@@ -330,7 +330,8 @@ const KNOWN_SEP_2026_BASELINES = {
   "Kenix Ling": { sepMtdTs: 22671.81, sepMtdHb: 10073.31, sepMtdHm: 2654.30, sepMtdCust: 611 },
   "Muhammad Nur Farizin": { sepMtdTs: 39171.91, sepMtdHb: 12023.81, sepMtdHm: 3825.20, sepMtdCust: 1172 },
   "Nurhafizah Pauli": { sepMtdTs: 37286.60, sepMtdHb: 11911.70, sepMtdHm: 3165.70, sepMtdCust: 1066 },
-  "Ting Kwang Yu": { sepMtdTs: 17608.86, sepMtdHb: 11001.76, sepMtdHm: 1006.30, sepMtdCust: 377 }
+  "Ting Kwang Yu": { sepMtdTs: 17608.86, sepMtdHb: 11001.76, sepMtdHm: 1006.30, sepMtdCust: 377 },
+  "Christina Lee Ying Ying": { sepMtdTs: 0, sepMtdHb: 0, sepMtdHm: 0, sepMtdCust: 0 }
 };
 
 function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
