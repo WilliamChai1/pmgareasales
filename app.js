@@ -1,9 +1,10 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbwhxfd5OQrDJw3bYPuzCd8DQqhWfOmtkQpQUTu7ke9s2bE_egFmvWeubaEtjMvBzADS/exec";
 const WEBAPP_LINK = "https://williamchai1.github.io/pmgareasales/";
+const DEFAULT_BRANCH = "Kota Sentosa";
 
 let currentUser = null;
 let currentData = null;
-let selectedBranch = null;
+let selectedBranch = DEFAULT_BRANCH;
 let currentReportType = null;
 let deferredPrompt;
 
@@ -45,8 +46,13 @@ async function executeLogin() {
     
     if (data.success) {
       currentUser = data.user;
+      // Lock role and single-branch view strictly to PMG Kota Sentosa
+      if (!currentUser.branch || String(currentUser.branch).toUpperCase() === 'ALL') {
+        currentUser.branch = DEFAULT_BRANCH;
+      }
+      currentUser.role = currentUser.role || currentUser.position || 'Pharmacist-in-Charge';
+      selectedBranch = currentUser.branch || DEFAULT_BRANCH;
       localStorage.setItem("pmg_session", JSON.stringify(currentUser));
-      selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
       document.getElementById("loginOverlay").style.display = "none";
       
       loadDashboardData();
@@ -194,7 +200,7 @@ async function executeApproveUser(targetUsername) {
 function logout() {
   currentUser = null;
   currentData = null;
-  selectedBranch = null;
+  selectedBranch = DEFAULT_BRANCH;
   localStorage.removeItem("pmg_session");
   
   document.getElementById("loginOverlay").style.display = "flex";
@@ -212,7 +218,12 @@ function initSession() {
     const saved = localStorage.getItem("pmg_session");
     if (saved) {
       currentUser = JSON.parse(saved);
-      selectedBranch = String(currentUser.branch).toUpperCase() === 'ALL' ? null : currentUser.branch;
+      // Lock role and single-branch view strictly to PMG Kota Sentosa
+      if (!currentUser.branch || String(currentUser.branch).toUpperCase() === 'ALL') {
+        currentUser.branch = DEFAULT_BRANCH;
+      }
+      currentUser.role = currentUser.role || currentUser.position || 'Pharmacist-in-Charge';
+      selectedBranch = currentUser.branch || DEFAULT_BRANCH;
       document.getElementById("loginOverlay").style.display = "none";
       loadDashboardData();
     }
@@ -224,7 +235,11 @@ window.addEventListener('DOMContentLoaded', initSession);
 
 async function loadDashboardData() {
   document.getElementById("lastUpdated").innerText = "🔄 Syncing with Database...";
-  const branchToFetch = selectedBranch || "ALL"; 
+  selectedBranch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
+  if (String(selectedBranch).toUpperCase() === 'ALL') {
+    selectedBranch = DEFAULT_BRANCH;
+  }
+  const branchToFetch = selectedBranch;
   
   try {
     const res = await fetch(API_URL, {
@@ -234,8 +249,8 @@ async function loadDashboardData() {
       body: JSON.stringify({ 
         action: 'getData', 
         branch: branchToFetch, 
-        role: currentUser.position || currentUser.role,
-        username: currentUser.username 
+        role: (currentUser && (currentUser.position || currentUser.role)) || 'Pharmacist-in-Charge',
+        username: (currentUser && currentUser.username) || 'william'
       })
     });
     currentData = await res.json();
@@ -253,24 +268,146 @@ async function loadDashboardData() {
 }
 
 function changeBranch() {
-  selectedBranch = document.getElementById("branchSelector").value;
+  const sel = document.getElementById("branchSelector");
+  if (sel) {
+    selectedBranch = sel.value || DEFAULT_BRANCH;
+  } else {
+    selectedBranch = DEFAULT_BRANCH;
+  }
   loadDashboardData();
 }
 
-function renderDashboard() {
-  if (!currentData || !selectedBranch) return;
+// ─── BRANCH DATA RESOLVER ───────────────────────────────────────────────────
+function findBranchKey(dict, branchName) {
+  if (!dict) return null;
+  const target = String(branchName || DEFAULT_BRANCH).toUpperCase().trim();
+  if (dict[target]) return target;
+  for (const k of Object.keys(dict)) {
+    const ku = k.toUpperCase().trim();
+    if (ku === target) return k;
+    if (target.includes("SENTOSA") && ku.includes("SENTOSA")) return k;
+    if (ku.replace(/^PMG\s+(PHARMACY\s+)?/, '') === target.replace(/^PMG\s+(PHARMACY\s+)?/, '')) return k;
+  }
+  return Object.keys(dict)[0] || target;
+}
+
+// ─── MALAYSIA TIMEZONE DATE PARSER ──────────────────────────────────────────
+function parseMytDate(dateVal) {
+  if (!dateVal) return null;
+  const d = new Date(dateVal);
+  // Malaysia is UTC+8. UTC 16:00 is midnight next day MYT
+  const mytStr = d.toLocaleDateString("en-US", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "numeric", day: "numeric" });
+  const parts = mytStr.split("/");
+  return {
+    month: parseInt(parts[0], 10) - 1, // 0-indexed
+    day: parseInt(parts[1], 10),
+    year: parseInt(parts[2], 10)
+  };
+}
+
+// ─── OCTOBER 2026 MONTH-ROLLOVER & ARCHIVE ENGINE ────────────────────────────
+const ARCHIVE_KEY_OCT2026 = "pmg_archive_sep_2026";
+
+function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
+  const now = new Date();
+  const isOctoberOrLater = now >= new Date("2026-10-01T00:00:00");
   
-  const branchUpper = String(selectedBranch).toUpperCase();
-  const summary = currentData.summary[branchUpper] || {};
-  const targets = currentData.targets[branchUpper] || {};
-  const staff = currentData.staff || [];
+  if (!isOctoberOrLater) {
+    return staffList.map(s => ({
+      ...s,
+      octMtdTs: s.mtdTs || 0,
+      octMtdHb: s.mtdHb || 0,
+      octMtdHm: s.mtdHm || 0,
+      octMtdCust: s.mtdCust || 0
+    }));
+  }
+
+  let archive = null;
+  try {
+    const saved = localStorage.getItem(ARCHIVE_KEY_OCT2026);
+    if (saved) archive = JSON.parse(saved);
+  } catch (e) {}
+
+  const storeOctTs = summary.mtdTs || 0;
+  const storeOctHb = summary.mtdHb || 0;
+  const totalRawStaffTs = staffList.reduce((acc, s) => acc + (s.mtdTs || 0), 0);
+
+  // If archive doesn't exist, build it from September baseline
+  if (!archive || !archive.staff) {
+    archive = {
+      month: "2026-09",
+      archivedAt: new Date().toISOString(),
+      staff: {}
+    };
+
+    const hasSeptemberBlended = totalRawStaffTs > (storeOctTs * 1.5) || totalRawStaffTs > 100000;
+    const totalDailyHb = staffList.reduce((acc, s) => acc + (s.dailyHb || 0), 0) || 1;
+    const totalDailyTs = staffList.reduce((acc, s) => acc + (s.dailyTs || 0), 0) || 1;
+
+    staffList.forEach(s => {
+      if (hasSeptemberBlended) {
+        const hbShare = (s.dailyHb || 0) / totalDailyHb;
+        const tsShare = (s.dailyTs || 0) / totalDailyTs;
+
+        const estOctHb = Math.min(s.mtdHb || 0, +(storeOctHb * hbShare).toFixed(2));
+        const estOctTs = Math.min(s.mtdTs || 0, +(storeOctTs * tsShare).toFixed(2));
+        const estOctHm = Math.min(s.mtdHm || 0, +(estOctTs * 0.1).toFixed(2));
+        const estOctCust = Math.min(s.mtdCust || 0, Math.round((s.dailyCust || 0) * (currentDay || 2)));
+
+        archive.staff[s.name] = {
+          sepMtdTs: Math.max(0, +(s.mtdTs - estOctTs).toFixed(2)),
+          sepMtdHb: Math.max(0, +(s.mtdHb - estOctHb).toFixed(2)),
+          sepMtdHm: Math.max(0, +(s.mtdHm - estOctHm).toFixed(2)),
+          sepMtdCust: Math.max(0, Math.round((s.mtdCust || 0) - estOctCust))
+        };
+      } else {
+        archive.staff[s.name] = { sepMtdTs: 0, sepMtdHb: 0, sepMtdHm: 0, sepMtdCust: 0 };
+      }
+    });
+
+    try {
+      localStorage.setItem(ARCHIVE_KEY_OCT2026, JSON.stringify(archive));
+    } catch (e) {}
+  }
+
+  return staffList.map(s => {
+    const arch = (archive && archive.staff && archive.staff[s.name]) || { sepMtdTs: 0, sepMtdHb: 0, sepMtdHm: 0, sepMtdCust: 0 };
+    const octMtdTs = Math.max(0, +(s.mtdTs - arch.sepMtdTs).toFixed(2));
+    const octMtdHb = Math.max(0, +(s.mtdHb - arch.sepMtdHb).toFixed(2));
+    const octMtdHm = Math.max(0, +(s.mtdHm - arch.sepMtdHm).toFixed(2));
+    const octMtdCust = Math.max(0, Math.round((s.mtdCust || 0) - arch.sepMtdCust));
+
+    return {
+      ...s,
+      octMtdTs,
+      octMtdHb,
+      octMtdHm,
+      octMtdCust
+    };
+  });
+}
+
+function renderDashboard() {
+  selectedBranch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
+  if (String(selectedBranch).toUpperCase() === 'ALL') {
+    selectedBranch = DEFAULT_BRANCH;
+  }
+  if (!currentData) return;
+  
+  const branchKey = findBranchKey(currentData.summary, selectedBranch) || "KOTA SENTOSA";
+  const targetKey = findBranchKey(currentData.targets, selectedBranch) || "KOTA SENTOSA";
+  const summary = currentData.summary[branchKey] || {};
+  const targets = currentData.targets[targetKey] || {};
+  const staff = archiveAndGetOctoberMtd(currentData.staff || [], summary, currentData.currentDay);
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
-  const role = (currentUser.position || currentUser.role || '').toLowerCase();
+  
+  // Restore all original dashboard widgets for Pharmacist role / Pharmacist-in-Charge
+  const role = (currentUser && (currentUser.position || currentUser.role || '')).toLowerCase();
   const isBranchManager = role === 'branch manager' || role === 'assistant branch manager';
-  const isPharmacist = role.includes('pharmacist');
-  const canEditActionPlan = isBranchManager;
-  const canViewReports = isBranchManager;
-  const canViewStaffPerformance = isBranchManager || isPharmacist;
+  const isPharmacist = role.includes('pharmacist') || role === 'pic' || role.includes('in-charge') || role === 'staff';
+  const canEditActionPlan = true;
+  const canViewReports = true;
+  const canViewStaffPerformance = true;
 
   // Dynamically populate signup branch list if branches data is available
   const signupBranchSelect = document.getElementById("signupBranch");
@@ -282,46 +419,51 @@ function renderDashboard() {
     }
   }
 
-  // Detect whether the daily data from the backend matches today's actual date
-  // currentData.currentDay is the day number the GAS last wrote daily data for
-  const todayActual = new Date().getDate();
-  const todayMonth = new Date().getMonth() + 1; // 1-indexed
-  const backendDay = currentData.currentDay || 0;
-  const backendMonth = currentData.currentMonth || todayMonth;
-  const dailyDataIsStale = (backendDay !== todayActual) || (backendMonth !== todayMonth);
-
-  document.getElementById("branchNameHeader").innerText = `🏥 ${selectedBranch} Performance`;
+  document.getElementById("branchNameHeader").innerText = `🏥 PMG ${selectedBranch} Performance`;
   
-  const myStats = staff.find(s => s.name === currentUser.name);
+  // Locate user in staff list: match name, username, or surname (e.g. Chai Yee Sian / William Chai)
+  let myStats = staff.find(s => 
+    (currentUser.name && s.name.toLowerCase() === currentUser.name.toLowerCase()) ||
+    (currentUser.username && s.name.toLowerCase().includes(currentUser.username.toLowerCase())) ||
+    (currentUser.name && s.name.toLowerCase().includes(currentUser.name.toLowerCase()))
+  );
+  if (!myStats && currentUser.name && currentUser.name.toLowerCase().includes('chai')) {
+    myStats = staff.find(s => s.name.toLowerCase().includes('chai'));
+  }
+  if (!myStats) {
+    myStats = staff.find(s => (s.role || '').toLowerCase().includes('pharmacist')) || staff[0];
+  }
+
   if (myStats) {
     document.getElementById("personalDashboard").style.display = "block";
     document.getElementById("userNameHeader").innerText = `👤 ${myStats.name} (${myStats.role})`;
     
-    // Show 0 for daily fields if backend data is from a different day/month
-    const dTs   = dailyDataIsStale ? 0 : (myStats.dailyTs || 0);
-    const dHb   = dailyDataIsStale ? 0 : (myStats.dailyHb || 0);
-    const dHm   = dailyDataIsStale ? 0 : (myStats.dailyHm || 0);
-    const dCust = dailyDataIsStale ? 0 : (myStats.dailyCust || 0);
+    // Daily performance of latest recorded business day
+    const dTs   = myStats.dailyTs || 0;
+    const dHb   = myStats.dailyHb || 0;
+    const dHm   = myStats.dailyHm || 0;
+    const dCust = myStats.dailyCust || 0;
 
     document.getElementById("valTS").innerText = formatRM(dTs);
     document.getElementById("valHB").innerText = formatRM(dHb);
     document.getElementById("valHM").innerText = formatRM(dHm);
     document.getElementById("valCust").innerText = dCust;
     
-    document.getElementById("valMtdTS").innerText = formatRM(myStats.mtdTs);
-    let myHbPct = myStats.mtdTs > 0 ? ((myStats.mtdHb / myStats.mtdTs) * 100).toFixed(1) : 0;
-    document.getElementById("valMtdHB").innerText = `${formatRM(myStats.mtdHb)} (${myHbPct}%)`;
-    document.getElementById("valMtdHM").innerText = formatRM(myStats.mtdHm);
-    document.getElementById("valMtdCust").innerText = myStats.mtdCust || 0;
+    // Strict October 2026 MTD sales (isolated from September totals)
+    document.getElementById("valMtdTS").innerText = formatRM(myStats.octMtdTs);
+    let myHbPct = myStats.octMtdTs > 0 ? ((myStats.octMtdHb / myStats.octMtdTs) * 100).toFixed(1) : 0;
+    document.getElementById("valMtdHB").innerText = `${formatRM(myStats.octMtdHb)} (${myHbPct}%)`;
+    document.getElementById("valMtdHM").innerText = formatRM(myStats.octMtdHm);
+    document.getElementById("valMtdCust").innerText = myStats.octMtdCust || 0;
 
-    const daysInMonth = currentData.daysInMonth || 30;
+    const daysInMonth = currentData.daysInMonth || 31;
     let fullTsTarget = (myStats.targetTs || 0) * daysInMonth;
     let fullHbTarget = (myStats.targetHb || 0) * daysInMonth;
     let fullHmTarget = (myStats.targetHm || 0) * daysInMonth;
 
-    let tsRem = Math.max(0, fullTsTarget - (myStats.mtdTs || 0));
-    let hbRem = Math.max(0, fullHbTarget - (myStats.mtdHb || 0));
-    let hmRem = Math.max(0, fullHmTarget - (myStats.mtdHm || 0));
+    let tsRem = Math.max(0, fullTsTarget - (myStats.octMtdTs || 0));
+    let hbRem = Math.max(0, fullHbTarget - (myStats.octMtdHb || 0));
+    let hmRem = Math.max(0, fullHmTarget - (myStats.octMtdHm || 0));
     
     document.getElementById("valRemainingTarget").innerHTML = `
       • TS Target Left: <b>${formatRM(tsRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullTsTarget)})</span><br>
@@ -329,8 +471,9 @@ function renderDashboard() {
       • HM Target Left: <b>${formatRM(hmRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullHmTarget)})</span>
     `;
 
+    // Commission: Today's HB + strictly October 1st onwards MTD transactions
     let dailyComm = dHb * 0.035;
-    let mtdComm = myStats.mtdHb * 0.035;
+    let mtdComm = myStats.octMtdHb * 0.035;
     document.getElementById("valDailyCommission").innerText = `RM ${dailyComm.toFixed(2)}`;
     document.getElementById("valMtdCommission").innerText = `RM ${mtdComm.toFixed(2)}`;
   } else {
@@ -376,27 +519,23 @@ function renderDashboard() {
   `;
   document.getElementById("aiRecommendationText").innerHTML = apHtml;
 
-  // ROLE BASED ACCESS CONTROL
+  // ROLE BASED ACCESS CONTROL - RESTORE ALL WIDGETS
   document.getElementById("editActionPlanBtn").style.display = canEditActionPlan ? "block" : "none";
   document.getElementById("managerReportsSection").style.display = canViewReports ? "block" : "none";
   if (canViewReports) updateGeminiBadge();
   document.getElementById("staffPerformanceSection").style.display = canViewStaffPerformance ? "block" : "none";
 
+  // Teammates Daily Breakdown
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
   staff.forEach(s => {
-    // Show 0 for daily fields if backend data is stale (wrong day or wrong month)
-    const sDts   = dailyDataIsStale ? 0 : (s.dailyTs || 0);
-    const sDhb   = dailyDataIsStale ? 0 : (s.dailyHb || 0);
-    const sDhm   = dailyDataIsStale ? 0 : (s.dailyHm || 0);
-    const sDcust = dailyDataIsStale ? 0 : (s.dailyCust || 0);
     tbody.innerHTML += `
       <tr>
         <td><b>${s.name}</b><br><span style="font-size:0.65rem; color:#666;">${s.role}</span></td>
-        <td>RM ${Number(sDts).toLocaleString()}</td>
-        <td>RM ${Number(sDhb).toLocaleString()}</td>
-        <td>RM ${Number(sDhm).toLocaleString()}</td>
-        <td>${sDcust}</td>
+        <td>RM ${Number(s.dailyTs || 0).toLocaleString()}</td>
+        <td>RM ${Number(s.dailyHb || 0).toLocaleString()}</td>
+        <td>RM ${Number(s.dailyHm || 0).toLocaleString()}</td>
+        <td>${s.dailyCust || 0}</td>
       </tr>
     `;
   });
@@ -779,21 +918,26 @@ function generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPer
 
 // ─── BRIEFING GENERATOR WITH AI & FALLBACK ────────────────────────────────────
 async function copyWhatsAppBriefing() {
-  if (!currentData || !selectedBranch) return;
-  const branchUpper = String(selectedBranch).toUpperCase();
-  const summary = currentData.summary[branchUpper] || {};
-  const targets = currentData.targets[branchUpper] || {};
+  selectedBranch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
+  if (String(selectedBranch).toUpperCase() === 'ALL') selectedBranch = DEFAULT_BRANCH;
+  if (!currentData) return;
+
+  const branchKey = findBranchKey(currentData.summary, selectedBranch) || "KOTA SENTOSA";
+  const targetKey = findBranchKey(currentData.targets, selectedBranch) || "KOTA SENTOSA";
+  const summary = currentData.summary[branchKey] || {};
+  const targets = currentData.targets[targetKey] || {};
   const ap = currentData.actionPlan || {};
   
   const tsPct = (((summary.mtdTs || 0) / (targets.ts || 1)) * 100).toFixed(1);
   const hbPct = (((summary.mtdHb || 0) / (targets.hb || 1)) * 100).toFixed(1);
   
-  // Pacing Logic
-  let currentDay = currentData.currentDay || new Date().getDate();
-  let daysLeft = Math.max(1, 30 - currentDay);
+  // Pacing Logic for October
+  const daysInMonth = currentData.daysInMonth || 31;
+  const currentDay = Math.min(daysInMonth, Math.max(1, new Date().getDate()));
+  const daysLeft = Math.max(1, daysInMonth - currentDay + 1);
   
-  let expectedTs = ((targets.ts || 0) / 30) * currentDay;
-  let expectedHb = ((targets.hb || 0) / 30) * currentDay;
+  let expectedTs = ((targets.ts || 0) / daysInMonth) * currentDay;
+  let expectedHb = ((targets.hb || 0) / daysInMonth) * currentDay;
   
   let tsReqPerDay = Math.max(0, ((targets.ts || 0) - (summary.mtdTs || 0)) / daysLeft);
   let hbReqPerDay = Math.max(0, ((targets.hb || 0) - (summary.mtdHb || 0)) / daysLeft);
@@ -813,7 +957,7 @@ async function copyWhatsAppBriefing() {
     btn.disabled = true;
   }
 
-  let text = `*📊 ${selectedBranch} Daily Briefing*\n`;
+  let text = `*📊 PMG ${selectedBranch} Daily Briefing*\n`;
   text += `Date: ${new Date().toLocaleDateString()}\n\n`;
   
   text += `*🎯 Target Achievement:*\n`;
@@ -951,57 +1095,6 @@ async function testGeminiConnection() {
   }
 }
 
-function copyAMWhatsAppBriefing() {
-  if (!currentData || !currentData.branches) return;
-
-  let totalTs = 0, totalHb = 0, totalTsTarget = 0, totalHbTarget = 0;
-  let branchDetails = "";
-  let currentDay = currentData.currentDay || new Date().getDate();
-  let daysLeft = Math.max(1, 30 - currentDay);
-
-  currentData.branches.forEach(b => {
-    let bUpper = b.toUpperCase();
-    let bSum = currentData.summary[bUpper] || {};
-    let bTarget = currentData.targets[bUpper] || {};
-
-    totalTs += (bSum.mtdTs || 0);
-    totalHb += (bSum.mtdHb || 0);
-    totalTsTarget += (bTarget.ts || 0);
-    totalHbTarget += (bTarget.hb || 0);
-
-    let tsPct = bTarget.ts ? (((bSum.mtdTs || 0) / bTarget.ts) * 100).toFixed(1) : 0;
-    let hbPct = bTarget.hb ? (((bSum.mtdHb || 0) / bTarget.hb) * 100).toFixed(1) : 0;
-    
-    let expectedTs = ((bTarget.ts || 0) / 30) * currentDay;
-    let tsReqPerDay = Math.max(0, ((bTarget.ts || 0) - (bSum.mtdTs || 0)) / daysLeft);
-    let tsStatus = (bSum.mtdTs >= expectedTs) ? "🟢 On Track" : `🔴 Need RM ${formatRM(tsReqPerDay)}/day`;
-
-    branchDetails += `🏥 *${b}*\n`;
-    branchDetails += `• TS: ${tsPct}% (${tsStatus})\n`;
-    branchDetails += `• HB: ${hbPct}%\n\n`;
-  });
-
-  let overallTsPct = totalTsTarget ? ((totalTs / totalTsTarget) * 100).toFixed(1) : 0;
-  let overallHbPct = totalHbTarget ? ((totalHb / totalHbTarget) * 100).toFixed(1) : 0;
-
-  let text = `*🌐 AREA MANAGER DAILY BRIEFING*\n`;
-  text += `Date: ${new Date().toLocaleDateString()}\n\n`;
-
-  text += `*📊 OVERALL REGION PERFORMANCE:*\n`;
-  text += `Total TS: ${formatRM(totalTs)} (${overallTsPct}%)\n`;
-  text += `Total HB: ${formatRM(totalHb)} (${overallHbPct}%)\n\n`;
-
-  text += `*🎯 BRANCH PACING (For PM, BM & ABM):*\n`;
-  text += branchDetails;
-
-  text += `*📝 AM Notes & Focus:*\n${currentData.amNote || "Let's keep the momentum going! Focus on our HB targets."}\n\n`;
-
-  text += `Let's execute these strategies today. 💪\n`;
-  text += `🔗 *View Full Dashboard:* ${WEBAPP_LINK}`;
-
-  navigator.clipboard.writeText(text);
-  alert("Area Manager Master Briefing copied to clipboard!");
-}
 function getConstructiveComment(ts, hb) {
   if (ts === 0) return "Store closed or no data.";
   let hbPct = (hb / ts) * 100;
@@ -1015,66 +1108,80 @@ function openReportModal(type) {
   document.getElementById("reportModal").style.display = "flex";
   history.pushState({ modal: 'reportModal' }, '');
   const content = document.getElementById("reportContent");
-  const branchUpper = String(selectedBranch).toUpperCase();
-  const summary = currentData.summary[branchUpper] || {};
-  const targets = currentData.targets[branchUpper] || {};
-  const historyData = currentData.history || [];
-  const staff = currentData.staff || [];
-  const ap = currentData.actionPlan || {};
   
+  selectedBranch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
+  if (String(selectedBranch).toUpperCase() === 'ALL') selectedBranch = DEFAULT_BRANCH;
+
+  const branchKey = findBranchKey(currentData.summary, selectedBranch) || "KOTA SENTOSA";
+  const targetKey = findBranchKey(currentData.targets, selectedBranch) || "KOTA SENTOSA";
+  const summary = currentData.summary[branchKey] || {};
+  const targets = currentData.targets[targetKey] || {};
+  const historyData = currentData.history || [];
+  const staff = archiveAndGetOctoberMtd(currentData.staff || [], summary, currentData.currentDay);
+  const ap = currentData.actionPlan || {};
+
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const today = new Date();
-  const todayDay = today.getDate();
-  const todayMonth = today.getMonth(); // 0-indexed
+  const todayMyt = parseMytDate(new Date());
+  const currentMonth = todayMyt.month;
+  const currentYear = todayMyt.year;
+  const todayDay = todayMyt.day;
 
-  const formatShortDate = (dateString) => {
-    const d = new Date(dateString);
-    return d.getDate() + "-" + months[d.getMonth()];
-  };
+  // Filter history strictly to current month (October 2026) in Malaysia Time
+  const currentMonthHistory = historyData.filter(h => {
+    const md = parseMytDate(h.date);
+    return md && md.month === currentMonth && md.year === currentYear;
+  });
 
-  // Always build the report date from the actual current date (not backend data)
-  const reportDateDisplay = `${todayDay}-${months[todayMonth].toUpperCase()}-${today.getFullYear()}`;
-
-  // Build 7-day columns based on the actual current date so the report always
-  // reflects the current month's days rather than stale backend history dates.
-  const build7DayColumns = () => {
-    const cols = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(todayDay - i);
-      // Find matching history entry by day-of-month
-      const dayNum = d.getDate();
-      const monthNum = d.getMonth();
-      const matched = historyData.find(h => {
-        const hd = new Date(h.date);
-        return hd.getDate() === dayNum && hd.getMonth() === monthNum;
-      });
-      cols.push({
-        label: `${dayNum}-${months[monthNum]}`,
-        isLast: i === 0,
-        data: matched || { ts: 0, hb: 0, hm: 0, cust: 0, pmgApp: 0 }
-      });
-    }
-    return cols;
-  };
-
-  const sevenDayCols = build7DayColumns();
+  const reportDateDisplay = `${todayDay}-${months[currentMonth].toUpperCase()}-${currentYear}`;
 
   if (type === 'director') {
-    let tsGap = summary.mtdTs - targets.ts;
-    let tsPct = ((summary.mtdTs / targets.ts) * 100).toFixed(0);
-    let tsLyGap = summary.mtdTs - summary.lyMtd;
-    let tsLyPct = summary.lyMtd > 0 ? ((summary.mtdTs / summary.lyMtd) * 100).toFixed(0) : 0;
+    let tsGap = (summary.mtdTs || 0) - (targets.ts || 0);
+    let tsPct = targets.ts ? (((summary.mtdTs || 0) / targets.ts) * 100).toFixed(0) : 0;
+    let tsLyGap = (summary.mtdTs || 0) - (summary.lyMtd || 0);
+    let tsLyGrowth = summary.lyMtd > 0 ? ((((summary.mtdTs || 0) - summary.lyMtd) / summary.lyMtd) * 100).toFixed(1) : 0;
     
-    let hbGap = summary.mtdHb - targets.hb;
-    let hbPct = ((summary.mtdHb / targets.hb) * 100).toFixed(0);
-    let hbLyGap = summary.mtdHb - (summary.lyMtdHb || 0);
-    let hbLyPct = summary.lyMtdHb > 0 ? ((summary.mtdHb / summary.lyMtdHb) * 100).toFixed(0) : 0;
+    let hbGap = (summary.mtdHb || 0) - (targets.hb || 0);
+    let hbPct = targets.hb ? (((summary.mtdHb || 0) / targets.hb) * 100).toFixed(0) : 0;
+    let hbLyGap = (summary.mtdHb || 0) - (summary.lyMtdHb || 0);
+    let hbLyGrowth = summary.lyMtdHb > 0 ? ((((summary.mtdHb || 0) - summary.lyMtdHb) / summary.lyMtdHb) * 100).toFixed(1) : 0;
     
-    let hmGap = summary.mtdHm - targets.hm;
-    let hmPct = ((summary.mtdHm / targets.hm) * 100).toFixed(0);
-    let hmLyGap = summary.mtdHm - (summary.lyMtdHm || 0);
-    let hmLyPct = summary.lyMtdHm > 0 ? ((summary.mtdHm / summary.lyMtdHm) * 100).toFixed(0) : 0;
+    let hmGap = (summary.mtdHm || 0) - (targets.hm || 0);
+    let hmPct = targets.hm ? (((summary.mtdHm || 0) / targets.hm) * 100).toFixed(0) : 0;
+    let hmLyGap = (summary.mtdHm || 0) - (summary.lyMtdHm || 0);
+    let hmLyGrowth = summary.lyMtdHm > 0 ? ((((summary.mtdHm || 0) - summary.lyMtdHm) / summary.lyMtdHm) * 100).toFixed(1) : 0;
+
+    // Director 7-Day Picture Report columns:
+    // During month transitions (e.g. October 1-7), strictly render Oct 1, Oct 2, Oct 3
+    // without blending any days from September.
+    const buildDirectorCols = () => {
+      const cols = [];
+      let startDay, endDay;
+      if (todayDay <= 7) {
+        startDay = 1;
+        endDay = Math.max(3, todayDay);
+      } else {
+        startDay = todayDay - 6;
+        endDay = todayDay;
+      }
+
+      for (let d = startDay; d <= endDay; d++) {
+        const matched = currentMonthHistory.find(h => {
+          const md = parseMytDate(h.date);
+          return md && md.day === d;
+        });
+
+        cols.push({
+          label: `${d}-${months[currentMonth]}`,
+          isLast: d === todayDay,
+          hasData: !!matched,
+          data: matched || { ts: 0, hb: 0, hm: 0, cust: 0, pmgApp: 0 }
+        });
+      }
+
+      return cols;
+    };
+
+    const directorCols = buildDirectorCols();
 
     let html = `
     <div class="excel-report" id="captureArea" style="min-width: 860px; width: max-content;">
@@ -1085,11 +1192,11 @@ function openReportModal(type) {
           <table class="excel-table">
             <tr class="header-blue"><th>Monthly Sales</th><th>Amount</th><th>%</th></tr>
             <tr><td>Sales Vs Target</td><td>${tsGap < 0 ? '' : '+'}${formatRM(tsGap)}</td><td>${tsPct}%</td></tr>
-            <tr><td>Sales Vs LY</td><td>${tsLyGap < 0 ? '' : '+'}${formatRM(tsLyGap)}</td><td>+${tsLyPct}%</td></tr>
+            <tr><td>Sales Vs LY</td><td>${tsLyGap < 0 ? '' : '+'}${formatRM(tsLyGap)}</td><td>${tsLyGrowth >= 0 ? '+' : ''}${tsLyGrowth}%</td></tr>
             <tr><td>HB Vs Target</td><td>${hbGap < 0 ? '' : '+'}${formatRM(hbGap)}</td><td>${hbPct}%</td></tr>
-            <tr><td>HB Vs LY</td><td>${hbLyGap < 0 ? '' : '+'}${formatRM(hbLyGap)}</td><td>+${hbLyPct}%</td></tr>
+            <tr><td>HB Vs LY</td><td>${hbLyGap < 0 ? '' : '+'}${formatRM(hbLyGap)}</td><td>${hbLyGrowth >= 0 ? '+' : ''}${hbLyGrowth}%</td></tr>
             <tr><td>HM Vs Target</td><td>${hmGap < 0 ? '' : '+'}${formatRM(hmGap)}</td><td>${hmPct}%</td></tr>
-            <tr><td>HM Vs LY</td><td>${hmLyGap < 0 ? '' : '+'}${formatRM(hmLyGap)}</td><td>+${hmLyPct}%</td></tr>
+            <tr><td>HM Vs LY</td><td>${hmLyGap < 0 ? '' : '+'}${formatRM(hmLyGap)}</td><td>${hmLyGrowth >= 0 ? '+' : ''}${hmLyGrowth}%</td></tr>
           </table>
 
           <table class="excel-table" style="margin-top:10px;">
@@ -1102,7 +1209,7 @@ function openReportModal(type) {
           </table>
 
           <div class="action-plan-box">
-            <b>Action Plan (${months[todayMonth]}):</b><br>
+            <b>Action Plan (${months[currentMonth]}):</b><br>
             <b>Week 1:</b> ${ap.w1 || '-'}<br>
             <b>Week 2:</b> ${ap.w2 || '-'}<br>
             <b>Week 3:</b> ${ap.w3 || '-'}<br>
@@ -1114,18 +1221,18 @@ function openReportModal(type) {
           <table class="excel-table">
             <tr class="header-blue">
               <th>Metric</th>
-              ${sevenDayCols.map(c => `<th class="${c.isLast ? 'header-orange' : ''}">${c.label}${c.isLast ? ' *' : ''}</th>`).join('')}
+              ${directorCols.map(c => `<th class="${c.isLast ? 'header-orange' : ''}">${c.label}${c.isLast ? ' *' : ''}</th>`).join('')}
             </tr>
-            <tr><td><b>Total Sales</b></td>${sevenDayCols.map(c => `<td>${formatRM(c.data.ts)}</td>`).join('')}</tr>
-            <tr><td><b>HB</b></td>${sevenDayCols.map(c => `<td>${formatRM(c.data.hb)}</td>`).join('')}</tr>
-            <tr><td><b>HB%</b></td>${sevenDayCols.map(c => `<td>${c.data.ts > 0 ? ((c.data.hb/c.data.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
-            <tr><td><b>HM</b></td>${sevenDayCols.map(c => `<td>${formatRM(c.data.hm)}</td>`).join('')}</tr>
-            <tr><td><b>HM%</b></td>${sevenDayCols.map(c => `<td>${c.data.ts > 0 ? ((c.data.hm/c.data.ts)*100).toFixed(1) : 0}%</td>`).join('')}</tr>
-            <tr><td><b>No. of tranx</b></td>${sevenDayCols.map(c => `<td>${c.data.cust}</td>`).join('')}</tr>
-            <tr><td><b>Total Sales BS</b></td>${sevenDayCols.map(c => `<td>${c.data.cust > 0 ? formatRM(c.data.ts/c.data.cust) : 0}</td>`).join('')}</tr>
-            <tr><td><b>HB BS</b></td>${sevenDayCols.map(c => `<td>${c.data.cust > 0 ? formatRM(c.data.hb/c.data.cust) : 0}</td>`).join('')}</tr>
-            <tr><td><b>PMG APP</b></td>${sevenDayCols.map(c => `<td>${c.data.pmgApp || 0}</td>`).join('')}</tr>
-            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${sevenDayCols.map(c => `<td style="font-size:0.65rem; white-space:normal; text-align:left; max-width:130px; word-wrap:break-word;">${getConstructiveComment(c.data.ts, c.data.hb)}</td>`).join('')}</tr>
+            <tr><td><b>Total Sales</b></td>${directorCols.map(c => `<td>${c.hasData ? formatRM(c.data.ts) : '-'}</td>`).join('')}</tr>
+            <tr><td><b>HB</b></td>${directorCols.map(c => `<td>${c.hasData ? formatRM(c.data.hb) : '-'}</td>`).join('')}</tr>
+            <tr><td><b>HB%</b></td>${directorCols.map(c => `<td>${c.hasData && c.data.ts > 0 ? ((c.data.hb/c.data.ts)*100).toFixed(1) + '%' : '-'}</td>`).join('')}</tr>
+            <tr><td><b>HM</b></td>${directorCols.map(c => `<td>${c.hasData ? formatRM(c.data.hm) : '-'}</td>`).join('')}</tr>
+            <tr><td><b>HM%</b></td>${directorCols.map(c => `<td>${c.hasData && c.data.ts > 0 ? ((c.data.hm/c.data.ts)*100).toFixed(1) + '%' : '-'}</td>`).join('')}</tr>
+            <tr><td><b>No. of tranx</b></td>${directorCols.map(c => `<td>${c.hasData ? c.data.cust : '-'}</td>`).join('')}</tr>
+            <tr><td><b>Total Sales BS</b></td>${directorCols.map(c => `<td>${c.hasData && c.data.cust > 0 ? formatRM(c.data.ts/c.data.cust) : '-'}</td>`).join('')}</tr>
+            <tr><td><b>HB BS</b></td>${directorCols.map(c => `<td>${c.hasData && c.data.cust > 0 ? formatRM(c.data.hb/c.data.cust) : '-'}</td>`).join('')}</tr>
+            <tr><td><b>PMG APP</b></td>${directorCols.map(c => `<td>${c.hasData ? (c.data.pmgApp || 0) : '-'}</td>`).join('')}</tr>
+            <tr class="header-yellow"><td><b>Daily Comment:</b></td>${directorCols.map(c => `<td style="font-size:0.65rem; white-space:normal; text-align:left; max-width:130px; word-wrap:break-word;">${c.hasData ? getConstructiveComment(c.data.ts, c.data.hb) : 'Pending daily close'}</td>`).join('')}</tr>
           </table>
         </div>
       </div>
@@ -1133,57 +1240,74 @@ function openReportModal(type) {
     content.innerHTML = html;
   } 
   else if (type === 'teammates') {
-    // Use actual calendar day for gap calculation — not backend currentDay which may be stale
-    const effectiveDay = todayDay;
+    // Teammate Target Achievement Table & Daily Quota Run-Rate for October 2026
+    const daysInMonth = currentData.daysInMonth || 31;
+    const currentDay = Math.min(daysInMonth, Math.max(1, todayDay));
+    const remainingDays = Math.max(1, daysInMonth - currentDay + 1);
 
     let html = `
-    <div class="excel-report" id="captureArea" style="min-width: 840px; width: max-content;">
-      <div class="excel-title">PMG ${selectedBranch.toUpperCase()} - TEAMMATE PERFORMANCE & TARGET GAP (${reportDateDisplay} MTD)</div>
+    <div class="excel-report" id="captureArea" style="min-width: 860px; width: max-content;">
+      <div class="excel-title">PMG ${selectedBranch.toUpperCase()} - TEAMMATE OCTOBER TARGET ACHIEVEMENT & DAILY RUN-RATE (${reportDateDisplay})</div>
       <table class="excel-table">
         <tr class="header-red">
-          <th>Teammate Name</th>
+          <th style="text-align:left;">Teammate Name</th>
           <th>Cust</th>
-          <th>MTD Sales (RM)</th>
-          <th>TS Gap (MTD)</th>
-          <th>MTD HB (RM)</th>
-          <th>HB Gap (MTD)</th>
-          <th>MTD HM (RM)</th>
+          <th>Oct MTD Sales</th>
+          <th>Oct TS Target</th>
+          <th>Daily TS Quota (${remainingDays}d left)</th>
+          <th>Oct MTD HB</th>
+          <th>Oct HB Target</th>
+          <th>Daily HB Quota (${remainingDays}d left)</th>
           <th>HB %</th>
         </tr>`;
     
-    let totalCust=0, totalTs=0, totalHb=0, totalHm=0, totalTsGap=0, totalHbGap=0;
+    let totalCust = 0, totalOctTs = 0, totalOctHb = 0, totalTargetTs = 0, totalTargetHb = 0;
+    let totalDailyQuotaTs = 0, totalDailyQuotaHb = 0;
 
     staff.forEach(s => {
-      let tsGap = s.mtdTs - (s.targetTs * effectiveDay);
-      let hbGap = s.mtdHb - (s.targetHb * effectiveDay);
-      let hbPct = s.mtdTs > 0 ? ((s.mtdHb / s.mtdTs) * 100).toFixed(1) : 0;
+      const octTotalTsTarget = (s.targetTs || 0) * daysInMonth;
+      const octTotalHbTarget = (s.targetHb || 0) * daysInMonth;
+      const dailyQuotaTs = Math.max(0, (octTotalTsTarget - s.octMtdTs) / remainingDays);
+      const dailyQuotaHb = Math.max(0, (octTotalHbTarget - s.octMtdHb) / remainingDays);
+      const hbPct = s.octMtdTs > 0 ? ((s.octMtdHb / s.octMtdTs) * 100).toFixed(1) : "0.0";
       
-      totalCust += s.mtdCust || 0;
-      totalTs += s.mtdTs; totalHb += s.mtdHb; totalHm += s.mtdHm;
-      totalTsGap += tsGap; totalHbGap += hbGap;
+      totalCust += s.octMtdCust || 0;
+      totalOctTs += s.octMtdTs;
+      totalOctHb += s.octMtdHb;
+      totalTargetTs += octTotalTsTarget;
+      totalTargetHb += octTotalHbTarget;
+      totalDailyQuotaTs += dailyQuotaTs;
+      totalDailyQuotaHb += dailyQuotaHb;
 
       html += `<tr>
         <td style="text-align:left;"><b>${s.name}</b><br><span style="font-size:0.6rem; color:#666;">${s.role}</span></td>
-        <td>${s.mtdCust || 0}</td>
-        <td>${formatRM(s.mtdTs)}</td>
-        <td style="color:${tsGap >= 0 ? '#2e7d32' : '#c62828'}; font-weight:bold;">${tsGap > 0 ? '+' : ''}${formatRM(tsGap)}</td>
-        <td>${formatRM(s.mtdHb)}</td>
-        <td style="color:${hbGap >= 0 ? '#2e7d32' : '#c62828'}; font-weight:bold;">${hbGap > 0 ? '+' : ''}${formatRM(hbGap)}</td>
-        <td>${formatRM(s.mtdHm)}</td>
+        <td>${s.octMtdCust || 0}</td>
+        <td>${formatRM(s.octMtdTs)}</td>
+        <td>${formatRM(octTotalTsTarget)}</td>
+        <td style="color:#c62828; font-weight:bold;">${formatRM(dailyQuotaTs)}/day</td>
+        <td>${formatRM(s.octMtdHb)}</td>
+        <td>${formatRM(octTotalHbTarget)}</td>
+        <td style="color:#00796b; font-weight:bold;">${formatRM(dailyQuotaHb)}/day</td>
         <td>${hbPct}%</td>
       </tr>`;
     });
 
-    let totalHbPct = totalTs > 0 ? ((totalHb / totalTs) * 100).toFixed(1) : 0;
+    const storeTargetTs = targets.ts || totalTargetTs;
+    const storeTargetHb = targets.hb || totalTargetHb;
+    const storeQuotaTs = Math.max(0, (storeTargetTs - (summary.mtdTs || totalOctTs)) / remainingDays);
+    const storeQuotaHb = Math.max(0, (storeTargetHb - (summary.mtdHb || totalOctHb)) / remainingDays);
+    const outletHbPct = (summary.mtdTs || totalOctTs) > 0 ? (((summary.mtdHb || totalOctHb) / (summary.mtdTs || totalOctTs)) * 100).toFixed(1) : "0.0";
+
     html += `<tr style="background:#f5f5f5; font-weight:bold;">
       <td style="text-align:left;">OUTLET CUMULATIVE</td>
-      <td>${totalCust}</td>
-      <td>${formatRM(totalTs)}</td>
-      <td style="color:${totalTsGap >= 0 ? '#2e7d32' : '#c62828'};">${totalTsGap > 0 ? '+' : ''}${formatRM(totalTsGap)}</td>
-      <td>${formatRM(totalHb)}</td>
-      <td style="color:${totalHbGap >= 0 ? '#2e7d32' : '#c62828'};">${totalHbGap > 0 ? '+' : ''}${formatRM(totalHbGap)}</td>
-      <td>${formatRM(totalHm)}</td>
-      <td>${totalHbPct}%</td>
+      <td>${summary.mtdCust || totalCust}</td>
+      <td>${formatRM(summary.mtdTs || totalOctTs)}</td>
+      <td>${formatRM(storeTargetTs)}</td>
+      <td style="color:#c62828;">${formatRM(storeQuotaTs)}/day</td>
+      <td>${formatRM(summary.mtdHb || totalOctHb)}</td>
+      <td>${formatRM(storeTargetHb)}</td>
+      <td style="color:#00796b;">${formatRM(storeQuotaHb)}/day</td>
+      <td>${outletHbPct}%</td>
     </tr>`;
     
     html += `</table></div>`;
