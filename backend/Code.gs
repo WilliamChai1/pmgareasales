@@ -393,8 +393,8 @@ function getDashboardData(requestedBranch, role, username) {
       let sNameLower = sName.toLowerCase();
       let sRole = staffRoles[sName] || 'Staff';
       
-      // EXCLUDE HQ STAFF DYNAMICALLY OR BY NAME
-      if (sRole.toLowerCase() === 'hq' || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare")) {
+      // EXCLUDE HQ AND RESIGNED STAFF DYNAMICALLY OR BY NAME
+      if (sRole.toLowerCase() === 'hq' || sRole.toLowerCase().includes("resign") || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare")) {
         continue; 
       }
 

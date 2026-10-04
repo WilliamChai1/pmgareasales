@@ -323,7 +323,6 @@ function getActivePmgApp(branchName) {
 // Exact September 2026 cumulative staff sales derived directly from DailySales records:
 const KNOWN_SEP_2026_BASELINES = {
   "Chai Yee Sian": { sepMtdTs: 56638.03, sepMtdHb: 29411.83, sepMtdHm: 6189.80, sepMtdCust: 597 },
-  "Daniela Janet": { sepMtdTs: 24855.37, sepMtdHb: 8992.27, sepMtdHm: 2226.80, sepMtdCust: 722 },
   "Fiona Fiena": { sepMtdTs: 38466.98, sepMtdHb: 15585.48, sepMtdHm: 3698.90, sepMtdCust: 1064 },
   "Haniesha Louna": { sepMtdTs: 32826.00, sepMtdHb: 15277.24, sepMtdHm: 2690.90, sepMtdCust: 783 },
   "Jong Pei Choo": { sepMtdTs: 67087.55, sepMtdHb: 30305.40, sepMtdHm: 7185.30, sepMtdCust: 1330 },
@@ -341,6 +340,9 @@ function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
     localStorage.removeItem("pmg_archive_sep_2026_v2");
     localStorage.removeItem("pmg_archive_sep_2026_v3");
   } catch (e) {}
+
+  // Exclude resigned staff
+  staffList = (staffList || []).filter(s => !/daniela|janet/i.test(s.name || ''));
 
   const now = new Date();
   const isOctoberOrLater = now >= new Date("2026-10-01T00:00:00");
@@ -1008,7 +1010,7 @@ async function copyWhatsAppBriefing() {
   text += `*🏆 Congratulation Board:*\n`;
   let achievers = 0;
 
-  (currentData.staff || []).forEach(s => {
+  (currentData.staff || []).filter(s => !/daniela|janet/i.test(s.name || '')).forEach(s => {
     let hits = [];
     if(s.dailyTs >= s.targetTs) hits.push("TS");
     if(s.dailyHb >= s.targetHb) hits.push("HB");
