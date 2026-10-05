@@ -911,8 +911,9 @@ function dposGetReview(req) {
 
 function geminiProxy(req) {
   try {
-    const apiKey = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
-    if (!apiKey) {
+    const rawKeys = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY") || "";
+    const keyList = rawKeys.split(/[\s,;]+/).map(function(k) { return k.trim(); }).filter(function(k) { return k.length >= 10; });
+    if (keyList.length === 0) {
       return { success: false, code: "NO_KEY", message: "Script Property GEMINI_API_KEY is not set in Apps Script." };
     }
 
@@ -921,7 +922,6 @@ function geminiProxy(req) {
       return { success: false, message: "Invalid model identifier: " + model };
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
     const payload = {
       contents: req.contents
     };
@@ -939,15 +939,26 @@ function geminiProxy(req) {
       muteHttpExceptions: true
     };
 
-    const resp = UrlFetchApp.fetch(url, options);
-    const code = resp.getResponseCode();
-    const text = resp.getContentText();
+    var lastError = "";
+    for (var i = 0; i < keyList.length; i++) {
+      var curKey = keyList[i];
+      var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + curKey;
+      try {
+        var resp = UrlFetchApp.fetch(url, options);
+        var code = resp.getResponseCode();
+        var text = resp.getContentText();
 
-    if (code >= 200 && code < 300) {
-      return { success: true, data: JSON.parse(text) };
-    } else {
-      return { success: false, status: code, message: text };
+        if (code >= 200 && code < 300) {
+          return { success: true, data: JSON.parse(text) };
+        } else {
+          lastError = "Key #" + (i + 1) + " HTTP " + code + ": " + text;
+        }
+      } catch (e) {
+        lastError = "Key #" + (i + 1) + " fetch error: " + e.toString();
+      }
     }
+
+    return { success: false, message: lastError || "All backend Gemini API keys failed." };
   } catch (err) {
     return { success: false, message: err.toString() };
   }

@@ -416,8 +416,14 @@
     return await res.json();
   }
 
+  function getGeminiApiKeys() {
+    const raw = (localStorage.getItem('pmg_gemini_key') || '').trim();
+    if (!raw) return [];
+    return raw.split(/[\s,;]+/).map(k => k.trim()).filter(k => k.length >= 10);
+  }
+
   async function dposGenerate(requestedModel, promptOrContents, systemInstruction) {
-    const localKey = (localStorage.getItem('pmg_gemini_key') || '').trim();
+    const keys = getGeminiApiKeys();
     const candidateModels = [
       requestedModel,
       'gemini-3.5-flash-lite',
@@ -426,10 +432,13 @@
     ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
     let lastError = null;
-    for (const chosenModel of candidateModels) {
-      try {
-        if (localKey) {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${localKey}`;
+
+    // 1. Try local client keys with auto-failover
+    for (let kIdx = 0; kIdx < keys.length; kIdx++) {
+      const curKey = keys[kIdx];
+      for (const chosenModel of candidateModels) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${curKey}`;
           const payload = {
             contents: Array.isArray(promptOrContents) ? promptOrContents : [{ parts: [{ text: promptOrContents }] }]
           };
@@ -447,11 +456,25 @@
             body: JSON.stringify(payload)
           });
           const data = await resp.json();
-          if (data.error) throw new Error(data.error.message || `Gemini direct error (${chosenModel})`);
+          if (data.error) {
+            throw new Error(data.error.message || `Gemini direct error (${chosenModel})`);
+          }
           return data;
+        } catch (err) {
+          console.warn(`Key #${kIdx + 1} (${curKey.slice(0, 6)}...) model ${chosenModel} failed:`, err.message);
+          lastError = err;
+          const msg = (err.message || '').toLowerCase();
+          if (msg.includes('quota') || msg.includes('rate') || msg.includes('429') || msg.includes('resource_exhausted')) {
+            console.warn(`Key #${kIdx + 1} quota/rate limited. Failing over to next key...`);
+            break; // Skip to next key
+          }
         }
+      }
+    }
 
-        // Fall back to server proxy
+    // 2. Fall back to server proxy
+    for (const chosenModel of candidateModels) {
+      try {
         const proxyPayload = {
           model: chosenModel,
           contents: Array.isArray(promptOrContents) ? promptOrContents : [{ parts: [{ text: promptOrContents }] }]
@@ -470,12 +493,12 @@
         }
         return res.data;
       } catch (err) {
-        console.warn(`Model ${chosenModel} generation failed, trying next candidate:`, err.message);
+        console.warn(`Proxy model ${chosenModel} failed:`, err.message);
         lastError = err;
       }
     }
 
-    throw lastError || new Error("All candidate Gemini models failed.");
+    throw lastError || new Error("All candidate Gemini models and API keys failed.");
   }
 
   // ─── INIT & DATA FETCHING ──────────────────────────────────────────────────

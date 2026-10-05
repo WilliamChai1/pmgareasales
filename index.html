@@ -286,11 +286,11 @@
           <span id="geminiStatusBadge" style="font-size: 0.65rem; background: #e5e7eb; color: #374151; padding: 2px 8px; border-radius: 6px; font-weight: 800;">Offline Rule</span>
         </div>
         <div style="display: flex; gap: 6px; margin-top: 6px;">
-          <input type="password" id="geminiApiKeyInput" class="input-field" placeholder="Paste Gemini API Key (e.g. AIzaSy...)" style="font-size: 0.75rem; padding: 6px 10px; margin: 0; flex: 1; border: 1px solid #f472b6;" oninput="saveGeminiApiKey(this.value)">
-          <button type="button" class="btn" style="background: #be185d; color: white; padding: 6px 12px; font-size: 0.72rem; margin: 0; font-weight: bold; white-space: nowrap;" onclick="testGeminiConnection()">Test Key</button>
+          <input type="password" id="geminiApiKeyInput" class="input-field" placeholder="Paste Gemini API Key(s) (comma-separated for auto-failover)" style="font-size: 0.75rem; padding: 6px 10px; margin: 0; flex: 1; border: 1px solid #f472b6;" oninput="saveGeminiApiKey(this.value)">
+          <button type="button" class="btn" style="background: #be185d; color: white; padding: 6px 12px; font-size: 0.72rem; margin: 0; font-weight: bold; white-space: nowrap;" onclick="testGeminiConnection()">Test Key(s)</button>
         </div>
         <div style="font-size: 0.68rem; color: #9d174d; margin-top: 5px; line-height: 1.3;">
-          ✨ When active, uses <b>Gemini 3.5 Flash-Lite</b> to generate dynamic, human-like coaching advice tailored to your branch profile and House Brand SKUs.
+          ✨ <b>Multi-Key Pooling:</b> Separate multiple keys with commas (e.g. <code>Key1, Key2</code>). If Key 1 hits rate/quota limits (429), it automatically fails over to Key 2 with zero downtime.
         </div>
       </div>
     </div>
@@ -322,7 +322,7 @@
 
   <script src="./data/house_brands.js"></script>
   <script src="./data/dpos_week1.js"></script>
-  <script src="./dpos.js?v=2.4"></script>
-  <script src="./app.js?v=33.0"></script>
+  <script src="./dpos.js?v=2.5"></script>
+  <script src="./app.js?v=34.0"></script>
 </body>
 </html>

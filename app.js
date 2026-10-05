@@ -942,9 +942,15 @@ function getBranchProfile(branchName) {
 }
 
 // ─── GEMINI 3.5 AI STRATEGIST ENGINE ─────────────────────────────────────────
+function getGeminiApiKeys() {
+  const raw = (localStorage.getItem('pmg_gemini_key') || '').trim();
+  if (!raw) return [];
+  return raw.split(/[\s,;]+/).map(k => k.trim()).filter(k => k.length >= 10);
+}
+
 async function generateGeminiOutletStrategy(branchName, summary, targets, daysLeft, tsReqPerDay, hbReqPerDay, hbRatio, profile) {
-  const apiKey = localStorage.getItem('pmg_gemini_key');
-  if (!apiKey || apiKey.trim().length < 10) return null;
+  const keys = getGeminiApiKeys();
+  if (keys.length === 0) return null;
 
   const mtdTs = summary.mtdTs || 0;
   const mtdHb = summary.mtdHb || 0;
@@ -1004,38 +1010,49 @@ STRICT CONSTRAINTS & REAL-WORLD RULES:
     'gemini-1.5-flash'
   ];
 
-  for (const model of candidateModels) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+  for (let kIdx = 0; kIdx < keys.length; kIdx++) {
+    const curKey = keys[kIdx];
+    for (const model of candidateModels) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 600
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${curKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 600
+            }
+          })
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          const candidate = data.candidates && data.candidates[0];
+          const generatedText = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text;
+          if (generatedText && generatedText.trim().length > 30) {
+            let cleaned = generatedText.trim();
+            let header = `*💡 Outlet Overall Action Strategy (${daysLeft} Days Remaining):*\n`;
+            return header + cleaned + "\n\n";
           }
-        })
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
-        const candidate = data.candidates && data.candidates[0];
-        const generatedText = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text;
-        if (generatedText && generatedText.trim().length > 30) {
-          let cleaned = generatedText.trim();
-          let header = `*💡 Outlet Overall Action Strategy (${daysLeft} Days Remaining):*\n`;
-          return header + cleaned + "\n\n";
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          const errMsg = errData.error ? errData.error.message : `HTTP ${response.status}`;
+          console.warn(`Key #${kIdx + 1} (${curKey.slice(0, 6)}...) model ${model} failed: ${errMsg}`);
+          if (response.status === 429 || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource_exhausted')) {
+            console.warn(`Key #${kIdx + 1} quota/rate limited. Failing over to next key...`);
+            break; // Skip to next key
+          }
         }
+      } catch (err) {
+        console.warn(`Key #${kIdx + 1} model ${model} error:`, err.message);
       }
-    } catch (err) {
-      console.warn(`Gemini model ${model} failed, trying fallback...`, err);
     }
   }
 
@@ -1120,9 +1137,9 @@ async function copyWhatsAppBriefing() {
 
   const btn = document.getElementById("copyBriefingBtn");
   const origBtnText = btn ? btn.innerText : "";
-  const apiKey = localStorage.getItem('pmg_gemini_key');
+  const activeKeys = getGeminiApiKeys();
 
-  if (btn && apiKey && apiKey.trim().length > 10) {
+  if (btn && activeKeys.length > 0) {
     btn.innerText = "🤖 Generating AI Strategy...";
     btn.disabled = true;
   }
@@ -1198,13 +1215,14 @@ function saveGeminiApiKey(key) {
 function updateGeminiBadge() {
   const badge = document.getElementById("geminiStatusBadge");
   const input = document.getElementById("geminiApiKeyInput");
-  const key = localStorage.getItem('pmg_gemini_key');
-  if (input && key && !input.value) {
-    input.value = key;
+  const rawKey = localStorage.getItem('pmg_gemini_key');
+  if (input && rawKey && !input.value) {
+    input.value = rawKey;
   }
+  const keys = getGeminiApiKeys();
   if (badge) {
-    if (key && key.trim().length > 10) {
-      badge.innerText = "⚡ Gemini 3.5 Active";
+    if (keys.length > 0) {
+      badge.innerText = keys.length > 1 ? `⚡ Gemini Active (${keys.length} Keys Pool)` : "⚡ Gemini 3.5 Active";
       badge.style.background = "#dcfce7";
       badge.style.color = "#15803d";
       badge.style.border = "1px solid #86efac";
@@ -1219,14 +1237,15 @@ function updateGeminiBadge() {
 
 async function testGeminiConnection() {
   const input = document.getElementById("geminiApiKeyInput");
-  const key = (input ? input.value : "") || localStorage.getItem('pmg_gemini_key');
-  if (!key || key.trim().length < 10) {
-    alert("Please paste a valid Gemini API key first.");
+  const raw = (input ? input.value : "") || localStorage.getItem('pmg_gemini_key');
+  const keys = (raw || '').split(/[\s,;]+/).map(k => k.trim()).filter(k => k.length >= 10);
+  if (keys.length === 0) {
+    alert("Please paste at least one valid Gemini API key first.\n\nYou can enter multiple keys separated by comma, space, or newline for automatic failover.");
     return;
   }
 
   const badge = document.getElementById("geminiStatusBadge");
-  if (badge) badge.innerText = "Testing...";
+  if (badge) badge.innerText = `Testing ${keys.length} key(s)...`;
 
   const candidateModels = [
     'gemini-3.5-flash-lite',
@@ -1235,32 +1254,47 @@ async function testGeminiConnection() {
     'gemini-1.5-flash'
   ];
 
-  let successModel = null;
-  for (const m of candidateModels) {
-    try {
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key.trim()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: "Respond with 'READY'." }] }]
-        })
-      });
-      if (resp.ok) {
-        successModel = m;
-        break;
+  let verifiedCount = 0;
+  let activeModel = null;
+  let errorReports = [];
+
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    let keyOk = false;
+    for (const m of candidateModels) {
+      try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: "Respond with 'READY'." }] }]
+          })
+        });
+        if (resp.ok) {
+          keyOk = true;
+          activeModel = m;
+          verifiedCount++;
+          break;
+        } else {
+          const errData = await resp.json().catch(() => ({}));
+          errorReports.push(`Key #${i+1} (${k.slice(0, 6)}...): ${errData.error ? errData.error.message : 'HTTP ' + resp.status}`);
+        }
+      } catch (err) {
+        errorReports.push(`Key #${i+1}: ${err.message}`);
       }
-    } catch (err) {
-      // Continue to try next candidate model
     }
   }
 
-  if (successModel) {
-    localStorage.setItem('pmg_gemini_key', key.trim());
+  if (verifiedCount > 0) {
+    localStorage.setItem('pmg_gemini_key', raw.trim());
     updateGeminiBadge();
-    alert(`✅ Connected to Gemini API successfully!\nActive Engine: ${successModel}\nYour AI Retail Strategist is ready.`);
+    const poolInfo = keys.length > 1
+      ? `\n\n🔁 Multi-Key Failover Enabled: ${verifiedCount} of ${keys.length} keys verified and pooled.\nIf Key 1 ever hits rate/quota limits (429), Key 2 automatically takes over without interruption!`
+      : `\n\n💡 Pro-tip: You can paste multiple keys separated by comma to enable automatic quota failover.`;
+    alert(`✅ Connected to Gemini API successfully!\nActive Engine: ${activeModel}${poolInfo}`);
   } else {
     updateGeminiBadge();
-    alert("❌ Connection failed. Please ensure the API key is active and has access to Gemini models.");
+    alert(`❌ Connection failed for all entered keys:\n${errorReports.slice(0, 3).join('\n')}\n\nPlease ensure your API keys are active in Google AI Studio.`);
   }
 }
 
