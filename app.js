@@ -967,11 +967,11 @@ function getBranchProfile(branchName) {
   return null;
 }
 
-// ─── GEMINI 3.5 AI STRATEGIST ENGINE ─────────────────────────────────────────
+// ─── GEMINI AI STRATEGIST ENGINE ─────────────────────────────────────────────
 function getGeminiApiKeys() {
   const raw = (localStorage.getItem('pmg_gemini_key') || '').trim();
   if (!raw) return [];
-  return raw.split(/[\s,;]+/).map(k => k.trim()).filter(k => k.length >= 10);
+  return raw.split(/[\s,;]+/).map(k => k.replace(/['"]/g, '').trim()).filter(k => k.length >= 10);
 }
 
 async function generateGeminiOutletStrategy(branchName, summary, targets, daysLeft, tsReqPerDay, hbReqPerDay, hbRatio, profile) {
@@ -1030,9 +1030,9 @@ STRICT CONSTRAINTS & REAL-WORLD RULES:
 9. NO introduction, NO greeting, NO concluding text. Begin immediately with "1️⃣".`;
 
   const candidateModels = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
     'gemini-1.5-flash'
   ];
 
@@ -1207,7 +1207,7 @@ async function copyWhatsAppBriefing() {
   
   // Dynamic AI Strategy or Profile-Aware Offline Rule
   let strategyText = null;
-  if (apiKey && apiKey.trim().length > 10) {
+  if (activeKeys.length > 0) {
     try {
       strategyText = await generateGeminiOutletStrategy(selectedBranch, summary, targets, daysLeft, tsReqPerDay, hbReqPerDay, hbRatio, profile);
     } catch (e) {
@@ -1251,7 +1251,7 @@ function updateGeminiBadge() {
   const keys = getGeminiApiKeys();
   if (badge) {
     if (keys.length > 0) {
-      badge.innerText = keys.length > 1 ? `⚡ Gemini Active (${keys.length} Keys Pool)` : "⚡ Gemini 3.5 Active";
+      badge.innerText = keys.length > 1 ? `⚡ Gemini Active (${keys.length} Keys Pool)` : "⚡ Gemini 2.5 Active";
       badge.style.background = "#dcfce7";
       badge.style.color = "#15803d";
       badge.style.border = "1px solid #86efac";
@@ -1267,7 +1267,7 @@ function updateGeminiBadge() {
 async function testGeminiConnection() {
   const input = document.getElementById("geminiApiKeyInput");
   const raw = (input ? input.value : "") || localStorage.getItem('pmg_gemini_key');
-  const keys = (raw || '').split(/[\s,;]+/).map(k => k.trim()).filter(k => k.length >= 10);
+  const keys = (raw || '').split(/[\s,;]+/).map(k => k.replace(/['"]/g, '').trim()).filter(k => k.length >= 10);
   if (keys.length === 0) {
     alert("Please paste at least one valid Gemini API key first.\n\nYou can enter multiple keys separated by comma, space, or newline for automatic failover.");
     return;
@@ -1277,9 +1277,9 @@ async function testGeminiConnection() {
   if (badge) badge.innerText = `Testing ${keys.length} key(s)...`;
 
   const candidateModels = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
     'gemini-1.5-flash'
   ];
 

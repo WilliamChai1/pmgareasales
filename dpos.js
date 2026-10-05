@@ -419,16 +419,17 @@
   function getGeminiApiKeys() {
     const raw = (localStorage.getItem('pmg_gemini_key') || '').trim();
     if (!raw) return [];
-    return raw.split(/[\s,;]+/).map(k => k.trim()).filter(k => k.length >= 10);
+    return raw.split(/[\s,;]+/).map(k => k.replace(/['"]/g, '').trim()).filter(k => k.length >= 10);
   }
 
   async function dposGenerate(requestedModel, promptOrContents, systemInstruction) {
     const keys = getGeminiApiKeys();
     const candidateModels = [
       requestedModel,
-      'gemini-3.5-flash-lite',
-      'gemini-3.5-flash',
-      'gemini-3.8-flash'
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash'
     ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
     let lastError = null;
@@ -1527,7 +1528,7 @@ Output strictly in JSON format:
         }
       ];
 
-      const res = await dposGenerate('gemini-3.5-flash-lite', contents, systemInstruction);
+      const res = await dposGenerate('gemini-2.5-flash', contents, systemInstruction);
       const text = res.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       const parsed = extractJson(text) || {};
 
@@ -1697,7 +1698,7 @@ Output strictly in JSON:
 }`;
 
     try {
-      const res = await dposGenerate('gemini-3.5-flash-lite', evalPrompt);
+      const res = await dposGenerate('gemini-2.5-flash', evalPrompt);
       const text = res.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       const parsed = extractJson(text) || {};
 

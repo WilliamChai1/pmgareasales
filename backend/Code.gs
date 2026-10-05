@@ -922,15 +922,19 @@ function dposGetReview(req) {
 function geminiProxy(req) {
   try {
     const rawKeys = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY") || "";
-    const keyList = rawKeys.split(/[\s,;]+/).map(function(k) { return k.trim(); }).filter(function(k) { return k.length >= 10; });
+    const keyList = rawKeys.split(/[\s,;]+/).map(function(k) { return k.replace(/['"]/g, '').trim(); }).filter(function(k) { return k.length >= 10; });
     if (keyList.length === 0) {
       return { success: false, code: "NO_KEY", message: "Script Property GEMINI_API_KEY is not set in Apps Script." };
     }
 
-    const model = String(req.model || 'gemini-3.5-flash-lite').trim();
-    if (!/^gemini-[a-z0-9.\-]+$/i.test(model)) {
-      return { success: false, message: "Invalid model identifier: " + model };
-    }
+    const requestedModel = String(req.model || 'gemini-2.5-flash').trim();
+    var candidateModels = [
+      requestedModel,
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash'
+    ].filter(function(m, idx, arr) { return m && arr.indexOf(m) === idx; });
 
     const payload = {
       contents: req.contents
@@ -943,31 +947,40 @@ function geminiProxy(req) {
     }
 
     var lastError = "";
-    for (var i = 0; i < keyList.length; i++) {
-      var curKey = keyList[i];
-      var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + curKey;
-      var options = {
-        method: "post",
-        contentType: "application/json",
-        headers: {
-          "x-goog-api-key": curKey
-        },
-        payload: JSON.stringify(payload),
-        muteHttpExceptions: true
-      };
+    for (var k = 0; k < keyList.length; k++) {
+      var curKey = keyList[k];
+      for (var m = 0; m < candidateModels.length; m++) {
+        var chosenModel = candidateModels[m];
+        var url = "https://generativelanguage.googleapis.com/v1beta/models/" + chosenModel + ":generateContent?key=" + curKey;
+        var options = {
+          method: "post",
+          contentType: "application/json",
+          headers: {
+            "x-goog-api-key": curKey
+          },
+          payload: JSON.stringify(payload),
+          muteHttpExceptions: true
+        };
 
-      try {
-        var resp = UrlFetchApp.fetch(url, options);
-        var code = resp.getResponseCode();
-        var text = resp.getContentText();
+        try {
+          var resp = UrlFetchApp.fetch(url, options);
+          var code = resp.getResponseCode();
+          var text = resp.getContentText();
 
-        if (code >= 200 && code < 300) {
-          return { success: true, data: JSON.parse(text) };
-        } else {
-          lastError = "Key #" + (i + 1) + " HTTP " + code + ": " + text;
+          if (code >= 200 && code < 300) {
+            return { success: true, data: JSON.parse(text) };
+          } else {
+            var errJson = null;
+            try { errJson = JSON.parse(text); } catch (e) {}
+            var errMsg = (errJson && errJson.error && errJson.error.message) ? errJson.error.message : text;
+            lastError = "Key #" + (k + 1) + " (" + chosenModel + ") HTTP " + code + ": " + errMsg;
+            if (code === 429 || errMsg.toLowerCase().indexOf('quota') !== -1 || errMsg.toLowerCase().indexOf('resource_exhausted') !== -1) {
+              break; // Skip to next key if quota exceeded
+            }
+          }
+        } catch (e) {
+          lastError = "Key #" + (k + 1) + " (" + chosenModel + ") fetch error: " + e.toString();
         }
-      } catch (e) {
-        lastError = "Key #" + (i + 1) + " fetch error: " + e.toString();
       }
     }
 
@@ -981,10 +994,11 @@ function saveBackendGeminiApiKey(req) {
   const username = String(req.adminUsername || req.username || '').trim().toLowerCase().replace(/\s+/g, '');
   const role = String(req.role || 'Pharmacist').trim();
   if (isDposReviewer(username, role) || username === 'williamchai' || username === 'william') {
-    const key = String(req.apiKey || '').trim();
-    if (key && key.length >= 10) {
-      PropertiesService.getScriptProperties().setProperty("GEMINI_API_KEY", key);
-      return { success: true, message: "Gemini API key saved to server script properties." };
+    const rawKey = String(req.apiKey || '').trim();
+    const cleanKeys = rawKey.split(/[\s,;]+/).map(function(k) { return k.replace(/['"]/g, '').trim(); }).filter(function(k) { return k.length >= 10; });
+    if (cleanKeys.length > 0) {
+      PropertiesService.getScriptProperties().setProperty("GEMINI_API_KEY", cleanKeys.join(", "));
+      return { success: true, count: cleanKeys.length, message: "Gemini API keys (" + cleanKeys.length + ") saved to server script properties." };
     }
   }
   return { success: false, message: "Unauthorized or invalid key length." };
