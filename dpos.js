@@ -7,6 +7,10 @@
 
   // ─── STATE MANAGEMENT ───────────────────────────────────────────────────────
   const state = {
+    topicMode: 'weekly', // 'weekly' | 'random'
+    weeklyTopic: null,
+    randomTopic: null,
+    selectedDomain: 'all',
     currentWeek: null,
     currentTab: 'spotlight', // 'spotlight' | 'quiz' | 'roleplay' | 'review'
     quizQuestions: [],
@@ -32,6 +36,110 @@
     demoMode: false,
     voices: []
   };
+
+  // ─── RANDOM CASE GENERATOR (10 CLINICAL DOMAINS) ───────────────────────────
+  function buildRandomCase(domainKey) {
+    const catalog = (typeof window !== 'undefined' && window.DPOS_CLINICAL_CATALOG) ? window.DPOS_CLINICAL_CATALOG : {};
+    const domainKeys = Object.keys(catalog);
+    if (domainKeys.length === 0) {
+      return {
+        topic: "Random Case: Joint Health & Osteoarthritis Care",
+        categoryKey: "musculoskeletal",
+        categoryName: "Musculoskeletal & Pain",
+        conditionName: "Osteoarthritis Knee",
+        isEmergencyRedFlag: false,
+        skus: "JH Nutrition Flexson, Livemore Flexmore, Biowell Terrafast 500mg, Medicplast Heat Patch",
+        summaryMd: "## Joint Care Triage\n- Screen red flags\n- Safe OTC relief\n- House brand root cause supplement",
+        persona: "VISIBLE: Uncle Tan, 67, walks in rubbing his right knee.\n\nHIDDEN BACKGROUND (customer only): You have right knee pain for 6 months. Worried about price.",
+        promo: "Senior Care Plus: FREE blood glucose screening on 28th. Counter PWP special.",
+        quiz: []
+      };
+    }
+
+    let targetDomain = null;
+    if (domainKey && domainKey !== 'all' && catalog[domainKey]) {
+      targetDomain = catalog[domainKey];
+    } else {
+      const randomKey = domainKeys[Math.floor(Math.random() * domainKeys.length)];
+      targetDomain = catalog[randomKey];
+    }
+
+    const conditions = targetDomain.conditions || [];
+    if (conditions.length === 0) {
+      return buildRandomCase('all');
+    }
+
+    const cond = conditions[Math.floor(Math.random() * conditions.length)];
+    const p = cond.persona || {};
+
+    return {
+      topic: `${cond.emergency ? '🚨 Emergency Red Flag: ' : ''}${cond.name}`,
+      categoryKey: targetDomain.id,
+      categoryName: targetDomain.name,
+      conditionName: cond.name,
+      isEmergencyRedFlag: !!cond.emergency,
+      customerName: p.name || "Customer",
+      customerGender: p.gender || (p.name && detectPersonaGender(p.name)) || "male",
+      customerRole: p.role || "Customer",
+      customerLang: p.language || "ms",
+      skus: cond.skus || "",
+      summaryMd: cond.summaryMd || "",
+      persona: `${p.visible || ''}\n\nHIDDEN BACKGROUND (customer only): ${p.hidden || ''}`,
+      promo: cond.promo || "Senior Care Plus: FREE blood glucose screening on 28th. Counter PWP special.",
+      quiz: cond.quiz || []
+    };
+  }
+
+  function setTopicMode(mode) {
+    if (mode === state.topicMode) return;
+    state.topicMode = mode;
+
+    if (mode === 'weekly') {
+      state.currentWeek = state.weeklyTopic || window.DPOS_SEED_WEEK;
+      state.quizQuestions = parseQuizJson(state.currentWeek.quiz || state.currentWeek.quizJson);
+      state.quizIndex = 0;
+      state.quizUserAnswers = [];
+      state.quizAnswered = false;
+      state.quizScore = state.userScore ? state.userScore.quizScore : null;
+      state.rolePlayTurns = [];
+      state.evaluation = null;
+    } else {
+      if (!state.randomTopic) {
+        generateNewRandomCase(state.selectedDomain || 'all');
+        return;
+      }
+      state.currentWeek = state.randomTopic;
+      state.quizQuestions = parseQuizJson(state.currentWeek.quiz || state.currentWeek.quizJson);
+      state.quizIndex = 0;
+      state.quizUserAnswers = [];
+      state.quizAnswered = false;
+      state.quizScore = null;
+      state.rolePlayTurns = [];
+      state.evaluation = null;
+    }
+
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    renderAcademy();
+  }
+
+  function generateNewRandomCase(domainKey) {
+    state.selectedDomain = domainKey || 'all';
+    state.topicMode = 'random';
+
+    const newCase = buildRandomCase(state.selectedDomain);
+    state.randomTopic = newCase;
+    state.currentWeek = newCase;
+    state.quizQuestions = parseQuizJson(newCase.quiz);
+    state.quizIndex = 0;
+    state.quizUserAnswers = [];
+    state.quizAnswered = false;
+    state.quizScore = null;
+    state.rolePlayTurns = [];
+    state.evaluation = null;
+
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    renderAcademy();
+  }
 
   // ─── PURE HELPER FUNCTIONS ─────────────────────────────────────────────────
   function escapeHtml(str) {
@@ -524,7 +632,8 @@
       const res = await dposApi('dposGetWeek', { username: u });
 
       if (res && res.success && res.week) {
-        state.currentWeek = res.week;
+        state.weeklyTopic = res.week;
+        state.currentWeek = state.topicMode === 'random' && state.randomTopic ? state.randomTopic : state.weeklyTopic;
         state.canReview = !!res.canReview && isMgr;
         state.userScore = res.mine || null;
         state.demoMode = false;
@@ -544,9 +653,9 @@
       console.warn("DPOS API offline or unavailable, loading seed week:", e);
       state.demoMode = true;
       if (typeof window.DPOS_SEED_WEEK !== 'undefined') {
-        state.currentWeek = window.DPOS_SEED_WEEK;
+        state.weeklyTopic = window.DPOS_SEED_WEEK;
       } else {
-        state.currentWeek = {
+        state.weeklyTopic = {
           topic: "Week 1: Joint Health & Osteoarthritis Care",
           skus: "JH Nutrition Flexson, Livemore Flexmore, Biowell Terrafast, Medicplast Heat Patch",
           summaryMd: "## Joint Care Triage\n- Screen red flags\n- Safe OTC relief\n- House brand root cause supplement",
@@ -555,6 +664,7 @@
           promo: "Senior Care Plus FREE glucose test on 28th."
         };
       }
+      state.currentWeek = state.topicMode === 'random' && state.randomTopic ? state.randomTopic : state.weeklyTopic;
       try {
         const savedScores = JSON.parse(localStorage.getItem('pmg_dpos_scores') || '{}');
         state.userScore = savedScores[state.currentWeek.topic] || null;
@@ -608,18 +718,60 @@
 
     root.innerHTML = `
       ${demoBanner}
+      <!-- TOPIC SELECTOR TOGGLE (WEEKLY SPOTLIGHT VS RANDOM CASE CHALLENGE) -->
+      <div style="display:flex; justify-content:center; margin-bottom:14px;">
+        <div style="display:inline-flex; background:#f1f5f9; padding:4px; border-radius:12px; border:1px solid #e2e8f0; gap:4px; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);">
+          <button type="button" class="dpos-mode-btn ${state.topicMode === 'weekly' ? 'active' : ''}" onclick="window.DPOS.setTopicMode('weekly')">
+            📅 Weekly Spotlight
+          </button>
+          <button type="button" class="dpos-mode-btn ${state.topicMode === 'random' ? 'active' : ''}" onclick="window.DPOS.setTopicMode('random')">
+            🎲 Random Case Challenge
+          </button>
+        </div>
+      </div>
+
       <!-- HERO HEADER -->
       <div class="dpos-hero">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div>
-            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:800; color:#0d9488; letter-spacing:0.5px;">DPOS Academy • Weekly Clinical Sprint</div>
+            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:800; color:#0d9488; letter-spacing:0.5px;">
+              ${state.topicMode === 'weekly' ? 'DPOS Academy • Weekly Clinical Sprint' : '🎲 Infinite Clinical Challenge • AI Random Patient'}
+            </div>
             <h2 style="margin:4px 0 6px 0; font-size:1.15rem; color:#0f172a; font-weight:800; line-height:1.3;">${escapeHtml(topicTitle)}</h2>
           </div>
           <div>${statusBadge}</div>
         </div>
+
+        ${state.currentWeek && state.currentWeek.isEmergencyRedFlag ? `
+          <div class="dpos-emergency-pulse" style="margin:8px 0;">
+            🚨 <b>CRITICAL EMERGENCY RED FLAG:</b> Immediate triage and urgent medical/hospital referral required. Strictly DO NOT attempt OTC sale!
+          </div>` : ''}
+
         <div style="font-size:0.75rem; color:#64748b; line-height:1.4;">
-          Master clinical triage, safe OTC symptomatic relief, and 3.5% House Brand supplement recommendations with real-time AI speech simulation.
+          ${state.topicMode === 'weekly' 
+            ? 'Master clinical triage, safe OTC symptomatic relief, and 3.5% House Brand supplement recommendations with real-time AI speech simulation.' 
+            : 'Challenge your clinical reflex across PMG’s 10 major disease domains. Triage symptoms, protect patient safety, and execute the complete DPOS protocol.'}
         </div>
+
+        ${state.topicMode === 'random' ? `
+          <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <select id="dposDomainSelect" onchange="window.DPOS.generateNewRandomCase(this.value)" style="padding:6px 10px; font-size:0.72rem; font-weight:700; border-radius:6px; border:1px solid #cbd5e1; background:white; color:#1e293b; max-width:260px;">
+              <option value="all" ${state.selectedDomain === 'all' ? 'selected' : ''}>🎲 All 10 Clinical Domains (Surprise Me!)</option>
+              <option value="emergency" ${state.selectedDomain === 'emergency' ? 'selected' : ''}>🚨 Emergency Red Flags (Dengue/Chest Pain/Stroke)</option>
+              <option value="git" ${state.selectedDomain === 'git' ? 'selected' : ''}>🫄 Gastrointestinal (GIT)</option>
+              <option value="respiratory" ${state.selectedDomain === 'respiratory' ? 'selected' : ''}>🫁 Respiratory & ENT</option>
+              <option value="musculoskeletal" ${state.selectedDomain === 'musculoskeletal' ? 'selected' : ''}>🦴 Musculoskeletal & Pain</option>
+              <option value="dermatology" ${state.selectedDomain === 'dermatology' ? 'selected' : ''}>🧴 Dermatology & Wound</option>
+              <option value="cardiometabolic" ${state.selectedDomain === 'cardiometabolic' ? 'selected' : ''}>❤️ Cardiometabolic Care</option>
+              <option value="women" ${state.selectedDomain === 'women' ? 'selected' : ''}>🌸 Women's Health</option>
+              <option value="men" ${state.selectedDomain === 'men' ? 'selected' : ''}>🧔 Men's Health</option>
+              <option value="pediatrics" ${state.selectedDomain === 'pediatrics' ? 'selected' : ''}>🍼 Pediatrics & Seniors</option>
+              <option value="eyes_oral" ${state.selectedDomain === 'eyes_oral' ? 'selected' : ''}>👁️ Eyes & Oral Care</option>
+            </select>
+            <button type="button" class="btn" style="background:#0d9488; color:white; padding:6px 12px; font-size:0.75rem; font-weight:800; border-radius:6px; border:none; cursor:pointer;" onclick="window.DPOS.generateNewRandomCase(document.getElementById('dposDomainSelect') ? document.getElementById('dposDomainSelect').value : 'all')">
+              🎲 Roll New Case
+            </button>
+          </div>` : ''}
       </div>
 
       <!-- SUB-NAVIGATION TABS -->
@@ -950,14 +1102,33 @@
             </div>
           </div>
 
-          <!-- COACHING TIP -->
-          ${ev.coachingTip ? `
-            <div style="margin-top:12px; background:#f0fdfa; border:1px solid #99f6e4; padding:10px 12px; border-radius:8px;">
-              <div style="font-size:0.72rem; font-weight:800; color:#0f766e; margin-bottom:3px;">💡 Coach Tip (Personalized):</div>
-              <div style="font-size:0.8rem; color:#134e4a; line-height:1.4;">${escapeHtml(ev.coachingTip)}</div>
-            </div>` : ''}
+          <!-- PART A: WHAT YOU MISSED (POINT BREAKDOWN) -->
+          <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:10px; padding:12px; margin-top:14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#be123c; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+              <span style="font-size:1rem;">❌</span>
+              <span>What You Missed (Point Breakdown)</span>
+            </div>
+            <ul style="margin:0; padding-left:20px; font-size:0.75rem; color:#9f1239; line-height:1.5;">
+              ${(ev.missedItems && ev.missedItems.length > 0 ? ev.missedItems : [ev.coachingTip || "No criteria missed."]).map(item => `<li style="margin-bottom:4px;">${escapeHtml(item)}</li>`).join('')}
+            </ul>
+          </div>
 
-          <div style="text-align:right; margin-top:12px;">
+          <!-- PART B: EXACTLY WHAT TO SAY NEXT TIME (EXAMPLE DIALOGUE) -->
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px; margin-top:10px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#15803d; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+              <span style="font-size:1rem;">💬</span>
+              <span>Exactly What to Say Next Time (Example Dialogue)</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${(ev.exampleDialogue && ev.exampleDialogue.length > 0 ? ev.exampleDialogue : ["Practice asking about red flags and offering counter promotions before payment."]).map(line => `
+                <div style="background:white; border-left:3px solid #16a34a; padding:6px 10px; border-radius:4px; font-size:0.75rem; color:#166534; font-style:italic; line-height:1.45;">
+                  &ldquo;${escapeHtml(line)}&rdquo;
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div style="text-align:right; margin-top:14px;">
             <button class="btn" style="background:#0d9488; color:white; padding:8px 16px; font-size:0.8rem; font-weight:bold;" onclick="window.DPOS.resetRolePlay()">
               🔄 Try Scenario Again
             </button>
@@ -1080,7 +1251,7 @@
       const qDisplay = r.quizScore !== null ? `${r.quizScore}/10` : `<span style="color:#ef4444; font-weight:bold;">Pending</span>`;
       let rpDisplay = r.rolePlayScore !== null ? `${r.rolePlayScore}/100` : `<span style="color:#ef4444; font-weight:bold;">Pending</span>`;
       if (r.transcript || r.coachingTip || r.breakdown) {
-        rpDisplay += `<br><button type="button" class="btn" style="background:#f0fdf4; color:#0d9488; border:1px solid #99f6e4; padding:2px 8px; font-size:0.65rem; font-weight:700; border-radius:4px; margin-top:4px; cursor:pointer;" onclick="window.DPOS.openReviewTranscript(${idx})">📜 View Script</button>`;
+        rpDisplay += `<br><button type="button" class="btn" style="background:#f0fdf4; color:#0d9488; border:1px solid #99f6e4; padding:3px 8px; font-size:0.65rem; font-weight:700; border-radius:4px; margin-top:4px; cursor:pointer;" onclick="window.DPOS.openReviewTranscript(${idx})">📄 View Dialogue Transcript</button>`;
       }
       
       return `
@@ -1154,9 +1325,18 @@
     if (!r) return;
 
     let parsedBreakdown = null;
+    let missedItems = [];
+    let exampleDialogue = [];
+    let audioMetrics = null;
+
     if (r.breakdown) {
       try {
         parsedBreakdown = typeof r.breakdown === 'string' ? JSON.parse(r.breakdown) : r.breakdown;
+        if (parsedBreakdown) {
+          missedItems = parsedBreakdown.missed_items || parsedBreakdown.missedItems || [];
+          exampleDialogue = parsedBreakdown.example_dialogue || parsedBreakdown.exampleDialogue || [];
+          audioMetrics = parsedBreakdown.audio_metrics || null;
+        }
       } catch (err) {
         parsedBreakdown = null;
       }
@@ -1164,19 +1344,24 @@
 
     const transcriptLines = (r.transcript || '').split('\n').filter(l => l.trim().length > 0);
 
+    const warmthScore = (audioMetrics && audioMetrics.warmth) || (parsedBreakdown && parsedBreakdown.warmth) || 8;
+    const fluencyScore = (audioMetrics && audioMetrics.fluency) || (parsedBreakdown && parsedBreakdown.fluency) || 8;
+    const fillerWords = (audioMetrics && audioMetrics.fillers !== undefined) ? `${audioMetrics.fillers} detected` : 'None detected (Fluent)';
+    const confidenceRating = r.confidence || (audioMetrics && audioMetrics.confidence) || 'High (8.0/10)';
+
     let turnsHtml = '';
     if (transcriptLines.length > 0) {
-      turnsHtml = transcriptLines.map(line => {
+      turnsHtml = transcriptLines.map((line, lIdx) => {
         const isTeammate = /^teammate\s*:/i.test(line);
         const isCustomer = /^customer\s*:/i.test(line);
-        let speaker = isTeammate ? 'Teammate / Staff' : (isCustomer ? 'Customer (Uncle Tan)' : '');
+        let speaker = isTeammate ? `Teammate (${r.name})` : (isCustomer ? 'Walk-in Customer' : '');
         let cleanText = line.replace(/^(teammate|customer)\s*:\s*/i, '');
         
         if (isTeammate) {
           return `
             <div style="margin-bottom:10px; display:flex; flex-direction:column; align-items:flex-end;">
-              <span style="font-size:0.65rem; color:#0d9488; font-weight:700; margin-bottom:2px;">👤 ${escapeHtml(speaker)}</span>
-              <div style="background:#ccfbf1; color:#0f766e; border:1px solid #99f6e4; padding:8px 12px; border-radius:12px 12px 2px 12px; max-width:85%; font-size:0.8rem; line-height:1.4;">
+              <span style="font-size:0.65rem; color:#0d9488; font-weight:700; margin-bottom:2px;">👤 Turn ${lIdx + 1}: ${escapeHtml(speaker)}</span>
+              <div style="background:#ccfbf1; color:#0f766e; border:1px solid #99f6e4; padding:8px 12px; border-radius:12px 12px 2px 12px; max-width:88%; font-size:0.8rem; line-height:1.4;">
                 ${escapeHtml(cleanText)}
               </div>
             </div>
@@ -1184,8 +1369,8 @@
         } else if (isCustomer) {
           return `
             <div style="margin-bottom:10px; display:flex; flex-direction:column; align-items:flex-start;">
-              <span style="font-size:0.65rem; color:#475569; font-weight:700; margin-bottom:2px;">👴 ${escapeHtml(speaker)}</span>
-              <div style="background:#f1f5f9; color:#1e293b; border:1px solid #e2e8f0; padding:8px 12px; border-radius:12px 12px 12px 2px; max-width:85%; font-size:0.8rem; line-height:1.4;">
+              <span style="font-size:0.65rem; color:#475569; font-weight:700; margin-bottom:2px;">👴/👵 Turn ${lIdx + 1}: ${escapeHtml(speaker)}</span>
+              <div style="background:#f1f5f9; color:#1e293b; border:1px solid #e2e8f0; padding:8px 12px; border-radius:12px 12px 12px 2px; max-width:88%; font-size:0.8rem; line-height:1.4;">
                 ${escapeHtml(cleanText)}
               </div>
             </div>
@@ -1202,41 +1387,56 @@
       turnsHtml = `<div style="text-align:center; padding:16px; color:#94a3b8; font-size:0.8rem;">No transcript recorded for this session.</div>`;
     }
 
-    let breakdownHtml = '';
+    let rubricGridHtml = '';
     if (parsedBreakdown) {
-      breakdownHtml = `
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:14px;">
-          <div style="font-size:0.72rem; font-weight:800; color:#334155; margin-bottom:8px; text-transform:uppercase;">📊 Rubric Score Breakdown</div>
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:6px; font-size:0.72rem;">
+      const b = parsedBreakdown.breakdown || parsedBreakdown;
+      rubricGridHtml = `
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:12px;">
+          <div style="font-size:0.72rem; font-weight:800; color:#334155; margin-bottom:8px; text-transform:uppercase;">📊 Frontline Rubric Marks (/100)</div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:6px; font-size:0.72rem;">
             <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
-              <span style="color:#64748b;">Greeting:</span> <b>${parsedBreakdown.greeting_rapport ?? '-'}/10</b>
+              <span style="color:#64748b;">Warmth:</span> <b>${b.warmth ?? '-'}/10</b>
             </div>
             <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
-              <span style="color:#64748b;">Symptoms:</span> <b>${parsedBreakdown.clarifying_symptoms ?? '-'}/20</b>
+              <span style="color:#64748b;">Fluency:</span> <b>${b.fluency ?? '-'}/10</b>
             </div>
             <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
-              <span style="color:#64748b;">History/Gastric:</span> <b>${parsedBreakdown.gastric_allergy_history ?? '-'}/15</b>
+              <span style="color:#64748b;">Empathy:</span> <b>${b.empathy ?? '-'}/10</b>
             </div>
             <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
-              <span style="color:#64748b;">House Brand:</span> <b>${parsedBreakdown.house_brand_recommendation ?? '-'}/20</b>
+              <span style="color:#64748b;">Clinical DPOS:</span> <b>${b.dpos ?? '-'}/35</b>
             </div>
             <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
-              <span style="color:#64748b;">GWP / PWP:</span> <b>${parsedBreakdown.cashier_pwp_gwp ?? '-'}/15</b>
+              <span style="color:#64748b;">GWP / PWP:</span> <b>${b.pwp ?? '-'}/15</b>
             </div>
             <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
-              <span style="color:#64748b;">Loyalty / SCP:</span> <b>${parsedBreakdown.loyalty_senior_care ?? '-'}/20</b>
+              <span style="color:#64748b;">Loyalty & SCP:</span> <b>${b.membership ?? '-'}/20</b>
             </div>
           </div>
         </div>
       `;
     }
 
-    let coachingHtml = '';
-    if (r.coachingTip) {
-      coachingHtml = `
-        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px; margin-bottom:14px; font-size:0.75rem; color:#92400e;">
-          <b>💡 AI Coach Recommendation:</b><br>
-          ${escapeHtml(r.coachingTip)}
+    let deductionsHtml = '';
+    if (missedItems.length > 0) {
+      deductionsHtml = `
+        <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+          <div style="font-size:0.72rem; font-weight:800; color:#be123c; margin-bottom:6px; text-transform:uppercase;">❌ Line-by-Line Deductions & Criteria Missed</div>
+          <ul style="margin:0; padding-left:18px; font-size:0.75rem; color:#9f1239; line-height:1.45;">
+            ${missedItems.map(m => `<li style="margin-bottom:3px;">${escapeHtml(m)}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    let scriptHtml = '';
+    if (exampleDialogue.length > 0) {
+      scriptHtml = `
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+          <div style="font-size:0.72rem; font-weight:800; color:#15803d; margin-bottom:6px; text-transform:uppercase;">💬 Recommended Coaching Script (What Staff Should Say)</div>
+          <div style="display:flex; flex-direction:column; gap:4px; font-size:0.75rem; color:#166534; font-style:italic;">
+            ${exampleDialogue.map(d => `<div style="background:white; border-left:3px solid #16a34a; padding:4px 8px; border-radius:4px;">&ldquo;${escapeHtml(d)}&rdquo;</div>`).join('')}
+          </div>
         </div>
       `;
     }
@@ -1250,38 +1450,58 @@
 
     modalEl.innerHTML = `
       <div style="position:fixed; inset:0; background:rgba(15,23,42,0.65); z-index:99999; display:flex; align-items:center; justify-content:center; padding:12px; backdrop-filter:blur(2px);" onclick="if(event.target === this) window.DPOS.closeReviewTranscript()">
-        <div style="background:white; border-radius:12px; max-width:550px; width:100%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); overflow:hidden;">
+        <div style="background:white; border-radius:12px; max-width:600px; width:100%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); overflow:hidden;">
           <div style="padding:14px 16px; background:#0f172a; color:white; display:flex; justify-content:space-between; align-items:center;">
             <div>
-              <div style="font-size:0.65rem; font-weight:800; color:#2dd4bf; text-transform:uppercase;">DPOS Consultation Audit</div>
+              <div style="font-size:0.65rem; font-weight:800; color:#2dd4bf; text-transform:uppercase;">Pharmacist Consultation Inspector</div>
               <h3 style="margin:2px 0 0 0; font-size:1rem; color:white;">${escapeHtml(r.name)} (${escapeHtml(r.role)})</h3>
             </div>
             <button type="button" onclick="window.DPOS.closeReviewTranscript()" style="background:transparent; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
           </div>
           
           <div style="padding:14px 16px; overflow-y:auto; flex:1;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px 12px; background:#f0fdfa; border:1px solid #ccfbf1; border-radius:8px;">
+            <!-- SCORE & ACOUSTIC RATING -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:10px 12px; background:#f0fdfa; border:1px solid #ccfbf1; border-radius:8px;">
               <div>
                 <span style="font-size:0.7rem; color:#64748b;">Role-Play Score:</span>
-                <span style="font-size:1.1rem; font-weight:800; color:#0f766e; margin-left:4px;">${r.rolePlayScore !== null ? r.rolePlayScore : '-'}</span><span style="font-size:0.75rem; color:#64748b;">/100</span>
+                <span style="font-size:1.2rem; font-weight:800; color:#0f766e; margin-left:4px;">${r.rolePlayScore !== null ? r.rolePlayScore : '-'}</span><span style="font-size:0.75rem; color:#64748b;">/100</span>
               </div>
-              <div style="font-size:0.7rem; color:#475569;">
-                Lang: <b>${escapeHtml(r.language || '-')}</b> | Conf: <b>${escapeHtml(r.confidence || '-')}</b>
+              <div style="font-size:0.72rem; color:#475569; text-align:right;">
+                Lang: <b>${escapeHtml(r.language || '-')}</b><br>
+                Confidence: <b style="color:#0f766e;">${escapeHtml(confidenceRating)}</b>
               </div>
             </div>
 
-            ${breakdownHtml}
-            ${coachingHtml}
+            <!-- ACOUSTIC CONFIDENCE BREAKDOWN -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+              <div style="font-size:0.72rem; font-weight:800; color:#334155; margin-bottom:8px; text-transform:uppercase;">🎙️ Acoustic Voice Metrics & Pacing</div>
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:6px; font-size:0.72rem;">
+                <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                  <span style="color:#64748b;">Intonation:</span> <b>${warmthScore}/10</b>
+                </div>
+                <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                  <span style="color:#64748b;">Speech Fluency:</span> <b>${fluencyScore}/10</b>
+                </div>
+                <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                  <span style="color:#64748b;">Fillers:</span> <b>${escapeHtml(fillerWords)}</b>
+                </div>
+              </div>
+            </div>
 
-            <div style="font-size:0.72rem; font-weight:800; color:#334155; margin-bottom:8px; text-transform:uppercase;">💬 Spoken Conversation Transcript</div>
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; max-height:260px; overflow-y:auto;">
+            ${rubricGridHtml}
+            ${deductionsHtml}
+            ${scriptHtml}
+
+            <!-- CONVERSATION TRANSCRIPT -->
+            <div style="font-size:0.72rem; font-weight:800; color:#334155; margin-bottom:8px; text-transform:uppercase;">💬 Complete Conversational Transcript</div>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; max-height:280px; overflow-y:auto;">
               ${turnsHtml}
             </div>
           </div>
 
           <div style="padding:10px 16px; background:#f8fafc; border-top:1px solid #e2e8f0; text-align:right;">
             <button type="button" class="btn" style="background:#0d9488; color:white; padding:6px 16px; font-size:0.8rem; font-weight:700; border-radius:6px; cursor:pointer;" onclick="window.DPOS.closeReviewTranscript()">
-              Close
+              Close Inspector
             </button>
           </div>
         </div>
@@ -1609,7 +1829,11 @@
 
     try {
       const wavObj = await blobToWav16k(audioBlob);
-      const personaObj = splitPersona((state.currentWeek && state.currentWeek.persona) || "");
+      const personaRaw = (state.currentWeek && (state.currentWeek.persona || state.currentWeek.topic)) || "";
+      const personaObj = splitPersona(personaRaw);
+      const customerLabel = getPersonaCustomerLabel(personaRaw);
+      const customerName = (state.currentWeek && state.currentWeek.customerName) || customerLabel.replace(/^[^A-Za-z0-9]+/, '').trim() || "Customer";
+      const isEmergency = !!(state.currentWeek && state.currentWeek.isEmergencyRedFlag);
       
       // Build conversation history text
       const historyText = state.rolePlayTurns.map(t => `${t.speaker === 'user' ? 'Teammate' : 'Customer'}: ${t.text}`).join('\n');
@@ -1632,7 +1856,7 @@ Accurately transcribe the teammate's speech recognizing these pharmacy brands an
   * Loyalty & Healthcare Terms: PMG Membership (ahli PMG / 免费会员 / free membership), Senior Care Plus (SCP / 乐龄关怀计划 / 银发族计划), 28th Monthly Free Blood Glucose Test (28hb ujian gula percuma / 每月28号免费验血糖).
 
 STRICT INSTRUCTIONS:
-1. Listen to the teammate's audio recording. Transcribe their words accurately in the exact language spoken. Accurately transcribe product names like "Flexson", "Flexmore", "Terrafast", "Medicplast", "Senior Care Plus", and promotion terms like "PWP", "GWP", "free gift", "RM250", "RM20", etc.
+1. Listen to the teammate's audio recording. Transcribe their words accurately in the exact language spoken. Accurately transcribe product names and promotion terms like "PWP", "GWP", "free gift", "RM250", "RM20", etc.
 2. Auto-detect their spoken language:
    - "zh" (Mandarin / Chinese)
    - "ms" (Bahasa Melayu / Sarawak Malay)
@@ -1640,16 +1864,16 @@ STRICT INSTRUCTIONS:
    - "mixed" (Mixed)
 3. MANDATORY CRITICAL RULE - STRICT LANGUAGE MATCHING:
    The virtual customer's response MUST STRICTLY MATCH the language spoken by the teammate in this latest recording:
-   - If teammate spoke Mandarin -> Uncle Tan MUST reply in natural conversational Mandarin (Chinese characters: 华语). DO NOT reply in Malay or English!
-   - If teammate spoke Malay -> Uncle Tan MUST reply in conversational Sarawak Malay. DO NOT reply in Mandarin or English!
-   - If teammate spoke English -> Uncle Tan MUST reply in natural Malaysian English. DO NOT reply in Malay or Mandarin!
+   - If teammate spoke Mandarin -> Reply in natural conversational Mandarin (Chinese characters: 华语). DO NOT reply in Malay or English!
+   - If teammate spoke Malay -> Reply in conversational Sarawak Malay. DO NOT reply in Mandarin or English!
+   - If teammate spoke English -> Reply in natural Malaysian English. DO NOT reply in Malay or Mandarin!
 4. CONVERSATION CONTINUITY & REALISM:
-   - Uncle Tan is 67, has right knee pain climbing stairs, wants fast relief, has past gastritis (reveals stomach issues only if asked), and is open to PMG House Brand recommendations (Flexson, Flexmore, Eutango, Neoflex, Medicplast, etc.).
+   - You are ${customerName}. Embody the customer persona background honestly.
    - Reply directly to what the teammate just said in this audio turn.
-   - If teammate greeted you, explain your knee complaint.
-   - If teammate asked about symptoms or past gastric issues, answer honestly.
-   - If teammate recommended House Brand or patch, ask about pricing or confirm interest.
-   - If teammate pitches a PWP counter add-on or mentions a GWP free gift (e.g. adding a discounted item for RM20+ or free gift for RM250+ spend), Uncle Tan agrees or shows warm interest (e.g. Malay: 'Oh boleh juga tu, tambah lah satu!' / 'Wah ada hadiah percuma ya, nanti saya tengok apa lagi cukup RM250'; Mandarin: '哦这么划算啊，那就加一份吧！' / '买满RM250有送礼物啊？那我再看看还要买什么。').
+   ${isEmergency ? `- CRITICAL EMERGENCY BEHAVIOR: You are experiencing dangerous alarm symptoms! If the teammate recognizes the danger and urgently advises you to go to the hospital/emergency clinic immediately, react with alarm and relief, thank them, and agree to go to the hospital immediately without delay! If the teammate tries to sell you OTC painkillers, vitamins, or delay emergency care, complain that your pain/symptoms are unbearable and ask if this could be an emergency.` : `- If teammate greeted you, explain your symptoms.
+   - If teammate asked about symptoms or past history, answer honestly.
+   - If teammate recommended House Brand or relief, ask about pricing or confirm interest.
+   - If teammate pitches a PWP counter add-on or mentions a GWP free gift (e.g. adding a discounted item for RM20+ or free gift for RM250+ spend), agree or show warm interest.`}
    - DO NOT repeat previous statements or say the opening greeting if the conversation has already progressed.
    - Keep customer replies natural, concise (1-3 sentences), and conversational.
 5. Evaluate per-turn vocal audio metrics:
@@ -1675,7 +1899,7 @@ Output strictly in JSON format:
       const contents = [
         {
           parts: [
-            { text: "Listen to the teammate's audio input. Reply in character as Uncle Tan matching their spoken language and evaluate the turn." },
+            { text: `Listen to the teammate's audio input. Reply in character as ${customerName} matching their spoken language and evaluate the turn.` },
             {
               inlineData: {
                 mimeType: wavObj.mimeType,
@@ -1801,54 +2025,60 @@ Output strictly in JSON format:
     const languages = [...new Set(userTurns.map(t => getLangBadgeLabel(t.lang || 'ms')))].join(' + ');
 
     const w = state.currentWeek || {};
+    const isEmergency = !!(w.isEmergencyRedFlag || (w.topic && w.topic.includes('Emergency Red Flag')));
+
     const evalPrompt = `You are a strict clinical pharmacy training evaluator for PMG Pharmacy in Malaysia.
 Evaluate this customer role-play transcript using the 100-point PMG Frontline Rubric.
 
-WEEKLY CLINICAL TOPIC & FORMULATIONS:
-${w.topic || "Week 1: Joint Health & Osteoarthritis Care"}
+CLINICAL TOPIC:
+${w.topic || "Clinical Care Consultation"}
 ${w.summaryMd || ""}
-House Brand SKUs: ${w.skus || "JH Nutrition Flexson, Livemore Flexmore"}
-Promo Context: ${w.promo || "Senior Care Plus free glucose test on 28th"}
+Target House Brand SKUs: ${w.skus || "Relevant PMG House Brand / Jase Healthcare formulations"}
+Promo / Loyalty Context: ${w.promo || "Senior Care Plus free glucose test on 28th, counter PWP / GWP"}
+Scenario Mode: ${isEmergency ? "🚨 CRITICAL EMERGENCY RED FLAG" : "Standard Minor Ailment Consultation"}
 
 TRANSCRIPT OF CONSULTATION:
 ${transcript}
 
+VOICE METRICS RECORDED:
+- Vocal Warmth & Intonation: ${avgWarmth}/10
+- Fluency & Confidence: ${avgFluency}/10
+
+${isEmergency ? `
+CRITICAL EMERGENCY SCORING PROTOCOL (LIFE-SAFETY PRIORITY):
+This case is a severe medical emergency (${w.topic}).
+- FULL MARKS (85-100 pts) MUST ONLY BE AWARDED IF:
+  1. The teammate immediately identifies the red flag danger signs.
+  2. The teammate firmly, empathetically, and urgently directs the patient to go to the Emergency Department / Hospital / Doctor immediately (or call 999).
+  3. The teammate REFRAINS from selling commercial OTC medicines, painkillers, or supplements that would cause harmful delays (e.g. no NSAIDs in dengue, no waiting in chest pain/stroke).
+- SEVERE DEDUCTION / FAILURE (0-40 pts):
+  If teammate attempts to sell OTC drugs, painkillers, or supplements instead of immediately referring to emergency hospital care, award 0 for DPOS, 0 for OTC, 0 for PWP, and severely penalize total score.` : `
 CRITICAL SCORING RULES - STRICT ZERO TOLERANCE FOR OMISSIONS:
 Score ONLY what was explicitly stated by the teammate in the transcript. Do NOT award points for unsaid recommendations:
 1. Vocal Warmth: Award ${avgWarmth}/10 based on recorded voice intonation.
 2. Fluency & Confidence: Award ${avgFluency}/10 based on vocal pacing and filler count.
-3. Positive Vocabulary & Empathy (0-10): Caring words, reassurance, polite address (e.g., Uncle, auntie, jangan risau, 别担心).
+3. Positive Vocabulary & Empathy (0-10): Caring words, reassurance, polite address (e.g., Uncle, Auntie, jangan risau, 别担心).
 4. Clinical DPOS & House Brand Explanation (0-35):
-   - Diagnosis triage (0-10): Did teammate ask clarifying symptom questions, screen red flags (swelling/redness/fever), or check medical history (gastritis/kidney/blood thinners)? (Award 0 if not asked).
-   - OTC immediate relief (0-10): Did teammate advise safe symptomatic relief (e.g., Terrafast / paracetamol dosage, Medicplast heat patch on intact skin)? (Award 0 if omitted).
+   - Diagnosis triage (0-10): Did teammate ask clarifying symptom questions, screen red flags (swelling/redness/fever/severity), or check medical history (gastritis/kidney/blood thinners)? (Award 0 if not asked).
+   - OTC immediate relief (0-10): Did teammate advise safe symptomatic relief (e.g., paracetamol/Terrafast dosage, topical patch/cream)? (Award 0 if omitted).
    - PMG House Brand supplement root cause (0-15):
-     Did teammate recommend and explain a relevant PMG House Brand supplement for joint or cartilage health?
-     * Focus SKUs: JH Nutrition Flexson, Livemore Flexmore.
-     * ALSO FULLY ACCEPT & REWARD ANY relevant PMG House Brand product from Jase Healthcare (e.g., Nutribridge Flexsure Gold, JH Nutrition Eutango, V-Infinity Neoflex, Nutribridge Crystoe, JH Nutrition Fish Oil 1000mg, Calcium Plus Vitamin D3 & K2, or joint/cartilage supplements like Glucosamine, Chondroitin, Collagen Type II).
-     * Phonetic and speech transcription variations (e.g. 'flex son', 'flexon', 'flex more', 'flex-more', 'flexsure', 'eutango', or in Chinese '关节补品', '软骨素', '天然消炎') MUST be recognized and awarded full credit.
-     (Award 0 ONLY if teammate completely omitted recommending any House Brand supplement).
+     Did teammate recommend and explain a relevant PMG House Brand supplement (e.g. from Jase Healthcare: Nutribridge, JH Nutrition, Biowell, Livemore, Medicplast, V-Infinity, etc.)?
+     Accept phonetic variations and multilingual descriptions. (Award 0 ONLY if teammate completely omitted recommending any House Brand supplement).
 5. Cashier GWP / PWP Pitch (0-15):
-   PMG monthly promotions rotate regularly, so DO NOT be rigid to specific product names. Instead, evaluate promotional intent based on PMG's standard promotional mechanisms:
-   - GWP (Gift-With-Purchase):
-     Reward if teammate mentions a free gift, prize, or reward upon reaching a spending tier (typically purchase above RM250 or similar monthly threshold, e.g., 'beli RM250 dapat free gift/hadiah percuma', 'dapat percuma payung/beg/gift', '买满RM250送赠品/礼品', 'spend RM250 get free gift', 'GWP').
-   - PWP (Purchase-With-Purchase):
-     Reward if teammate offers an add-on item at a discounted/cheaper price upon meeting a minimum spend (typically purchase above RM20, RM30, RM50, etc., to buy a counter item at a special low price, e.g., 'beli atas RM20 boleh tambah sikit untuk beli...', 'promosi PWP kaunter', 'harga murah/jimat di kaunter', '买满RM20可以特价加购...', '加几块钱带走...', 'purchase with purchase', 'PWP').
-   * SCORING CRITERIA:
-     - Award full 15 points: If teammate proactively pitches EITHER a valid PWP add-on OR a GWP free gift threshold deal (or both) before concluding the transaction.
-     - Award 10 points: If teammate briefly mentions counter promotion, discount add-on, or gift without full threshold details.
-     - Award 0 points: ONLY if teammate completely ignores counter promotions and mentions neither PWP nor GWP in any form.
-   * MULTILINGUAL & PHONETIC FLEXIBILITY:
-     Accept and award full marks across all spoken languages (e.g. 'PWP', 'GWP', 'pi-dabeliu-pi', 'ji-dabeliu-pi', 'add-on', 'hadiah percuma', 'harga murah', '加购', '赠品', '送礼物').
+   - GWP (Gift-With-Purchase): Reward if teammate mentions a free gift/reward upon reaching a spending tier (typically RM250+ spend, e.g. 'beli RM250 dapat free gift/hadiah percuma', '买满RM250送赠品').
+   - PWP (Purchase-With-Purchase): Reward if teammate offers an add-on item at a discounted price upon minimum spend (typically RM20+, e.g. 'tambah sikit dapat barang murah di kaunter', 'promosi PWP', '特价加购', '加几块钱带走').
+   - Award full 15 points if teammate pitched EITHER valid PWP OR GWP before concluding.
+   - Award 0 points ONLY if teammate completely ignored counter promotions.
 6. Loyalty & Senior Care Plus (0-20):
-   - PMG Loyalty & Senior Care Plus (0-10):
-     Did the teammate check if the customer is a PMG member, mention PMG membership (including that it is free to join), OR introduce the Senior Care Plus (SCP) programme? (Award full 10 points if the teammate checked membership OR introduced Senior Care Plus).
-   - 28th Monthly Free Blood Glucose Screening (0-10):
-     Did the teammate explicitly highlight the FREE blood glucose test on the 28th of every month for seniors (in any language, e.g. 28号免费验血糖 / 28hb ujian gula darah percuma / free blood glucose test on the 28th)? (Award full 10 points if mentioned).
+   - PMG Loyalty & Senior Care Plus (0-10): Checked PMG membership (free to join) OR introduced Senior Care Plus programme.
+   - 28th Monthly Free Blood Glucose Screening (0-10): Highlighted FREE blood glucose test on the 28th of every month for seniors (or health check).
+`}
 
-TOTAL SCORE:
-Sum the above breakdown scores strictly (total out of 100). If teammate omitted steps, their total score MUST be low (e.g. 20-50, Bronze badge).
-
-Provide 1 actionable coaching tip in the teammate's primary spoken language (max 35 words).
+MANDATORY STRUCTURED OUTPUT FORMAT:
+You MUST provide:
+1. "missed_items": Array of itemized strings listing exact criteria missed with point deductions (e.g. "Missed Red Flag: Did not screen for swelling/gastritis (-5 pts)", "Missed OTC: Did not offer immediate topical/oral relief (-10 pts)", "Missed PWP: Did not pitch counter PWP special (-15 pts)", "Missed 28th Glucose: Did not mention 28th monthly free blood glucose test (-10 pts)"). If nothing missed, return ["Mastered all consultation criteria! Full marks awarded."].
+2. "example_dialogue": Array of 2 to 3 verbatim sentences in the teammate's primary spoken language (${languages}) demonstrating how to smoothly deliver the missing red flags, House Brand pairing, and cashier PWP pitch.
+3. "coachingTip": Concise 1-sentence coaching summary.
 
 Output strictly in JSON:
 {
@@ -1863,6 +2093,12 @@ Output strictly in JSON:
     "pwp": 0,
     "membership": 20
   },
+  "missed_items": [
+    "Missed PWP: Did not pitch counter PWP special (-15 pts)"
+  ],
+  "example_dialogue": [
+    "Uncle, alang-alang berbelanja RM20 hari ini, boleh tebus pek plester ini dengan harga diskaun RM4 di kaunter!"
+  ],
   "coachingTip": "..."
 }`;
 
@@ -1874,7 +2110,7 @@ Output strictly in JSON:
       const bd = parsed.breakdown || {};
       const warmth = bd.warmth !== undefined ? Number(bd.warmth) : (bd.vocalWarmth !== undefined ? Number(bd.vocalWarmth) : avgWarmth);
       const fluency = bd.fluency !== undefined ? Number(bd.fluency) : (bd.fluencyConfidence !== undefined ? Number(bd.fluencyConfidence) : avgFluency);
-      const empathy = bd.empathy !== undefined ? Number(bd.empathy) : (bd.empathyListening !== undefined ? Number(bd.empathyListening) : 0);
+      const empathy = bd.empathy !== undefined ? Number(bd.empathy) : (bd.empathyListening !== undefined ? Number(bd.empathyListening) : 8);
       
       let dposScore = 0;
       if (bd.dpos !== undefined) {
@@ -1899,18 +2135,68 @@ Output strictly in JSON:
       };
 
       const calculatedTotal = cleanBreakdown.warmth + cleanBreakdown.fluency + cleanBreakdown.empathy + cleanBreakdown.dpos + cleanBreakdown.pwp + cleanBreakdown.membership;
-      const totalScore = parsed.totalScore !== undefined ? Math.min(100, Math.max(calculatedTotal, Number(parsed.totalScore))) : calculatedTotal;
+      const totalScore = parsed.totalScore !== undefined ? Math.min(100, Math.max(0, Number(parsed.totalScore))) : calculatedTotal;
+
+      // Extract missed items & example dialogue
+      let missedItems = Array.isArray(parsed.missed_items) ? parsed.missed_items.filter(Boolean) : (Array.isArray(parsed.missedItems) ? parsed.missedItems : []);
+      let exampleDialogue = Array.isArray(parsed.example_dialogue) ? parsed.example_dialogue.filter(Boolean) : (Array.isArray(parsed.exampleDialogue) ? parsed.exampleDialogue : []);
+
+      // Fallback generators if model omitted them
+      if (missedItems.length === 0) {
+        if (cleanBreakdown.dpos < 25) missedItems.push(`Missed Clinical DPOS: Did not complete thorough red-flag triage or House Brand explanation (-${35 - cleanBreakdown.dpos} pts)`);
+        if (cleanBreakdown.pwp < 12) missedItems.push(`Missed PWP / GWP: Did not pitch counter PWP special or GWP gift tier (-${15 - cleanBreakdown.pwp} pts)`);
+        if (cleanBreakdown.membership < 15) missedItems.push(`Missed Loyalty / SCP: Did not highlight free PMG membership or 28th monthly free blood glucose test (-${20 - cleanBreakdown.membership} pts)`);
+        if (cleanBreakdown.empathy < 7) missedItems.push(`Missed Empathy: Use more reassuring and caring addressing phrases (-${10 - cleanBreakdown.empathy} pts)`);
+      }
+      if (missedItems.length === 0 && totalScore >= 90) {
+        missedItems.push("✅ Excellent consultation! Complete triage, House Brand pairing, and cashier close mastered.");
+      }
+
+      if (exampleDialogue.length === 0) {
+        const isZh = (languages || '').toLowerCase().includes('chinese') || (languages || '').toLowerCase().includes('mandarin') || (languages || '').includes('中文');
+        if (isZh) {
+          exampleDialogue = [
+            "“叔叔/阿姨，除了止痛贴，建议每天补充我们PMG的关节软骨配方，从根本帮助修补软骨、减少摩擦。”",
+            "“今天消费满额，柜台有PWP特价加购优惠，只要加几块钱就能带走这盒药贴/营养品！”",
+            "“您是我们PMG会员吗？每逢28号，我们全线分行都有提供免费验血糖服务，记得过来测一测哦！”"
+          ];
+        } else {
+          exampleDialogue = [
+            "“Uncle/Auntie, untuk kelegaan berpanjangan, saya cadangkan ambil suplemen House Brand PMG ini sekali untuk bantu rawat punca sakit dari dalam.”",
+            "“Alang-alang belanja hari ini, di kaunter ada promosi PWP istimewa, tambah beberapa ringgit sahaja untuk dapatkan item ini!”",
+            "“Uncle/Auntie sudah daftar ahli PMG percuma? Setiap 28hb kami ada saringan gula darah percuma di semua cawangan!”"
+          ];
+        }
+      }
+
+      const audioMetrics = {
+        warmth: cleanBreakdown.warmth,
+        fluency: cleanBreakdown.fluency,
+        fillers: 0,
+        confidence: confRating
+      };
+
+      const breakdownJsonPayload = {
+        breakdown: cleanBreakdown,
+        missed_items: missedItems,
+        example_dialogue: exampleDialogue,
+        audio_metrics: audioMetrics
+      };
+
+      const richCoachingTip = missedItems.slice(0, 2).join(' | ');
 
       state.evaluation = {
         totalScore: totalScore,
         speakingConfidence: confRating,
         languageUsed: languages || 'Bahasa Melayu',
         breakdown: cleanBreakdown,
-        coachingTip: parsed.coachingTip || "Sila pastikan triage simptom, terangkan suplemen House Brand, dan ingatkan program Senior Care Plus 28hb."
+        missedItems: missedItems,
+        exampleDialogue: exampleDialogue,
+        coachingTip: richCoachingTip || parsed.coachingTip || "Sila pastikan triage simptom, terangkan suplemen House Brand, dan ingatkan program Senior Care Plus 28hb."
       };
 
       // Save role-play score to sheet / backend
-      saveTeammateScore(state.quizScore, totalScore, languages, confRating, transcript, state.evaluation.coachingTip, cleanBreakdown);
+      saveTeammateScore(state.quizScore, totalScore, languages, confRating, transcript, richCoachingTip, breakdownJsonPayload);
 
     } catch (e) {
       console.error("Evaluation error:", e);
@@ -2042,6 +2328,8 @@ Output strictly in JSON:
   const DPOS = {
     init: loadDposData,
     setTab: setTab,
+    setTopicMode: setTopicMode,
+    generateNewRandomCase: generateNewRandomCase,
     selectOption: selectOption,
     nextQuestion: nextQuestion,
     retakeQuiz: retakeQuiz,
