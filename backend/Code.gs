@@ -646,7 +646,9 @@ function dposSaveScore(req) {
     let scoreSheet = ss.getSheetByName("DPOS_Weekly_Scores");
     if (!scoreSheet) {
       scoreSheet = ss.insertSheet("DPOS_Weekly_Scores");
-      scoreSheet.appendRow(["Timestamp", "Staff_Name", "Role", "Topic_Title", "Quiz_Score", "RolePlay_Score", "Language_Used", "Speaking_Confidence_Rating", "Status"]);
+      scoreSheet.appendRow(["Timestamp", "Staff_Name", "Role", "Topic_Title", "Quiz_Score", "RolePlay_Score", "Language_Used", "Speaking_Confidence_Rating", "Status", "Transcript", "Coaching_Tip", "Breakdown_Json"]);
+    } else if (scoreSheet.getLastColumn() < 12) {
+      scoreSheet.getRange(1, 1, 1, 12).setValues([["Timestamp", "Staff_Name", "Role", "Topic_Title", "Quiz_Score", "RolePlay_Score", "Language_Used", "Speaking_Confidence_Rating", "Status", "Transcript", "Coaching_Tip", "Breakdown_Json"]]);
     }
 
     const username = String(req.username || '').trim();
@@ -700,6 +702,9 @@ function dposSaveScore(req) {
     let existingRolePlay = null;
     let existingLang = "";
     let existingConf = "";
+    let existingTranscript = "";
+    let existingCoaching = "";
+    let existingBreakdown = "";
 
     if (foundRowIndex > 0) {
       const currentRow = scoreData[foundRowIndex - 1];
@@ -707,6 +712,9 @@ function dposSaveScore(req) {
       existingRolePlay = (currentRow[5] !== "" && currentRow[5] !== null) ? Number(currentRow[5]) : null;
       existingLang = String(currentRow[6] || "");
       existingConf = String(currentRow[7] || "");
+      existingTranscript = String(currentRow[9] || "");
+      existingCoaching = String(currentRow[10] || "");
+      existingBreakdown = String(currentRow[11] || "");
     }
 
     const finalQuiz = (quizScore !== null) ? quizScore : existingQuiz;
@@ -715,6 +723,9 @@ function dposSaveScore(req) {
     const finalConf = confidenceRating || existingConf;
     const isCompleted = (finalQuiz !== null && finalRolePlay !== null);
     const finalStatus = isCompleted ? "Completed" : "In Progress";
+    const finalTranscript = req.transcript || existingTranscript || "";
+    const finalCoaching = req.coachingTip || existingCoaching || "";
+    const finalBreakdown = req.breakdown || existingBreakdown || "";
 
     const rowValues = [
       timestampStr,
@@ -725,11 +736,14 @@ function dposSaveScore(req) {
       finalRolePlay !== null ? finalRolePlay : "",
       finalLang,
       finalConf,
-      finalStatus
+      finalStatus,
+      finalTranscript,
+      finalCoaching,
+      finalBreakdown
     ];
 
     if (foundRowIndex > 0) {
-      scoreSheet.getRange(foundRowIndex, 1, 1, 9).setValues([rowValues]);
+      scoreSheet.getRange(foundRowIndex, 1, 1, 12).setValues([rowValues]);
     } else {
       scoreSheet.appendRow(rowValues);
     }
@@ -794,7 +808,10 @@ function dposGetReview(req) {
           rolePlayScore: sData[i][5] !== "" ? Number(sData[i][5]) : null,
           languageUsed: sData[i][6] || '-',
           confidence: sData[i][7] || '-',
-          status: sData[i][8] || 'In Progress'
+          status: sData[i][8] || 'In Progress',
+          transcript: sData[i][9] || '',
+          coachingTip: sData[i][10] || '',
+          breakdown: sData[i][11] || ''
         };
       }
     }
@@ -907,7 +924,10 @@ function dposGetReview(req) {
       weeklyTs: ts,
       weeklyHb: hb,
       weeklyHbPct: hbPct,
-      needsCoaching: needsCoaching
+      needsCoaching: needsCoaching,
+      transcript: score ? (score.transcript || '') : '',
+      coachingTip: score ? (score.coachingTip || '') : '',
+      breakdown: score ? (score.breakdown || '') : ''
     };
   });
 

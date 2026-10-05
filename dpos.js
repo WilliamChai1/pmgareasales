@@ -1068,16 +1068,20 @@
     }
 
     const roster = reviewData.roster || [];
+    state.reviewRoster = roster;
     const totalCount = roster.length;
     const completedCount = roster.filter(r => r.status === 'Completed').length;
     const coachingCount = roster.filter(r => r.needsCoaching).length;
 
-    let rowsHtml = roster.map(r => {
+    let rowsHtml = roster.map((r, idx) => {
       const isComplete = r.status === 'Completed';
       const rowClass = r.needsCoaching ? (isComplete ? 'row-coaching-amber' : 'row-coaching-red') : '';
       
       const qDisplay = r.quizScore !== null ? `${r.quizScore}/10` : `<span style="color:#ef4444; font-weight:bold;">Pending</span>`;
-      const rpDisplay = r.rolePlayScore !== null ? `${r.rolePlayScore}/100` : `<span style="color:#ef4444; font-weight:bold;">Pending</span>`;
+      let rpDisplay = r.rolePlayScore !== null ? `${r.rolePlayScore}/100` : `<span style="color:#ef4444; font-weight:bold;">Pending</span>`;
+      if (r.transcript || r.coachingTip || r.breakdown) {
+        rpDisplay += `<br><button type="button" class="btn" style="background:#f0fdf4; color:#0d9488; border:1px solid #99f6e4; padding:2px 8px; font-size:0.65rem; font-weight:700; border-radius:4px; margin-top:4px; cursor:pointer;" onclick="window.DPOS.openReviewTranscript(${idx})">📜 View Script</button>`;
+      }
       
       return `
         <tr class="${rowClass}">
@@ -1143,6 +1147,155 @@
         </div>
       </div>
     `;
+  }
+
+  function openReviewTranscript(idx) {
+    const r = (state.reviewRoster && state.reviewRoster[idx]);
+    if (!r) return;
+
+    let parsedBreakdown = null;
+    if (r.breakdown) {
+      try {
+        parsedBreakdown = typeof r.breakdown === 'string' ? JSON.parse(r.breakdown) : r.breakdown;
+      } catch (err) {
+        parsedBreakdown = null;
+      }
+    }
+
+    const transcriptLines = (r.transcript || '').split('\n').filter(l => l.trim().length > 0);
+
+    let turnsHtml = '';
+    if (transcriptLines.length > 0) {
+      turnsHtml = transcriptLines.map(line => {
+        const isTeammate = /^teammate\s*:/i.test(line);
+        const isCustomer = /^customer\s*:/i.test(line);
+        let speaker = isTeammate ? 'Teammate / Staff' : (isCustomer ? 'Customer (Uncle Tan)' : '');
+        let cleanText = line.replace(/^(teammate|customer)\s*:\s*/i, '');
+        
+        if (isTeammate) {
+          return `
+            <div style="margin-bottom:10px; display:flex; flex-direction:column; align-items:flex-end;">
+              <span style="font-size:0.65rem; color:#0d9488; font-weight:700; margin-bottom:2px;">👤 ${escapeHtml(speaker)}</span>
+              <div style="background:#ccfbf1; color:#0f766e; border:1px solid #99f6e4; padding:8px 12px; border-radius:12px 12px 2px 12px; max-width:85%; font-size:0.8rem; line-height:1.4;">
+                ${escapeHtml(cleanText)}
+              </div>
+            </div>
+          `;
+        } else if (isCustomer) {
+          return `
+            <div style="margin-bottom:10px; display:flex; flex-direction:column; align-items:flex-start;">
+              <span style="font-size:0.65rem; color:#475569; font-weight:700; margin-bottom:2px;">👴 ${escapeHtml(speaker)}</span>
+              <div style="background:#f1f5f9; color:#1e293b; border:1px solid #e2e8f0; padding:8px 12px; border-radius:12px 12px 12px 2px; max-width:85%; font-size:0.8rem; line-height:1.4;">
+                ${escapeHtml(cleanText)}
+              </div>
+            </div>
+          `;
+        } else {
+          return `
+            <div style="margin-bottom:8px; font-size:0.75rem; color:#64748b; font-style:italic;">
+              ${escapeHtml(line)}
+            </div>
+          `;
+        }
+      }).join('');
+    } else {
+      turnsHtml = `<div style="text-align:center; padding:16px; color:#94a3b8; font-size:0.8rem;">No transcript recorded for this session.</div>`;
+    }
+
+    let breakdownHtml = '';
+    if (parsedBreakdown) {
+      breakdownHtml = `
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:14px;">
+          <div style="font-size:0.72rem; font-weight:800; color:#334155; margin-bottom:8px; text-transform:uppercase;">📊 Rubric Score Breakdown</div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:6px; font-size:0.72rem;">
+            <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+              <span style="color:#64748b;">Greeting:</span> <b>${parsedBreakdown.greeting_rapport ?? '-'}/10</b>
+            </div>
+            <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+              <span style="color:#64748b;">Symptoms:</span> <b>${parsedBreakdown.clarifying_symptoms ?? '-'}/20</b>
+            </div>
+            <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+              <span style="color:#64748b;">History/Gastric:</span> <b>${parsedBreakdown.gastric_allergy_history ?? '-'}/15</b>
+            </div>
+            <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+              <span style="color:#64748b;">House Brand:</span> <b>${parsedBreakdown.house_brand_recommendation ?? '-'}/20</b>
+            </div>
+            <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+              <span style="color:#64748b;">GWP / PWP:</span> <b>${parsedBreakdown.cashier_pwp_gwp ?? '-'}/15</b>
+            </div>
+            <div style="background:white; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+              <span style="color:#64748b;">Loyalty / SCP:</span> <b>${parsedBreakdown.loyalty_senior_care ?? '-'}/20</b>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    let coachingHtml = '';
+    if (r.coachingTip) {
+      coachingHtml = `
+        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px; margin-bottom:14px; font-size:0.75rem; color:#92400e;">
+          <b>💡 AI Coach Recommendation:</b><br>
+          ${escapeHtml(r.coachingTip)}
+        </div>
+      `;
+    }
+
+    let modalEl = document.getElementById("dposReviewTranscriptModal");
+    if (!modalEl) {
+      modalEl = document.createElement("div");
+      modalEl.id = "dposReviewTranscriptModal";
+      document.body.appendChild(modalEl);
+    }
+
+    modalEl.innerHTML = `
+      <div style="position:fixed; inset:0; background:rgba(15,23,42,0.65); z-index:99999; display:flex; align-items:center; justify-content:center; padding:12px; backdrop-filter:blur(2px);" onclick="if(event.target === this) window.DPOS.closeReviewTranscript()">
+        <div style="background:white; border-radius:12px; max-width:550px; width:100%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); overflow:hidden;">
+          <div style="padding:14px 16px; background:#0f172a; color:white; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-size:0.65rem; font-weight:800; color:#2dd4bf; text-transform:uppercase;">DPOS Consultation Audit</div>
+              <h3 style="margin:2px 0 0 0; font-size:1rem; color:white;">${escapeHtml(r.name)} (${escapeHtml(r.role)})</h3>
+            </div>
+            <button type="button" onclick="window.DPOS.closeReviewTranscript()" style="background:transparent; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
+          </div>
+          
+          <div style="padding:14px 16px; overflow-y:auto; flex:1;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px 12px; background:#f0fdfa; border:1px solid #ccfbf1; border-radius:8px;">
+              <div>
+                <span style="font-size:0.7rem; color:#64748b;">Role-Play Score:</span>
+                <span style="font-size:1.1rem; font-weight:800; color:#0f766e; margin-left:4px;">${r.rolePlayScore !== null ? r.rolePlayScore : '-'}</span><span style="font-size:0.75rem; color:#64748b;">/100</span>
+              </div>
+              <div style="font-size:0.7rem; color:#475569;">
+                Lang: <b>${escapeHtml(r.language || '-')}</b> | Conf: <b>${escapeHtml(r.confidence || '-')}</b>
+              </div>
+            </div>
+
+            ${breakdownHtml}
+            ${coachingHtml}
+
+            <div style="font-size:0.72rem; font-weight:800; color:#334155; margin-bottom:8px; text-transform:uppercase;">💬 Spoken Conversation Transcript</div>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; max-height:260px; overflow-y:auto;">
+              ${turnsHtml}
+            </div>
+          </div>
+
+          <div style="padding:10px 16px; background:#f8fafc; border-top:1px solid #e2e8f0; text-align:right;">
+            <button type="button" class="btn" style="background:#0d9488; color:white; padding:6px 16px; font-size:0.8rem; font-weight:700; border-radius:6px; cursor:pointer;" onclick="window.DPOS.closeReviewTranscript()">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    modalEl.style.display = "block";
+  }
+
+  function closeReviewTranscript() {
+    const modalEl = document.getElementById("dposReviewTranscriptModal");
+    if (modalEl) {
+      modalEl.innerHTML = "";
+      modalEl.style.display = "none";
+    }
   }
 
   // ─── AUDIO CAPTURE & WAVEFORM ANIMATION ────────────────────────────────────
@@ -1473,10 +1626,13 @@ Accurately transcribe the teammate's speech recognizing these pharmacy brands an
 - House Brand Joint & Bone SKUs: JH Nutrition Flexson, Livemore Flexmore, Nutribridge Flexsure Gold, JH Nutrition Eutango, V-Infinity Neoflex, Nutribridge Crystoe, JH Nutrition Fish Oil 1000mg, Nutribridge Calcium Plus Vitamin D3 & K2, Nutribridge Magnesium 150mg, Curcuma Plus, Glucosamine, Chondroitin, Collagen Type II.
 - House Brand Relief & OTC SKUs: Biowell Terrafast 500mg, Medicplast Heat Therapy Patch, Medicplast Thermo Patch, Medicplast Terracool.
 - Other PMG House Brands (Jase Healthcare): Nutribridge, JH Nutrition, Biowell, Livemore, Medicplast, V-Infinity (V∞), Victoria, VK Dermsolve, Shieldmax, Omma.
-- Frontline & Loyalty Terms: PMG Membership (ahli PMG / 免费会员 / free membership), Senior Care Plus (SCP / 乐龄关怀计划 / 银发族计划), 28th Monthly Free Blood Glucose Test (28hb ujian gula percuma / 每月28号免费验血糖), Purchase-with-Purchase (PWP), Gift-with-Purchase (GWP).
+- Frontline Promotion & Loyalty Terms (Accurately Transcribe Speech):
+  * GWP (Gift-With-Purchase): "GWP", "gift with purchase", "free gift", "hadiah percuma", "bila beli RM250", "belanja RM250 dapat hadiah/gift", "percuma payung/beg/shaker", "赠品", "买满两百五十送礼物/赠品", "免费送礼".
+  * PWP (Purchase-With-Purchase): "PWP", "purchase with purchase", "add-on deal", "tambah RM... dapat beli...", "beli atas RM20 / RM30 dapat harga murah", "promosi kaunter", "harga jimat", "加购", "特价加购", "买满二十块可以特价买...", "加几块钱带走".
+  * Loyalty & Healthcare Terms: PMG Membership (ahli PMG / 免费会员 / free membership), Senior Care Plus (SCP / 乐龄关怀计划 / 银发族计划), 28th Monthly Free Blood Glucose Test (28hb ujian gula percuma / 每月28号免费验血糖).
 
 STRICT INSTRUCTIONS:
-1. Listen to the teammate's audio recording. Transcribe their words accurately in the exact language spoken. Accurately transcribe product names like "Flexson", "Flexmore", "Terrafast", "Medicplast", "Senior Care Plus", etc.
+1. Listen to the teammate's audio recording. Transcribe their words accurately in the exact language spoken. Accurately transcribe product names like "Flexson", "Flexmore", "Terrafast", "Medicplast", "Senior Care Plus", and promotion terms like "PWP", "GWP", "free gift", "RM250", "RM20", etc.
 2. Auto-detect their spoken language:
    - "zh" (Mandarin / Chinese)
    - "ms" (Bahasa Melayu / Sarawak Malay)
@@ -1493,6 +1649,7 @@ STRICT INSTRUCTIONS:
    - If teammate greeted you, explain your knee complaint.
    - If teammate asked about symptoms or past gastric issues, answer honestly.
    - If teammate recommended House Brand or patch, ask about pricing or confirm interest.
+   - If teammate pitches a PWP counter add-on or mentions a GWP free gift (e.g. adding a discounted item for RM20+ or free gift for RM250+ spend), Uncle Tan agrees or shows warm interest (e.g. Malay: 'Oh boleh juga tu, tambah lah satu!' / 'Wah ada hadiah percuma ya, nanti saya tengok apa lagi cukup RM250'; Mandarin: '哦这么划算啊，那就加一份吧！' / '买满RM250有送礼物啊？那我再看看还要买什么。').
    - DO NOT repeat previous statements or say the opening greeting if the conversation has already progressed.
    - Keep customer replies natural, concise (1-3 sentences), and conversational.
 5. Evaluate per-turn vocal audio metrics:
@@ -1670,7 +1827,18 @@ Score ONLY what was explicitly stated by the teammate in the transcript. Do NOT 
      * ALSO FULLY ACCEPT & REWARD ANY relevant PMG House Brand product from Jase Healthcare (e.g., Nutribridge Flexsure Gold, JH Nutrition Eutango, V-Infinity Neoflex, Nutribridge Crystoe, JH Nutrition Fish Oil 1000mg, Calcium Plus Vitamin D3 & K2, or joint/cartilage supplements like Glucosamine, Chondroitin, Collagen Type II).
      * Phonetic and speech transcription variations (e.g. 'flex son', 'flexon', 'flex more', 'flex-more', 'flexsure', 'eutango', or in Chinese '关节补品', '软骨素', '天然消炎') MUST be recognized and awarded full credit.
      (Award 0 ONLY if teammate completely omitted recommending any House Brand supplement).
-5. Cashier GWP / PWP Pitch (0-15): Did teammate proactively offer current cashier Purchase-with-Purchase or Gift-with-Purchase counter deals before closing? (Award 0 if omitted).
+5. Cashier GWP / PWP Pitch (0-15):
+   PMG monthly promotions rotate regularly, so DO NOT be rigid to specific product names. Instead, evaluate promotional intent based on PMG's standard promotional mechanisms:
+   - GWP (Gift-With-Purchase):
+     Reward if teammate mentions a free gift, prize, or reward upon reaching a spending tier (typically purchase above RM250 or similar monthly threshold, e.g., 'beli RM250 dapat free gift/hadiah percuma', 'dapat percuma payung/beg/gift', '买满RM250送赠品/礼品', 'spend RM250 get free gift', 'GWP').
+   - PWP (Purchase-With-Purchase):
+     Reward if teammate offers an add-on item at a discounted/cheaper price upon meeting a minimum spend (typically purchase above RM20, RM30, RM50, etc., to buy a counter item at a special low price, e.g., 'beli atas RM20 boleh tambah sikit untuk beli...', 'promosi PWP kaunter', 'harga murah/jimat di kaunter', '买满RM20可以特价加购...', '加几块钱带走...', 'purchase with purchase', 'PWP').
+   * SCORING CRITERIA:
+     - Award full 15 points: If teammate proactively pitches EITHER a valid PWP add-on OR a GWP free gift threshold deal (or both) before concluding the transaction.
+     - Award 10 points: If teammate briefly mentions counter promotion, discount add-on, or gift without full threshold details.
+     - Award 0 points: ONLY if teammate completely ignores counter promotions and mentions neither PWP nor GWP in any form.
+   * MULTILINGUAL & PHONETIC FLEXIBILITY:
+     Accept and award full marks across all spoken languages (e.g. 'PWP', 'GWP', 'pi-dabeliu-pi', 'ji-dabeliu-pi', 'add-on', 'hadiah percuma', 'harga murah', '加购', '赠品', '送礼物').
 6. Loyalty & Senior Care Plus (0-20):
    - PMG Loyalty & Senior Care Plus (0-10):
      Did the teammate check if the customer is a PMG member, mention PMG membership (including that it is free to join), OR introduce the Senior Care Plus (SCP) programme? (Award full 10 points if the teammate checked membership OR introduced Senior Care Plus).
@@ -1742,7 +1910,7 @@ Output strictly in JSON:
       };
 
       // Save role-play score to sheet / backend
-      saveTeammateScore(state.quizScore, totalScore, languages, confRating);
+      saveTeammateScore(state.quizScore, totalScore, languages, confRating, transcript, state.evaluation.coachingTip, cleanBreakdown);
 
     } catch (e) {
       console.error("Evaluation error:", e);
@@ -1763,7 +1931,7 @@ Output strictly in JSON:
   }
 
   // ─── PERSISTENCE (SHEET & LOCALSTORAGE) ────────────────────────────────────
-  async function saveTeammateScore(quizScore, rolePlayScore, lang, conf) {
+  async function saveTeammateScore(quizScore, rolePlayScore, lang, conf, transcriptText, coachingTip, breakdown) {
     const topic = (state.currentWeek && state.currentWeek.topic) || "DPOS Training";
     const u = (typeof currentUser !== 'undefined' && currentUser && currentUser.username) || '';
     const name = (typeof currentUser !== 'undefined' && currentUser && currentUser.name) || '';
@@ -1777,7 +1945,10 @@ Output strictly in JSON:
       quizScore: quizScore,
       rolePlayScore: rolePlayScore,
       languageUsed: lang,
-      speakingConfidenceRating: conf
+      speakingConfidenceRating: conf,
+      transcript: transcriptText || '',
+      coachingTip: coachingTip || '',
+      breakdown: breakdown ? JSON.stringify(breakdown) : ''
     };
 
     try {
@@ -1877,6 +2048,8 @@ Output strictly in JSON:
     replaySpeech: replaySpeech,
     evaluateRolePlay: evaluateRolePlay,
     resetRolePlay: resetRolePlay,
+    openReviewTranscript: openReviewTranscript,
+    closeReviewTranscript: closeReviewTranscript,
     dposReset: dposReset,
     // Pure functions for testing
     escapeHtml: escapeHtml,
