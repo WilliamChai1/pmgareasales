@@ -426,9 +426,10 @@
     const keys = getGeminiApiKeys();
     const candidateModels = [
       requestedModel,
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
       'gemini-2.5-flash',
       'gemini-2.5-flash-lite',
-      'gemini-2.0-flash',
       'gemini-1.5-flash'
     ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
@@ -1528,7 +1529,7 @@ Output strictly in JSON format:
         }
       ];
 
-      const res = await dposGenerate('gemini-2.5-flash', contents, systemInstruction);
+      const res = await dposGenerate('gemini-3.5-flash-lite', contents, systemInstruction);
       const text = res.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       const parsed = extractJson(text) || {};
 
@@ -1698,7 +1699,7 @@ Output strictly in JSON:
 }`;
 
     try {
-      const res = await dposGenerate('gemini-2.5-flash', evalPrompt);
+      const res = await dposGenerate('gemini-3.5-flash-lite', evalPrompt);
       const text = res.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       const parsed = extractJson(text) || {};
 

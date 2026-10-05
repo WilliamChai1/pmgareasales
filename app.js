@@ -1030,9 +1030,10 @@ STRICT CONSTRAINTS & REAL-WORLD RULES:
 9. NO introduction, NO greeting, NO concluding text. Begin immediately with "1️⃣".`;
 
   const candidateModels = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
-    'gemini-2.0-flash',
     'gemini-1.5-flash'
   ];
 
@@ -1251,7 +1252,7 @@ function updateGeminiBadge() {
   const keys = getGeminiApiKeys();
   if (badge) {
     if (keys.length > 0) {
-      badge.innerText = keys.length > 1 ? `⚡ Gemini Active (${keys.length} Keys Pool)` : "⚡ Gemini 2.5 Active";
+      badge.innerText = keys.length > 1 ? `⚡ Gemini 3.5 Active (${keys.length} Keys Pool)` : "⚡ Gemini 3.5 Active";
       badge.style.background = "#dcfce7";
       badge.style.color = "#15803d";
       badge.style.border = "1px solid #86efac";
@@ -1277,9 +1278,10 @@ async function testGeminiConnection() {
   if (badge) badge.innerText = `Testing ${keys.length} key(s)...`;
 
   const candidateModels = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
-    'gemini-2.0-flash',
     'gemini-1.5-flash'
   ];
 

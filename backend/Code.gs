@@ -927,12 +927,13 @@ function geminiProxy(req) {
       return { success: false, code: "NO_KEY", message: "Script Property GEMINI_API_KEY is not set in Apps Script." };
     }
 
-    const requestedModel = String(req.model || 'gemini-2.5-flash').trim();
+    const requestedModel = String(req.model || 'gemini-3.5-flash-lite').trim();
     var candidateModels = [
       requestedModel,
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
       'gemini-2.5-flash',
       'gemini-2.5-flash-lite',
-      'gemini-2.0-flash',
       'gemini-1.5-flash'
     ].filter(function(m, idx, arr) { return m && arr.indexOf(m) === idx; });
 
