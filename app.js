@@ -310,6 +310,32 @@ async function loadDashboardData() {
       throw new Error(currentData.message);
     }
 
+    // Auto-seed Gemini Key if provided by backend
+    if (currentData.geminiKey && String(currentData.geminiKey).trim().length >= 10) {
+      const serverKey = String(currentData.geminiKey).trim();
+      const isMgr = isManagementOrPharmacist(currentUser);
+      if (!isMgr || !localStorage.getItem('pmg_gemini_key')) {
+        localStorage.setItem('pmg_gemini_key', serverKey);
+        if (typeof updateGeminiBadge === 'function') updateGeminiBadge();
+      }
+    }
+    // If current user is manager and has keys stored locally, sync to backend if backend key is missing
+    if (isManagementOrPharmacist(currentUser)) {
+      const localKey = localStorage.getItem('pmg_gemini_key');
+      if (localKey && (!currentData.geminiKey || currentData.geminiKey.length < 10)) {
+        fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'saveGeminiApiKey',
+            apiKey: localKey.trim(),
+            adminUsername: currentUser.username,
+            role: currentUser.position || currentUser.role || 'Pharmacist'
+          })
+        }).catch(e => console.warn("Background gemini sync:", e));
+      }
+    }
+
     renderDashboard();
     document.getElementById("lastUpdated").innerText = `🟢 Live Sync • ${new Date().toLocaleTimeString()}`;
   } catch (e) {
@@ -1019,7 +1045,10 @@ STRICT CONSTRAINTS & REAL-WORLD RULES:
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${curKey}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-goog-api-key': curKey
+          },
           signal: controller.signal,
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
@@ -1265,7 +1294,10 @@ async function testGeminiConnection() {
       try {
         const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-goog-api-key': k
+          },
           body: JSON.stringify({
             contents: [{ parts: [{ text: "Respond with 'READY'." }] }]
           })
@@ -1288,10 +1320,27 @@ async function testGeminiConnection() {
   if (verifiedCount > 0) {
     localStorage.setItem('pmg_gemini_key', raw.trim());
     updateGeminiBadge();
+
+    // Auto-sync verified key pool to central backend ScriptProperties so all teammates automatically receive it!
+    try {
+      fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'saveGeminiApiKey',
+          apiKey: raw.trim(),
+          adminUsername: (currentUser && currentUser.username) || 'williamchai',
+          role: (currentUser && (currentUser.position || currentUser.role)) || 'Pharmacist'
+        })
+      }).catch(e => console.warn("Failed to sync gemini key to backend:", e));
+    } catch (e) {
+      console.warn("Sync error:", e);
+    }
+
     const poolInfo = keys.length > 1
       ? `\n\n🔁 Multi-Key Failover Enabled: ${verifiedCount} of ${keys.length} keys verified and pooled.\nIf Key 1 ever hits rate/quota limits (429), Key 2 automatically takes over without interruption!`
       : `\n\n💡 Pro-tip: You can paste multiple keys separated by comma to enable automatic quota failover.`;
-    alert(`✅ Connected to Gemini API successfully!\nActive Engine: ${activeModel}${poolInfo}`);
+    alert(`✅ Connected to Gemini API successfully!\nActive Engine: ${activeModel}${poolInfo}\n\n🔑 Central Key Sync: Your active key(s) have been synchronized to the backend so all branch teammates can immediately use AI features without manual setup!`);
   } else {
     updateGeminiBadge();
     alert(`❌ Connection failed for all entered keys:\n${errorReports.slice(0, 3).join('\n')}\n\nPlease ensure your API keys are active in Google AI Studio.`);

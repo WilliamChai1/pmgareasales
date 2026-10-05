@@ -53,6 +53,11 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(geminiProxy(request)))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (request.action === "saveGeminiApiKey") {
+      return ContentService.createTextOutput(JSON.stringify(saveBackendGeminiApiKey(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: true, message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -510,10 +515,13 @@ function getDashboardData(requestedBranch, role, username) {
     }
   }
 
+  const scriptKey = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY") || "";
+
   return { 
     targets: targets, summary: summary, staff: staff, history: history,
     actionPlan: actionPlan, amNote: amNote, branches: originalBranchNames, currentDay: currentDayOfMonth,
-    daysInMonth: daysInMonth, pendingUsers: pendingUsers
+    daysInMonth: daysInMonth, pendingUsers: pendingUsers,
+    geminiKey: scriptKey
   };
 }
 
@@ -607,6 +615,7 @@ function dposGetActiveWeek(username) {
   }
 
   const canReview = isDposReviewer(username, userRole);
+  const geminiKey = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY") || "";
 
   return {
     success: true,
@@ -619,7 +628,8 @@ function dposGetActiveWeek(username) {
       promo: promo
     },
     mine: myScore,
-    canReview: canReview
+    canReview: canReview,
+    geminiKey: geminiKey
   };
 }
 
@@ -932,17 +942,20 @@ function geminiProxy(req) {
       payload.generationConfig = req.generationConfig;
     }
 
-    const options = {
-      method: "post",
-      contentType: "application/json",
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
-
     var lastError = "";
     for (var i = 0; i < keyList.length; i++) {
       var curKey = keyList[i];
       var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + curKey;
+      var options = {
+        method: "post",
+        contentType: "application/json",
+        headers: {
+          "x-goog-api-key": curKey
+        },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      };
+
       try {
         var resp = UrlFetchApp.fetch(url, options);
         var code = resp.getResponseCode();
@@ -962,4 +975,17 @@ function geminiProxy(req) {
   } catch (err) {
     return { success: false, message: err.toString() };
   }
+}
+
+function saveBackendGeminiApiKey(req) {
+  const username = String(req.adminUsername || req.username || '').trim().toLowerCase().replace(/\s+/g, '');
+  const role = String(req.role || 'Pharmacist').trim();
+  if (isDposReviewer(username, role) || username === 'williamchai' || username === 'william') {
+    const key = String(req.apiKey || '').trim();
+    if (key && key.length >= 10) {
+      PropertiesService.getScriptProperties().setProperty("GEMINI_API_KEY", key);
+      return { success: true, message: "Gemini API key saved to server script properties." };
+    }
+  }
+  return { success: false, message: "Unauthorized or invalid key length." };
 }

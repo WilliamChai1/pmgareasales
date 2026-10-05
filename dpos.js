@@ -452,7 +452,10 @@
 
           const resp = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': curKey
+            },
             body: JSON.stringify(payload)
           });
           const data = await resp.json();
@@ -523,6 +526,15 @@
         state.canReview = !!res.canReview && isMgr;
         state.userScore = res.mine || null;
         state.demoMode = false;
+
+        // Auto-seed Gemini API key from backend so teammates don't need to manually configure it
+        if (res.geminiKey && String(res.geminiKey).trim().length >= 10) {
+          const serverKey = String(res.geminiKey).trim();
+          if (!isMgr || getGeminiApiKeys().length === 0) {
+            localStorage.setItem('pmg_gemini_key', serverKey);
+            console.log("Auto-synced Gemini API key from central server for teammate.");
+          }
+        }
       } else {
         throw new Error(res.message || "No active week returned");
       }
