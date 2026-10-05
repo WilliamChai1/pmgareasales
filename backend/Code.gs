@@ -916,7 +916,7 @@ function geminiProxy(req) {
       return { success: false, code: "NO_KEY", message: "Script Property GEMINI_API_KEY is not set in Apps Script." };
     }
 
-    const model = String(req.model || 'gemini-2.5-flash').trim();
+    const model = String(req.model || 'gemini-3.5-flash-lite').trim();
     if (!/^gemini-[a-z0-9.\-]+$/i.test(model)) {
       return { success: false, message: "Invalid model identifier: " + model };
     }

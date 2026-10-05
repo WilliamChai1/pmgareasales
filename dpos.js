@@ -296,18 +296,33 @@
     }
   }
 
+  function normalizeLangCode(raw) {
+    const s = String(raw || '').toLowerCase().trim();
+    if (s.startsWith('zh') || s.includes('chinese') || s.includes('mandarin') || s.includes('华') || s.includes('中文')) return 'zh';
+    if (s.startsWith('en') || s.includes('english') || s.includes('inggeris')) return 'en';
+    if (s.startsWith('ms') || s.includes('malay') || s.includes('melayu')) return 'ms';
+    return 'ms';
+  }
+
+  function getLangBadgeLabel(langCode) {
+    const code = normalizeLangCode(langCode);
+    if (code === 'zh') return 'Mandarin 华语';
+    if (code === 'en') return 'English';
+    return 'Bahasa Melayu';
+  }
+
   function pickVoice(langCode) {
     const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
     if (!voices || voices.length === 0) return null;
 
-    const code = String(langCode || 'en').toLowerCase().trim();
+    const code = normalizeLangCode(langCode);
     let targets = [];
-    if (code.startsWith('ms') || code.includes('malay')) {
-      targets = ['ms-my', 'ms', 'id-id', 'id'];
-    } else if (code.startsWith('zh') || code.includes('chinese') || code.includes('mandarin')) {
+    if (code === 'zh') {
       targets = ['zh-my', 'zh-cn', 'zh-sg', 'zh-tw', 'zh-hk', 'zh'];
-    } else {
+    } else if (code === 'en') {
       targets = ['en-my', 'en-gb', 'en-sg', 'en-au', 'en-us', 'en'];
+    } else {
+      targets = ['ms-my', 'ms', 'id-id', 'id'];
     }
 
     for (let t of targets) {
@@ -349,51 +364,66 @@
     return await res.json();
   }
 
-  async function dposGenerate(model, promptOrContents, systemInstruction) {
-    const localKey = localStorage.getItem('pmg_gemini_key');
-    const chosenModel = model || 'gemini-2.5-flash';
+  async function dposGenerate(requestedModel, promptOrContents, systemInstruction) {
+    const localKey = (localStorage.getItem('pmg_gemini_key') || '').trim();
+    const candidateModels = [
+      requestedModel,
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-3.8-flash'
+    ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
-    if (localKey && localKey.trim()) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${localKey.trim()}`;
-      const payload = {
-        contents: Array.isArray(promptOrContents) ? promptOrContents : [{ parts: [{ text: promptOrContents }] }]
-      };
-      if (systemInstruction) {
-        payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+    let lastError = null;
+    for (const chosenModel of candidateModels) {
+      try {
+        if (localKey) {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${localKey}`;
+          const payload = {
+            contents: Array.isArray(promptOrContents) ? promptOrContents : [{ parts: [{ text: promptOrContents }] }]
+          };
+          if (systemInstruction) {
+            payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+          }
+          payload.generationConfig = {
+            temperature: 0.3,
+            responseMimeType: "application/json"
+          };
+
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await resp.json();
+          if (data.error) throw new Error(data.error.message || `Gemini direct error (${chosenModel})`);
+          return data;
+        }
+
+        // Fall back to server proxy
+        const proxyPayload = {
+          model: chosenModel,
+          contents: Array.isArray(promptOrContents) ? promptOrContents : [{ parts: [{ text: promptOrContents }] }]
+        };
+        if (systemInstruction) {
+          proxyPayload.systemInstruction = { parts: [{ text: systemInstruction }] };
+        }
+        proxyPayload.generationConfig = {
+          temperature: 0.3,
+          responseMimeType: "application/json"
+        };
+
+        const res = await dposApi('geminiProxy', proxyPayload);
+        if (!res.success) {
+          throw new Error(res.message || `Failed to contact Gemini proxy (${chosenModel})`);
+        }
+        return res.data;
+      } catch (err) {
+        console.warn(`Model ${chosenModel} generation failed, trying next candidate:`, err.message);
+        lastError = err;
       }
-      payload.generationConfig = {
-        temperature: 0.3,
-        responseMimeType: "application/json"
-      };
-
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json();
-      if (data.error) throw new Error(data.error.message || "Gemini direct error");
-      return data;
     }
 
-    // Fall back to server proxy
-    const proxyPayload = {
-      model: chosenModel,
-      contents: Array.isArray(promptOrContents) ? promptOrContents : [{ parts: [{ text: promptOrContents }] }]
-    };
-    if (systemInstruction) {
-      proxyPayload.systemInstruction = { parts: [{ text: systemInstruction }] };
-    }
-    proxyPayload.generationConfig = {
-      temperature: 0.3,
-      responseMimeType: "application/json"
-    };
-
-    const res = await dposApi('geminiProxy', proxyPayload);
-    if (!res.success) {
-      throw new Error(res.message || "Failed to contact Gemini proxy");
-    }
-    return res.data;
+    throw lastError || new Error("All candidate Gemini models failed.");
   }
 
   // ─── INIT & DATA FETCHING ──────────────────────────────────────────────────
@@ -715,15 +745,18 @@
   function renderRolePlay(container) {
     const persona = splitPersona((state.currentWeek && state.currentWeek.persona) || "");
     const turns = state.rolePlayTurns;
-    const canEnd = turns.filter(t => t.speaker === 'user').length >= 2;
+    const userTurns = turns.filter(t => t.speaker === 'user');
+    const userTurnCount = userTurns.length;
+    const canEvaluate = userTurnCount >= 3;
 
     let chatHtml = turns.map(t => {
       const isUser = t.speaker === 'user';
+      const langBadge = t.lang ? getLangBadgeLabel(t.lang) : '';
       return `
         <div class="dpos-bubble ${isUser ? 'bubble-user' : 'bubble-customer'}">
           <div class="bubble-meta">
-            <span>${isUser ? '👤 You (Teammate)' : '👴 Walk-in Customer'}</span>
-            ${t.lang ? `<span class="badge-lang">${t.lang.toUpperCase()}</span>` : ''}
+            <span>${isUser ? '👤 You (Teammate)' : '👴 Walk-in Customer (Uncle Tan)'}</span>
+            ${langBadge ? `<span class="badge-lang">${escapeHtml(langBadge)}</span>` : ''}
           </div>
           <div class="bubble-text">${escapeHtml(t.text)}</div>
           ${!isUser ? `
@@ -741,7 +774,10 @@
         <div style="text-align:center; padding:30px 14px; color:#64748b;">
           <div style="font-size:2rem; margin-bottom:6px;">👋</div>
           <div style="font-weight:700; color:#334155; margin-bottom:4px;">Ready to start consultation?</div>
-          <div style="font-size:0.75rem; line-height:1.4;">Greet the customer naturally in Bahasa Melayu, English, or Mandarin. Speak warmly, triage their knee issue, recommend OTC relief & House Brand supplement, and remember the PMG checkout close.</div>
+          <div style="font-size:0.75rem; line-height:1.4;">
+            Press and hold the button to speak in <b>Mandarin</b>, <b>Bahasa Melayu</b>, or <b>English</b>.<br>
+            Uncle Tan will automatically match your language and respond realistically.
+          </div>
         </div>
       `;
     }
@@ -750,7 +786,7 @@
     let evalHtml = '';
     if (state.evaluation) {
       const ev = state.evaluation;
-      const bInfo = computeBadge(ev.totalScore || 75);
+      const bInfo = computeBadge(ev.totalScore !== undefined ? ev.totalScore : 0);
       evalHtml = `
         <div class="dpos-card" style="border:2px solid #0d9488; margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -761,10 +797,10 @@
           <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
             <div style="flex:1; min-width:140px; background:#f8fafc; padding:8px 10px; border-radius:8px; border:1px solid #e2e8f0;">
               <div style="font-size:0.65rem; color:#64748b; font-weight:700; text-transform:uppercase;">Speaking Confidence</div>
-              <div style="font-size:0.85rem; font-weight:800; color:#0d9488;">${escapeHtml(ev.speakingConfidence || 'High (8.2/10)')}</div>
+              <div style="font-size:0.85rem; font-weight:800; color:#0d9488;">${escapeHtml(ev.speakingConfidence || 'Developing')}</div>
             </div>
             <div style="flex:1; min-width:140px; background:#f8fafc; padding:8px 10px; border-radius:8px; border:1px solid #e2e8f0;">
-              <div style="font-size:0.65rem; color:#64748b; font-weight:700; text-transform:uppercase;">Language Detected</div>
+              <div style="font-size:0.65rem; color:#64748b; font-weight:700; text-transform:uppercase;">Language Spoken</div>
               <div style="font-size:0.85rem; font-weight:800; color:#475569;">${escapeHtml(ev.languageUsed || 'Bahasa Melayu')}</div>
             </div>
           </div>
@@ -773,28 +809,28 @@
           <div style="font-size:0.75rem; font-weight:800; color:#334155; margin-bottom:6px; text-transform:uppercase;">PMG Frontline Rubric Breakdown:</div>
           <div class="dpos-rubric-list">
             <div class="dpos-rubric-item">
-              <span>Vocal Warmth</span>
-              <b>${ev.breakdown.warmth || 8} / 10</b>
+              <span>Vocal Warmth & Intonation</span>
+              <b>${ev.breakdown.warmth ?? 0} / 10</b>
             </div>
             <div class="dpos-rubric-item">
               <span>Fluency & Confidence</span>
-              <b>${ev.breakdown.fluency || 8} / 10</b>
+              <b>${ev.breakdown.fluency ?? 0} / 10</b>
             </div>
             <div class="dpos-rubric-item">
               <span>Empathy & Listening</span>
-              <b>${ev.breakdown.empathy || 8} / 10</b>
+              <b>${ev.breakdown.empathy ?? 0} / 10</b>
             </div>
             <div class="dpos-rubric-item">
               <span>Clinical DPOS & House Brand Explanation</span>
-              <b>${ev.breakdown.dpos || 28} / 35</b>
+              <b>${ev.breakdown.dpos ?? 0} / 35</b>
             </div>
             <div class="dpos-rubric-item">
               <span>Cashier GWP / PWP Pitch</span>
-              <b>${ev.breakdown.pwp || 12} / 15</b>
+              <b>${ev.breakdown.pwp ?? 0} / 15</b>
             </div>
             <div class="dpos-rubric-item">
               <span>Loyalty & Senior Care Plus (28th Free Glucose)</span>
-              <b>${ev.breakdown.membership || 16} / 20</b>
+              <b>${ev.breakdown.membership ?? 0} / 20</b>
             </div>
           </div>
 
@@ -835,24 +871,35 @@
       <div style="margin:10px 0; text-align:center;">
         <canvas id="dposWaveform" width="300" height="36" style="background:#f1f5f9; border-radius:18px; max-width:100%; display:${state.isRecording ? 'inline-block' : 'none'};"></canvas>
         <div id="dposRecordingTimer" style="font-size:0.75rem; font-weight:800; color:#e11d48; margin-top:2px; display:${state.isRecording ? 'block' : 'none'};">
-          🔴 Recording: ${state.recordingSeconds}s / 45s
+          🔴 Recording: ${state.recordingSeconds}s / 45s (Release to Send)
         </div>
       </div>
 
       <!-- CONTROLS -->
       <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
         <button id="dposMicBtn" class="dpos-mic-btn ${state.isRecording ? 'mic-recording' : ''}" type="button">
-          <span style="font-size:1.4rem;">${state.isRecording ? '⏹️' : '🎙️'}</span>
-          <span>${state.isRecording ? 'Tap to Stop' : 'Hold / Tap to Speak'}</span>
+          <span style="font-size:1.4rem;">${state.isRecording ? '🔴' : '🎙️'}</span>
+          <span id="dposMicBtnText">${state.isRecording ? 'Release to Send' : 'Hold to Speak'}</span>
         </button>
-        <div style="font-size:0.7rem; color:#64748b;">
-          ${state.isRecording ? 'Release or tap again when finished speaking' : 'Speak Malay, English, or Mandarin • Customer will match your language'}
+        <div style="font-size:0.7rem; color:#64748b; text-align:center;">
+          Press & hold button while speaking • Release to send • Customer matches your language
         </div>
+        <div id="dposHoldTip" class="dpos-hold-tip" style="display:none;"></div>
         
-        ${canEnd && !state.evaluation ? `
-          <button class="btn btn-image" style="margin-top:10px; padding:10px 20px; font-size:0.82rem; font-weight:bold; background:linear-gradient(135deg, #0d9488 0%, #0f766e 100%);" onclick="window.DPOS.evaluateRolePlay()" ${state.isEvaluating ? 'disabled' : ''}>
-            ${state.isEvaluating ? '⏳ Evaluating Consultation...' : '🏁 End & Evaluate Consultation (100 pts)'}
-          </button>` : ''}
+        ${!state.evaluation ? `
+          <div style="margin-top:10px; width:100%; text-align:center;">
+            <button class="btn btn-image" style="width:100%; max-width:400px; padding:12px 20px; font-size:0.85rem; font-weight:bold; background:${canEvaluate ? 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)' : '#94a3b8'}; cursor:${canEvaluate ? 'pointer' : 'not-allowed'};" onclick="window.DPOS.evaluateRolePlay()" ${(!canEvaluate || state.isEvaluating) ? 'disabled' : ''}>
+              ${state.isEvaluating 
+                ? '⏳ AI Rigorous Evaluation in Progress...' 
+                : (canEvaluate 
+                    ? '🏁 End & Evaluate Consultation (100 pts)' 
+                    : `🏁 Complete Min 3 Consultation Turns to Evaluate (${userTurnCount}/3)`)}
+            </button>
+            ${!canEvaluate ? `
+              <div style="font-size:0.68rem; color:#64748b; margin-top:4px;">
+                Complete clinical consultation steps (Triage ➡️ House Brand Supplement ➡️ Cashier Loyalty) before evaluating.
+              </div>` : ''}
+          </div>` : ''}
       </div>
 
       <!-- EVALUATION RESULTS -->
@@ -975,49 +1022,104 @@
 
   // ─── AUDIO CAPTURE & WAVEFORM ANIMATION ────────────────────────────────────
   let pressStartTime = 0;
-  let isHoldMode = false;
+  let isPointerDown = false;
+  let holdTipTimeout = null;
+
+  function showHoldTip(msg) {
+    const tipEl = document.getElementById("dposHoldTip");
+    if (!tipEl) return;
+    tipEl.innerText = msg || "⚠️ Hold to Speak: Please press & hold the button while speaking (min 1 sec). Release when finished.";
+    tipEl.style.display = "inline-block";
+    clearTimeout(holdTipTimeout);
+    holdTipTimeout = setTimeout(() => {
+      if (tipEl) tipEl.style.display = "none";
+    }, 3500);
+  }
 
   function setupMicButton() {
     const btn = document.getElementById("dposMicBtn");
     if (!btn) return;
 
-    btn.addEventListener('pointerdown', (e) => {
+    btn.addEventListener('pointerdown', async (e) => {
       e.preventDefault();
+      if (state.isRecording || isPointerDown) return;
+      isPointerDown = true;
       pressStartTime = Date.now();
-      isHoldMode = true;
-      if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
+      try {
+        if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
+      } catch (err) {}
 
-      // Prime speechSynthesis on first interaction
+      // Prime speechSynthesis on user gesture
       if (window.speechSynthesis) {
-        const u = new SpeechSynthesisUtterance('');
-        window.speechSynthesis.speak(u);
+        try {
+          const u = new SpeechSynthesisUtterance('');
+          window.speechSynthesis.speak(u);
+        } catch (err) {}
       }
 
-      if (!state.isRecording) {
-        startRecording();
-      }
+      await startRecording();
     });
 
-    btn.addEventListener('pointerup', (e) => {
+    const handlePointerRelease = (e) => {
+      if (!isPointerDown) return;
+      isPointerDown = false;
       e.preventDefault();
-      const elapsed = Date.now() - pressStartTime;
-      if (isHoldMode && elapsed > 700) {
-        // Hold-to-talk finished
-        if (state.isRecording) stopRecording();
-      } else {
-        // Quick tap: toggle mode
-        // Leave recording running; user will tap again to stop
-      }
-      isHoldMode = false;
-    });
+      try {
+        if (btn.releasePointerCapture) btn.releasePointerCapture(e.pointerId);
+      } catch (err) {}
 
+      const elapsed = Date.now() - pressStartTime;
+      if (elapsed < 1000) {
+        // Tapped or released too quickly
+        abortRecording();
+        showHoldTip("⚠️ Hold to Speak: Sila tekan & tahan butang semasa bercakap (lepaskan bila selesai). / 请按住说话，说完松开。");
+      } else {
+        // Valid hold duration
+        stopRecording();
+      }
+    };
+
+    btn.addEventListener('pointerup', handlePointerRelease);
+    btn.addEventListener('pointercancel', handlePointerRelease);
     btn.addEventListener('contextmenu', e => e.preventDefault());
+  }
+
+  function abortRecording() {
+    state.discardCurrentRecording = true;
+    state.isRecording = false;
+    clearInterval(state.recordingTimerId);
+    stopWaveform();
+
+    const timerEl = document.getElementById("dposRecordingTimer");
+    const canvasEl = document.getElementById("dposWaveform");
+    const micBtn = document.getElementById("dposMicBtn");
+    const btnText = document.getElementById("dposMicBtnText");
+    if (timerEl) timerEl.style.display = "none";
+    if (canvasEl) canvasEl.style.display = "none";
+    if (micBtn) {
+      micBtn.classList.remove("mic-recording");
+      micBtn.disabled = false;
+      if (btnText) btnText.innerText = "Hold to Speak";
+    }
+
+    if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+      try {
+        state.mediaRecorder.stop();
+      } catch (e) {}
+    }
   }
 
   async function startRecording() {
     if (state.isRecording) return;
+    state.discardCurrentRecording = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!isPointerDown) {
+        // User already released while permission prompt was showing
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       state.audioContext = new AudioCtx();
       const source = state.audioContext.createMediaStreamSource(stream);
@@ -1032,6 +1134,11 @@
       };
       state.mediaRecorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
+        if (state.discardCurrentRecording) {
+          state.discardCurrentRecording = false;
+          state.audioChunks = [];
+          return;
+        }
         handleRecordedAudio();
       };
 
@@ -1042,21 +1149,25 @@
       // Start waveform
       startWaveform();
 
-      // Start timer
+      // UI update
       const timerEl = document.getElementById("dposRecordingTimer");
       const canvasEl = document.getElementById("dposWaveform");
       const micBtn = document.getElementById("dposMicBtn");
+      const btnText = document.getElementById("dposMicBtnText");
       if (canvasEl) canvasEl.style.display = "inline-block";
-      if (timerEl) timerEl.style.display = "block";
+      if (timerEl) {
+        timerEl.style.display = "block";
+        timerEl.innerText = `🔴 Recording: 0s / 45s (Release to Send)`;
+      }
       if (micBtn) {
         micBtn.classList.add("mic-recording");
-        micBtn.innerHTML = `<span style="font-size:1.4rem;">⏹️</span><span>Tap to Stop</span>`;
+        micBtn.innerHTML = `<span style="font-size:1.4rem;">🔴</span><span id="dposMicBtnText">Release to Send</span>`;
       }
 
       clearInterval(state.recordingTimerId);
       state.recordingTimerId = setInterval(() => {
         state.recordingSeconds++;
-        if (timerEl) timerEl.innerText = `🔴 Recording: ${state.recordingSeconds}s / 45s`;
+        if (timerEl) timerEl.innerText = `🔴 Recording: ${state.recordingSeconds}s / 45s (Release to Send)`;
         if (state.recordingSeconds >= 45) {
           stopRecording();
         }
@@ -1065,6 +1176,7 @@
     } catch (err) {
       alert("Microphone access denied or unavailable: " + err.message);
       state.isRecording = false;
+      isPointerDown = false;
     }
   }
 
@@ -1086,7 +1198,9 @@
     }
 
     if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
-      state.mediaRecorder.stop();
+      try {
+        state.mediaRecorder.stop();
+      } catch (e) {}
     }
   }
 
@@ -1139,7 +1253,7 @@
     if (chatBox) {
       chatBox.innerHTML += `
         <div class="dpos-bubble bubble-user" id="tempUserBubble">
-          <div class="bubble-meta"><span>👤 You</span></div>
+          <div class="bubble-meta"><span>👤 You (Teammate)</span></div>
           <div class="bubble-text"><i>Transcribing voice & assessing customer reaction...</i></div>
         </div>
       `;
@@ -1161,38 +1275,49 @@ PRIOR CONVERSATION:
 ${historyText || '(No prior turns, teammate is speaking first)'}
 
 STRICT INSTRUCTIONS:
-1. Listen to the teammate's audio recording. Transcribe their words accurately.
-2. Auto-detect their spoken language: "ms" (Bahasa Melayu), "zh" (Mandarin), "en" (English), or "mixed" (Manglish/Bahasa Pasar).
-3. The virtual customer's response MUST STRICTLY MATCH the language spoken by the teammate:
-   - If teammate spoke Malay -> customer responds in conversational Sarawak Malay.
-   - If teammate spoke Mandarin -> customer responds in conversational Mandarin.
-   - If teammate spoke English -> customer responds in natural Malaysian English.
-4. Keep the customer reply SHORT and REALISTIC (1-3 sentences max).
-5. Stay in character: Uncle Tan is 67, sceptical of prices, wants quick relief, reveals stomach history ONLY if asked, and agrees to buy House Brand when explained well.
-6. Evaluate per-turn vocal audio metrics:
+1. Listen to the teammate's audio recording. Transcribe their words accurately in the exact language spoken.
+2. Auto-detect their spoken language:
+   - "zh" (Mandarin / Chinese)
+   - "ms" (Bahasa Melayu / Sarawak Malay)
+   - "en" (English / Malaysian English)
+   - "mixed" (Mixed)
+3. MANDATORY CRITICAL RULE - STRICT LANGUAGE MATCHING:
+   The virtual customer's response MUST STRICTLY MATCH the language spoken by the teammate in this latest recording:
+   - If teammate spoke Mandarin -> Uncle Tan MUST reply in natural conversational Mandarin (Chinese characters: 华语). DO NOT reply in Malay or English!
+   - If teammate spoke Malay -> Uncle Tan MUST reply in conversational Sarawak Malay. DO NOT reply in Mandarin or English!
+   - If teammate spoke English -> Uncle Tan MUST reply in natural Malaysian English. DO NOT reply in Malay or Mandarin!
+4. CONVERSATION CONTINUITY & REALISM:
+   - Uncle Tan is 67, has right knee pain climbing stairs, wants fast relief, has past gastritis (reveals stomach issues only if asked), and is open to PMG House Brand (Flexson/Flexmore) if explained well.
+   - Reply directly to what the teammate just said in this audio turn.
+   - If teammate greeted you, explain your knee complaint.
+   - If teammate asked about symptoms or past gastric issues, answer honestly.
+   - If teammate recommended House Brand or patch, ask about pricing or confirm interest.
+   - DO NOT repeat previous statements or say the opening greeting if the conversation has already progressed.
+   - Keep customer replies natural, concise (1-3 sentences), and conversational.
+5. Evaluate per-turn vocal audio metrics:
    - vocal_warmth (1-10)
    - fluency_confidence (1-10)
    - filler_count (integer)
-   - empathy_phrases (array of caring words used)
+   - empathy_phrases (array of caring words detected)
 
 Output strictly in JSON format:
 {
-  "detected_language": "ms",
-  "reply_language": "ms",
+  "detected_language": "zh",
+  "reply_language": "zh",
   "transcript": "...",
   "customer_reply": "...",
   "audio": {
     "vocal_warmth": 8,
     "fluency_confidence": 8,
     "filler_count": 0,
-    "empathy_phrases": ["bila mula sakit"]
+    "empathy_phrases": []
   }
 }`;
 
       const contents = [
         {
           parts: [
-            { text: "Listen to the teammate's audio input. Reply in character as the customer matching their spoken language and evaluate the turn." },
+            { text: "Listen to the teammate's audio input. Reply in character as Uncle Tan matching their spoken language and evaluate the turn." },
             {
               inlineData: {
                 mimeType: wavObj.mimeType,
@@ -1203,19 +1328,24 @@ Output strictly in JSON format:
         }
       ];
 
-      const res = await dposGenerate('gemini-2.5-flash', contents, systemInstruction);
+      const res = await dposGenerate('gemini-3.5-flash-lite', contents, systemInstruction);
       const text = res.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       const parsed = extractJson(text) || {};
 
-      const userText = parsed.transcript || "Selamat petang Uncle Tan, ada apa boleh saya bantu hari ini?";
-      const customerReply = parsed.customer_reply || "Lutut kanan saya sakit sangat bila jalan tangga. Ada ubat sapu atau suplemen yang bagus ke?";
-      const replyLang = parsed.reply_language || parsed.detected_language || 'ms';
+      const detectedLang = normalizeLangCode(parsed.detected_language);
+      const replyLang = normalizeLangCode(parsed.reply_language || detectedLang);
+      const userText = (parsed.transcript || "").trim() || "(Voice speech received)";
+      const customerReply = (parsed.customer_reply || "").trim();
+
+      if (!customerReply) {
+        throw new Error("Empty customer reply returned from AI engine.");
+      }
 
       // Record turns
       state.rolePlayTurns.push({
         speaker: 'user',
         text: userText,
-        lang: parsed.detected_language || 'ms',
+        lang: detectedLang,
         audioScore: parsed.audio || { vocal_warmth: 8, fluency_confidence: 8, filler_count: 0 }
       });
 
@@ -1233,20 +1363,19 @@ Output strictly in JSON format:
 
     } catch (err) {
       console.error("Audio turn processing error:", err);
-      // Fallback turn so role-play doesn't break
-      state.rolePlayTurns.push({
-        speaker: 'user',
-        text: "(Voice recorded successfully)",
-        lang: 'ms',
-        audioScore: { vocal_warmth: 8, fluency_confidence: 8 }
-      });
-      state.rolePlayTurns.push({
-        speaker: 'customer',
-        text: "Lutut saya sakit sangat bila jalan tangga. Ada ubat sapu atau ubat makan yang elok ke?",
-        lang: 'ms'
-      });
-      renderRolePlay(document.getElementById("dposContentContainer"));
-      speakCustomerReply("Lutut saya sakit sangat bila jalan tangga. Ada ubat sapu atau ubat makan yang elok ke?", 'ms');
+      // Remove temporary processing bubble
+      const tempBubble = document.getElementById("tempUserBubble");
+      if (tempBubble) tempBubble.remove();
+
+      // Re-enable mic
+      const micBtn = document.getElementById("dposMicBtn");
+      if (micBtn) {
+        micBtn.disabled = false;
+        micBtn.classList.remove("mic-recording");
+        micBtn.innerHTML = `<span style="font-size:1.4rem;">🎙️</span><span id="dposMicBtnText">Hold to Speak</span>`;
+      }
+
+      showHoldTip("⚠️ Voice processing error: Could not contact AI engine (" + (err.message || "timeout") + "). Please hold to speak again.");
     }
   }
 
@@ -1255,12 +1384,13 @@ Output strictly in JSON format:
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      const voice = pickVoice(lang);
+      const code = normalizeLangCode(lang);
+      const voice = pickVoice(code);
       if (voice) {
         u.voice = voice;
         u.lang = voice.lang;
       } else {
-        u.lang = lang === 'zh' ? 'zh-CN' : (lang === 'en' ? 'en-US' : 'ms-MY');
+        u.lang = code === 'zh' ? 'zh-CN' : (code === 'en' ? 'en-US' : 'ms-MY');
       }
       u.rate = 0.95;
       window.speechSynthesis.speak(u);
@@ -1276,86 +1406,120 @@ Output strictly in JSON format:
   // ─── EVALUATE ROLE-PLAY (100-POINT RUBRIC) ─────────────────────────────────
   async function evaluateRolePlay() {
     if (state.isEvaluating) return;
+    const turns = state.rolePlayTurns;
+    const userTurns = turns.filter(t => t.speaker === 'user');
+    if (userTurns.length < 3) {
+      alert("Please complete at least 3 consultation turns covering triage, House Brand recommendation, and cashier close before evaluating.");
+      return;
+    }
+
     state.isEvaluating = true;
     renderRolePlay(document.getElementById("dposContentContainer"));
 
-    const turns = state.rolePlayTurns;
-    const userTurns = turns.filter(t => t.speaker === 'user');
-    
-    // Average audio ratings
+    // Average audio ratings from recorded turns
     let totalWarmth = 0;
     let totalFluency = 0;
     userTurns.forEach(t => {
       const a = t.audioScore || {};
-      totalWarmth += (a.vocal_warmth || 8);
-      totalFluency += (a.fluency_confidence || 8);
+      totalWarmth += (a.vocal_warmth || 7);
+      totalFluency += (a.fluency_confidence || 7);
     });
     const avgWarmth = Math.min(10, Math.max(1, Math.round(totalWarmth / (userTurns.length || 1))));
     const avgFluency = Math.min(10, Math.max(1, Math.round(totalFluency / (userTurns.length || 1))));
     const confRating = computeConfidence(avgWarmth, avgFluency);
 
     const transcript = turns.map(t => `${t.speaker === 'user' ? 'Teammate' : 'Customer'}: ${t.text}`).join('\n');
-    const languages = [...new Set(userTurns.map(t => t.lang || 'ms'))].join(' + ');
+    const languages = [...new Set(userTurns.map(t => getLangBadgeLabel(t.lang || 'ms')))].join(' + ');
 
     const w = state.currentWeek || {};
-    const evalPrompt = `You are a clinical training evaluator for PMG Pharmacy in Malaysia.
+    const evalPrompt = `You are a strict clinical pharmacy training evaluator for PMG Pharmacy in Malaysia.
 Evaluate this customer role-play transcript using the 100-point PMG Frontline Rubric.
 
-WEEKLY CLINICAL TOPIC & FACTS:
-${w.topic}
-${w.summaryMd}
-House Brand SKUs: ${w.skus}
-Promo Context: ${w.promo || 'Senior Care Plus on 28th free glucose test'}
+WEEKLY CLINICAL TOPIC & FORMULATIONS:
+${w.topic || "Week 1: Joint Health & Osteoarthritis Care"}
+${w.summaryMd || ""}
+House Brand SKUs: ${w.skus || "JH Nutrition Flexson, Livemore Flexmore"}
+Promo Context: ${w.promo || "Senior Care Plus free glucose test on 28th"}
 
-TRANSCRIPT:
+TRANSCRIPT OF CONSULTATION:
 ${transcript}
 
-RUBRIC BREAKDOWN:
-1. Vocal Warmth: Award ${avgWarmth}/10 based on recorded voice tone.
+CRITICAL SCORING RULES - STRICT ZERO TOLERANCE FOR OMISSIONS:
+Score ONLY what was explicitly stated by the teammate in the transcript. Do NOT award points for unsaid recommendations:
+1. Vocal Warmth: Award ${avgWarmth}/10 based on recorded voice intonation.
 2. Fluency & Confidence: Award ${avgFluency}/10 based on vocal pacing and filler count.
-3. Positive Vocabulary & Empathy (0-10): Caring words, reassurance, polite address.
+3. Positive Vocabulary & Empathy (0-10): Caring words, reassurance, polite address (e.g., Uncle, auntie, jangan risau, 别担心).
 4. Clinical DPOS & House Brand Explanation (0-35):
-   - Diagnosis triage (red flags checked? asked past gastritis/NSAID stomach issues?): 0-10
-   - OTC immediate comfort (Terrafast 500mg or Medicplast Heat Patch): 0-10
-   - PMG House Brand supplement root cause (JH Flexson or Livemore Flexmore): 0-15
-5. Cashier GWP/PWP Pitch (0-15): Mentioned checkout add-on / promo value.
+   - Diagnosis triage (0-10): Did teammate ask clarifying symptom questions, screen red flags (swelling/redness/fever), or check medical history (gastritis/kidney/blood thinners)? (Award 0 if not asked).
+   - OTC immediate relief (0-10): Did teammate advise safe symptomatic relief (e.g., Terrafast / paracetamol dosage, Medicplast heat patch on intact skin)? (Award 0 if omitted).
+   - PMG House Brand supplement root cause (0-15): Did teammate specifically recommend and explain PMG House Brand joint supplements (JH Nutrition Flexson or Livemore Flexmore) and their cartilage-protecting benefits? (Award 0 if omitted).
+5. Cashier GWP / PWP Pitch (0-15): Did teammate proactively offer current cashier Purchase-with-Purchase or Gift-with-Purchase counter deals before closing? (Award 0 if omitted).
 6. Loyalty & Senior Care Plus (0-20):
-   - Checked if customer is a PMG member & stated membership is FREE: 0-10
-   - For age 55+ senior: introduced Senior Care Plus & FREE blood glucose test on the 28th of every month: 0-10
+   - Checked if customer is a PMG member and explicitly stated membership is FREE (0-10). (Award 0 if omitted).
+   - For senior customer (Uncle Tan, 67): introduced Senior Care Plus and explicitly highlighted the FREE blood glucose test on the 28th of every month (0-10). (Award 0 if omitted).
 
-Provide 1 concise personalized coaching tip in the teammate's primary spoken language (max 35 words).
+TOTAL SCORE:
+Sum the above breakdown scores strictly (total out of 100). If teammate omitted steps, their total score MUST be low (e.g. 20-50, Bronze badge).
+
+Provide 1 actionable coaching tip in the teammate's primary spoken language (max 35 words).
 
 Output strictly in JSON:
 {
-  "totalScore": 88,
+  "totalScore": 35,
   "speakingConfidence": "${confRating}",
   "languageUsed": "${languages}",
   "breakdown": {
     "warmth": ${avgWarmth},
     "fluency": ${avgFluency},
-    "empathy": 8,
-    "dpos": 30,
-    "pwp": 12,
-    "membership": 18
+    "empathy": 5,
+    "dpos": 10,
+    "pwp": 0,
+    "membership": 0
   },
   "coachingTip": "..."
 }`;
 
     try {
-      const res = await dposGenerate('gemini-2.5-flash', evalPrompt);
+      const res = await dposGenerate('gemini-3.5-flash-lite', evalPrompt);
       const text = res.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       const parsed = extractJson(text) || {};
 
       const bd = parsed.breakdown || {};
-      const earned = (bd.warmth || avgWarmth) + (bd.fluency || avgFluency) + (bd.empathy || 8) + (bd.dpos || 28) + (bd.pwp || 12) + (bd.membership || 16);
-      const totalScore = Math.min(100, Math.max(20, parsed.totalScore || earned));
+      const warmth = bd.warmth !== undefined ? Number(bd.warmth) : (bd.vocalWarmth !== undefined ? Number(bd.vocalWarmth) : avgWarmth);
+      const fluency = bd.fluency !== undefined ? Number(bd.fluency) : (bd.fluencyConfidence !== undefined ? Number(bd.fluencyConfidence) : avgFluency);
+      const empathy = bd.empathy !== undefined ? Number(bd.empathy) : (bd.empathyListening !== undefined ? Number(bd.empathyListening) : 0);
+      
+      let dposScore = 0;
+      if (bd.dpos !== undefined) {
+        dposScore = Number(bd.dpos);
+      } else {
+        const triage = Number(bd.diagnosisTriage || bd.triage || 0);
+        const otc = Number(bd.otcRelief || bd.otc || 0);
+        const hb = Number(bd.houseBrandSupplement || bd.supplement || bd.houseBrand || 0);
+        dposScore = triage + otc + hb;
+      }
+      
+      const pwpScore = bd.pwp !== undefined ? Number(bd.pwp) : (bd.cashierGwpPwp !== undefined ? Number(bd.cashierGwpPwp) : 0);
+      const memScore = bd.membership !== undefined ? Number(bd.membership) : (bd.loyaltySeniorCare !== undefined ? Number(bd.loyaltySeniorCare) : 0);
+
+      const cleanBreakdown = {
+        warmth: Math.min(10, Math.max(0, warmth)),
+        fluency: Math.min(10, Math.max(0, fluency)),
+        empathy: Math.min(10, Math.max(0, empathy)),
+        dpos: Math.min(35, Math.max(0, dposScore)),
+        pwp: Math.min(15, Math.max(0, pwpScore)),
+        membership: Math.min(20, Math.max(0, memScore))
+      };
+
+      const calculatedTotal = cleanBreakdown.warmth + cleanBreakdown.fluency + cleanBreakdown.empathy + cleanBreakdown.dpos + cleanBreakdown.pwp + cleanBreakdown.membership;
+      const totalScore = parsed.totalScore !== undefined ? Math.min(100, Math.max(0, Number(parsed.totalScore))) : calculatedTotal;
 
       state.evaluation = {
         totalScore: totalScore,
         speakingConfidence: confRating,
         languageUsed: languages || 'Bahasa Melayu',
-        breakdown: bd,
-        coachingTip: parsed.coachingTip || "Syabas! Teruskan menerangkan kebaikan Flexson untuk kelegaan sendi jangka panjang."
+        breakdown: cleanBreakdown,
+        coachingTip: parsed.coachingTip || "Sila pastikan triage simptom, terangkan suplemen House Brand, dan ingatkan program Senior Care Plus 28hb."
       };
 
       // Save role-play score to sheet / backend
@@ -1363,14 +1527,7 @@ Output strictly in JSON:
 
     } catch (e) {
       console.error("Evaluation error:", e);
-      state.evaluation = {
-        totalScore: 82,
-        speakingConfidence: confRating,
-        languageUsed: languages || 'Bahasa Melayu',
-        breakdown: { warmth: avgWarmth, fluency: avgFluency, empathy: 8, dpos: 28, pwp: 12, membership: 16 },
-        coachingTip: "Teruskan amalan DPOS secara konsisten. Terangkan keahlian percuma PMG dan Senior Care Plus di kaunter."
-      };
-      saveTeammateScore(state.quizScore, 82, languages, confRating);
+      alert("⚠️ Evaluation failed: Could not connect to AI evaluator (" + (e.message || "network error") + "). Please click the Evaluate button again.");
     } finally {
       state.isEvaluating = false;
       renderRolePlay(document.getElementById("dposContentContainer"));
