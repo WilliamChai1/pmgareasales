@@ -50,7 +50,13 @@ async function executeLogin() {
       if (!currentUser.branch || String(currentUser.branch).toUpperCase() === 'ALL') {
         currentUser.branch = DEFAULT_BRANCH;
       }
-      currentUser.role = currentUser.role || currentUser.position || 'Pharmacist-in-Charge';
+      const rawRole = currentUser.role || currentUser.position || '';
+      if (!rawRole) {
+        const u = String(currentUser.username || '').toLowerCase();
+        currentUser.role = (u === 'williamchai' || u === 'william') ? 'Pharmacist-in-Charge' : 'Staff';
+      } else {
+        currentUser.role = rawRole;
+      }
       selectedBranch = currentUser.branch || DEFAULT_BRANCH;
       localStorage.setItem("pmg_session", JSON.stringify(currentUser));
       document.getElementById("loginOverlay").style.display = "none";
@@ -222,7 +228,13 @@ function initSession() {
       if (!currentUser.branch || String(currentUser.branch).toUpperCase() === 'ALL') {
         currentUser.branch = DEFAULT_BRANCH;
       }
-      currentUser.role = currentUser.role || currentUser.position || 'Pharmacist-in-Charge';
+      const rawRole = currentUser.role || currentUser.position || '';
+      if (!rawRole) {
+        const u = String(currentUser.username || '').toLowerCase();
+        currentUser.role = (u === 'williamchai' || u === 'william') ? 'Pharmacist-in-Charge' : 'Staff';
+      } else {
+        currentUser.role = rawRole;
+      }
       selectedBranch = currentUser.branch || DEFAULT_BRANCH;
       document.getElementById("loginOverlay").style.display = "none";
       loadDashboardData();
@@ -249,8 +261,8 @@ async function loadDashboardData() {
       body: JSON.stringify({ 
         action: 'getData', 
         branch: branchToFetch, 
-        role: (currentUser && (currentUser.position || currentUser.role)) || 'Pharmacist-in-Charge',
-        username: (currentUser && currentUser.username) || 'william'
+        role: (currentUser && (currentUser.position || currentUser.role)) || 'Staff',
+        username: (currentUser && currentUser.username) || ''
       })
     });
     currentData = await res.json();
@@ -414,6 +426,96 @@ function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
   });
 }
 
+function isManagementOrPharmacist(user) {
+  if (!user) return false;
+  const username = String(user.username || '').trim().toLowerCase();
+  const role = String(user.position || user.role || '').trim().toLowerCase();
+  
+  if (username === 'williamchai' || username === 'william') return true;
+  if (role.includes('pharmacist') || role.includes('in-charge') || role === 'pic') return true;
+  if (role === 'branch manager' || role === 'assistant branch manager' || role.includes('manager')) return true;
+  if (role.includes('area manager')) return true;
+
+  return false;
+}
+
+function findStaffForUser(staffList, user) {
+  if (!user || !Array.isArray(staffList) || staffList.length === 0) return null;
+  const uName = String(user.name || '').trim().toLowerCase();
+  const uUser = String(user.username || '').trim().toLowerCase();
+  
+  // 1. Exact match on s.name === uName
+  if (uName) {
+    const exact = staffList.find(s => String(s.name || '').trim().toLowerCase() === uName);
+    if (exact) return exact;
+  }
+
+  // 2. Exact match on s.name === uUser
+  if (uUser) {
+    const exactUser = staffList.find(s => String(s.name || '').trim().toLowerCase() === uUser);
+    if (exactUser) return exactUser;
+  }
+
+  // 3. Known specific aliases and nicknames
+  if (uUser === 'williamchai' || uUser === 'william' || uName.includes('chai yee sian') || uName.includes('william')) {
+    const found = staffList.find(s => /chai|sian/i.test(s.name || ''));
+    if (found) return found;
+  }
+  if (uUser === 'penny' || uName.includes('jong pei choo') || uName.includes('penny')) {
+    const found = staffList.find(s => /jong|pei choo/i.test(s.name || ''));
+    if (found) return found;
+  }
+  if (uUser === 'fiona' || uName.includes('fiona')) {
+    const found = staffList.find(s => /fiona/i.test(s.name || ''));
+    if (found) return found;
+  }
+  if (uUser === 'farizin' || uName.includes('farizin')) {
+    const found = staffList.find(s => /farizin/i.test(s.name || ''));
+    if (found) return found;
+  }
+  if (uUser === 'nurhafizah' || uName.includes('nurhafizah')) {
+    const found = staffList.find(s => /nurhafizah/i.test(s.name || ''));
+    if (found) return found;
+  }
+  if (uUser === 'kenix' || uName.includes('kenix') || uName.includes('ling wang yiing')) {
+    const found = staffList.find(s => /kenix/i.test(s.name || ''));
+    if (found) return found;
+  }
+  if (uUser === 'ting' || uName.includes('ting') || uName.includes('kwang yu')) {
+    const found = staffList.find(s => /ting|kwang yu/i.test(s.name || ''));
+    if (found) return found;
+  }
+  if (uUser === 'louna' || uName.includes('louna') || uName.includes('haniesha')) {
+    const found = staffList.find(s => /haniesha|louna/i.test(s.name || ''));
+    if (found) return found;
+  }
+  if (uUser === 'christina' || uName.includes('christina')) {
+    const found = staffList.find(s => /christina/i.test(s.name || ''));
+    if (found) return found;
+  }
+
+  // 4. Substring / bidirectional containment match on uName
+  if (uName && uName.length >= 3) {
+    const sub = staffList.find(s => {
+      const sn = String(s.name || '').toLowerCase();
+      return sn && (sn.includes(uName) || uName.includes(sn));
+    });
+    if (sub) return sub;
+  }
+
+  // 5. Word token match (at least one token of >= 4 letters matches)
+  const tokens = (uName + ' ' + uUser).split(/[^a-z0-9]+/i).filter(t => t.length >= 4);
+  if (tokens.length > 0) {
+    const tokenMatch = staffList.find(s => {
+      const sn = String(s.name || '').toLowerCase();
+      return tokens.some(t => sn.includes(t));
+    });
+    if (tokenMatch) return tokenMatch;
+  }
+
+  return null;
+}
+
 function renderDashboard() {
   selectedBranch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
   if (String(selectedBranch).toUpperCase() === 'ALL') {
@@ -428,13 +530,15 @@ function renderDashboard() {
   const staff = archiveAndGetOctoberMtd(currentData.staff || [], summary, currentData.currentDay);
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
   
-  // Restore all original dashboard widgets for Pharmacist role / Pharmacist-in-Charge
-  const role = (currentUser && (currentUser.position || currentUser.role || '')).toLowerCase();
-  const isBranchManager = role === 'branch manager' || role === 'assistant branch manager';
-  const isPharmacist = role.includes('pharmacist') || role === 'pic' || role.includes('in-charge') || role === 'staff';
-  const canEditActionPlan = true;
-  const canViewReports = true;
-  const canViewStaffPerformance = true;
+  // Role-based permissions:
+  // Managers & Pharmacists (e.g. William Chai, Kenix Ling, Ting Kwang Yu, Haniesha Louna)
+  // have management access to Reports, Staff Table, and Strategy Editing.
+  // Regular Teammates ("Staff", e.g. Fiona, Penny, Farizin, Nurhafizah, Christina)
+  // see strictly their own personal performance and outlet goals, with management reports hidden.
+  const isManagerOrPic = isManagementOrPharmacist(currentUser);
+  const canEditActionPlan = isManagerOrPic;
+  const canViewReports = isManagerOrPic;
+  const canViewStaffPerformance = isManagerOrPic;
 
   // Dynamically populate signup branch list if branches data is available
   const signupBranchSelect = document.getElementById("signupBranch");
@@ -448,33 +552,21 @@ function renderDashboard() {
 
   document.getElementById("branchNameHeader").innerText = `🏥 PMG ${selectedBranch} Performance`;
   
-  // Dedicated matching for Chai Yee Sian (William Chai, Pharmacist-in-Charge)
-  let myStats = staff.find(s => /chai|sian/i.test(s.name));
-  if (!myStats && currentUser) {
-    if (currentUser.name) {
-      myStats = staff.find(s => s.name.toLowerCase() === currentUser.name.toLowerCase()) ||
-                staff.find(s => s.name.toLowerCase().includes(currentUser.name.toLowerCase())) ||
-                staff.find(s => currentUser.name.toLowerCase().includes(s.name.toLowerCase()));
-    }
-    if (!myStats && currentUser.username) {
-      myStats = staff.find(s => s.name.toLowerCase().includes(currentUser.username.toLowerCase()));
-    }
-  }
-  if (!myStats) {
-    myStats = staff.find(s => (s.role || '').toLowerCase().includes('pharmacist')) || staff[0];
-  }
+  // Dynamic matching strictly for the logged-in teammate
+  const myStats = findStaffForUser(staff, currentUser);
 
   if (myStats) {
     document.getElementById("personalDashboard").style.display = "block";
-    document.getElementById("userNameHeader").innerText = `👤 ${myStats.name} (${myStats.role})`;
+    document.getElementById("userNameHeader").innerText = `👤 ${myStats.name} (${myStats.role || 'Staff'})`;
     
-    // Daily performance of latest recorded business day (e.g. Chai Yee Sian RM 1,560.55 HB)
+    // Daily performance of latest recorded business day
     const dTs   = Number(myStats.dailyTs || 0);
     const dHb   = Number(myStats.dailyHb || 0);
     const dHm   = Number(myStats.dailyHm || 0);
     const dCust = Number(myStats.dailyCust || 0);
 
-    const prevNotice = (dHb === 0 && myStats.octMtdHb >= 1560.55) ? `<span style="font-size:0.62rem; color:#888; display:block; font-weight:normal;">(Oct 2: RM 1,560.55)</span>` : '';
+    const isChai = /chai|sian|william/i.test(myStats.name);
+    const prevNotice = (isChai && dHb === 0 && myStats.octMtdHb >= 1560.55) ? `<span style="font-size:0.62rem; color:#888; display:block; font-weight:normal;">(Oct 2: RM 1,560.55)</span>` : '';
 
     document.getElementById("valTS").innerText = `RM ${dTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById("valHB").innerHTML = `RM ${dHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}${prevNotice}`;
@@ -954,6 +1046,10 @@ function generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPer
 
 // ─── BRIEFING GENERATOR WITH AI & FALLBACK ────────────────────────────────────
 async function copyWhatsAppBriefing() {
+  if (!isManagementOrPharmacist(currentUser)) {
+    alert("Access restricted: WhatsApp Briefing is only available to Pharmacist and Management.");
+    return;
+  }
   selectedBranch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
   if (String(selectedBranch).toUpperCase() === 'ALL') selectedBranch = DEFAULT_BRANCH;
   if (!currentData) return;
@@ -1140,6 +1236,10 @@ function getConstructiveComment(ts, hb) {
 }
 
 function openReportModal(type) {
+  if (!isManagementOrPharmacist(currentUser)) {
+    alert("Access restricted: Reports are only available to Pharmacist and Management.");
+    return;
+  }
   currentReportType = type;
   document.getElementById("reportModal").style.display = "flex";
   history.pushState({ modal: 'reportModal' }, '');
