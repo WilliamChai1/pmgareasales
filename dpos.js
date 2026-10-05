@@ -876,7 +876,7 @@
       </div>
 
       <!-- CONTROLS -->
-      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+      <div id="dposMicControls" class="dpos-mic-controls">
         <button id="dposMicBtn" class="dpos-mic-btn ${state.isRecording ? 'mic-recording' : ''}" type="button">
           <span style="font-size:1.4rem;">${state.isRecording ? '🔴' : '🎙️'}</span>
           <span id="dposMicBtnText">${state.isRecording ? 'Release to Send' : 'Hold to Speak'}</span>
@@ -906,8 +906,9 @@
       ${evalHtml}
     `;
 
-    // Attach mic button handlers
+    // Attach mic button handlers and scroll chat
     setupMicButton();
+    scrollChatToBottom();
   }
 
   // ─── TAB 4: PHARMACIST-IN-CHARGE REVIEW DASHBOARD ─────────────────────────
@@ -1025,6 +1026,25 @@
   let isPointerDown = false;
   let holdTipTimeout = null;
 
+  function clearBrowserSelection() {
+    if (window.getSelection) {
+      try {
+        const sel = window.getSelection();
+        if (sel) sel.removeAllRanges();
+      } catch (err) {}
+    }
+  }
+
+  function scrollChatToBottom() {
+    const box = document.getElementById("dposChatBox");
+    if (box) {
+      box.scrollTop = box.scrollHeight;
+      setTimeout(() => {
+        if (box) box.scrollTop = box.scrollHeight;
+      }, 60);
+    }
+  }
+
   function showHoldTip(msg) {
     const tipEl = document.getElementById("dposHoldTip");
     if (!tipEl) return;
@@ -1040,14 +1060,23 @@
     const btn = document.getElementById("dposMicBtn");
     if (!btn) return;
 
-    btn.addEventListener('pointerdown', async (e) => {
-      e.preventDefault();
+    btn.oncontextmenu = (e) => { e.preventDefault(); return false; };
+    btn.onselectstart = (e) => { e.preventDefault(); return false; };
+
+    const startHold = async (e) => {
+      if (e) {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+      }
       if (state.isRecording || isPointerDown) return;
       isPointerDown = true;
       pressStartTime = Date.now();
-      try {
-        if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
-      } catch (err) {}
+
+      clearBrowserSelection();
+
+      if (e && e.pointerId && btn.setPointerCapture) {
+        try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+      }
 
       // Prime speechSynthesis on user gesture
       if (window.speechSynthesis) {
@@ -1058,15 +1087,21 @@
       }
 
       await startRecording();
-    });
+    };
 
     const handlePointerRelease = (e) => {
+      if (e) {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+      }
       if (!isPointerDown) return;
       isPointerDown = false;
-      e.preventDefault();
-      try {
-        if (btn.releasePointerCapture) btn.releasePointerCapture(e.pointerId);
-      } catch (err) {}
+
+      if (e && e.pointerId && btn.releasePointerCapture) {
+        try { btn.releasePointerCapture(e.pointerId); } catch (err) {}
+      }
+
+      clearBrowserSelection();
 
       const elapsed = Date.now() - pressStartTime;
       if (elapsed < 1000) {
@@ -1079,9 +1114,44 @@
       }
     };
 
+    // Pointer events for desktop and stylus
+    btn.addEventListener('pointerdown', startHold);
     btn.addEventListener('pointerup', handlePointerRelease);
     btn.addEventListener('pointercancel', handlePointerRelease);
+
+    // Direct touch event handling to block Android Chrome long-press text selection
+    btn.addEventListener('touchstart', (e) => {
+      if (e.cancelable) e.preventDefault();
+      startHold(e);
+    }, { passive: false });
+
+    btn.addEventListener('touchend', (e) => {
+      if (e.cancelable) e.preventDefault();
+      handlePointerRelease(e);
+    }, { passive: false });
+
+    btn.addEventListener('touchcancel', (e) => {
+      if (e.cancelable) e.preventDefault();
+      handlePointerRelease(e);
+    }, { passive: false });
+
     btn.addEventListener('contextmenu', e => e.preventDefault());
+  }
+
+  // Prevent text selection anywhere on page while holding the mic button
+  if (typeof document !== 'undefined') {
+    document.addEventListener('selectstart', (e) => {
+      if (isPointerDown) {
+        e.preventDefault();
+        clearBrowserSelection();
+      }
+    });
+
+    document.addEventListener('selectionchange', () => {
+      if (isPointerDown) {
+        clearBrowserSelection();
+      }
+    });
   }
 
   function abortRecording() {
