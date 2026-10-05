@@ -2064,6 +2064,14 @@ Score ONLY what was explicitly stated by the teammate in the transcript. Do NOT 
    - PMG House Brand supplement root cause (0-15):
      Did teammate recommend and explain a relevant PMG House Brand supplement (e.g. from Jase Healthcare: Nutribridge, JH Nutrition, Biowell, Livemore, Medicplast, V-Infinity, etc.)?
      Accept phonetic variations and multilingual descriptions. (Award 0 ONLY if teammate completely omitted recommending any House Brand supplement).
+   - CLINICAL ACCURACY & PHARMACOLOGICAL INTEGRITY:
+     * NSAID Adverse Effect vs True Allergy:
+       Gastric burning/pain or ulcers from NSAIDs (e.g., Ibuprofen, Diclofenac) is a well-known PHARMACOLOGICAL ADVERSE EFFECT (COX-1 inhibition reducing protective gastric mucus), NOT a drug allergy / hypersensitivity (which presents as urticaria, angioedema, bronchospasm, or anaphylaxis).
+       - PENALTY (-5 pts): If teammate tells the customer that gastric pain means they are "allergic" to NSAIDs, DEDUCT 5 points for clinical misconception.
+     * Product Formulation Accuracy (JH Nutrition Flexson vs Livemore Flexmore):
+       - JH Nutrition Flexson: Pure herbal plant extracts (Curcuma longa / Turmeric 250mg + Boswellia serrata 200mg). It is VEGETARIAN and DOES NOT contain egg, fish, or shellfish!
+       - Livemore Flexmore: Contains hydrolysed fish collagen peptide (4000mg) and hydrolysed chicken eggshell membrane (must check for fish/egg allergies).
+       - PENALTY (-5 pts): If teammate falsely tells the customer that Flexson has egg or fish (confusing it with Flexmore), DEDUCT 5 points for product formulation error.
 5. Cashier GWP / PWP Pitch (0-15):
    - GWP (Gift-With-Purchase): Reward if teammate mentions a free gift/reward upon reaching a spending tier (typically RM250+ spend, e.g. 'beli RM250 dapat free gift/hadiah percuma', '买满RM250送赠品').
    - PWP (Purchase-With-Purchase): Reward if teammate offers an add-on item at a discounted price upon minimum spend (typically RM20+, e.g. 'tambah sikit dapat barang murah di kaunter', 'promosi PWP', '特价加购', '加几块钱带走').
@@ -2156,6 +2164,18 @@ Output strictly in JSON:
         memScore = Math.min(memScore, 10);
       }
 
+      // CLINICAL ACCURACY GUARD 1: NSAID gastric pain is a side effect, NOT an allergy
+      const nsaidAllergyConfusion = /(sakit\s*perut.*(allergic|alergi|alahan)|(allergic|alergi|alahan).*sakit\s*perut|gastrik.*(allergic|alergi|alahan)|(allergic|alergi|alahan).*gastrik|nsaid.*(allergic|alergi|alahan)|(allergic|alergi|alahan).*nsaid)/i.test(teammateWords);
+      if (nsaidAllergyConfusion) {
+        dposScore = Math.max(0, dposScore - 5);
+      }
+
+      // CLINICAL ACCURACY GUARD 2: Flexson is Turmeric + Boswellia, contains NO fish or egg (Flexmore has fish/egg)
+      const flexsonAllergyConfusion = /(flexson.*(ikan|telur|fish|egg)|(ikan|telur|fish|egg).*flexson)/i.test(teammateWords);
+      if (flexsonAllergyConfusion) {
+        dposScore = Math.max(0, dposScore - 5);
+      }
+
       const cleanBreakdown = {
         warmth: Math.min(10, Math.max(0, warmth)),
         fluency: Math.min(10, Math.max(0, fluency)),
@@ -2171,6 +2191,21 @@ Output strictly in JSON:
       // Extract missed items & example dialogue
       let missedItems = Array.isArray(parsed.missed_items) ? parsed.missed_items.filter(Boolean) : (Array.isArray(parsed.missedItems) ? parsed.missedItems : []);
       let exampleDialogue = Array.isArray(parsed.example_dialogue) ? parsed.example_dialogue.filter(Boolean) : (Array.isArray(parsed.exampleDialogue) ? parsed.exampleDialogue : []);
+
+      // If clinical misconceptions detected, guarantee deduction notes appear at top
+      if (nsaidAllergyConfusion) {
+        const nsaidDeduction = "Clinical Misconception: NSAID-induced gastric pain is a pharmacological adverse effect (mucosal erosion), NOT a drug allergy (-5 pts)";
+        if (!missedItems.some(m => /nsaid|alahan.*perut|perut.*alahan/i.test(m))) {
+          missedItems.unshift(nsaidDeduction);
+        }
+      }
+
+      if (flexsonAllergyConfusion) {
+        const flexsonDeduction = "Formulation Error: JH Nutrition Flexson is purely herbal (Turmeric + Boswellia) and does NOT contain egg or fish. It is Livemore Flexmore that contains fish collagen and eggshell membrane (-5 pts)";
+        if (!missedItems.some(m => /flexson.*(ikan|telur|fish|egg)/i.test(m))) {
+          missedItems.unshift(flexsonDeduction);
+        }
+      }
 
       // If senior persona omitted Senior Care Plus / 28th test, ensure deduction note is present
       if (isSeniorPersona && !mentionsSeniorCareOr28) {
