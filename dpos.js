@@ -1344,8 +1344,15 @@ ${personaObj.hiddenPrompt}
 PRIOR CONVERSATION:
 ${historyText || '(No prior turns, teammate is speaking first)'}
 
+PMG PHARMACY & JASE HEALTHCARE BRAND GLOSSARY:
+Accurately transcribe the teammate's speech recognizing these pharmacy brands and frontline terms:
+- House Brand Joint & Bone SKUs: JH Nutrition Flexson, Livemore Flexmore, Nutribridge Flexsure Gold, JH Nutrition Eutango, V-Infinity Neoflex, Nutribridge Crystoe, JH Nutrition Fish Oil 1000mg, Nutribridge Calcium Plus Vitamin D3 & K2, Nutribridge Magnesium 150mg, Curcuma Plus, Glucosamine, Chondroitin, Collagen Type II.
+- House Brand Relief & OTC SKUs: Biowell Terrafast 500mg, Medicplast Heat Therapy Patch, Medicplast Thermo Patch, Medicplast Terracool.
+- Other PMG House Brands (Jase Healthcare): Nutribridge, JH Nutrition, Biowell, Livemore, Medicplast, V-Infinity (V∞), Victoria, VK Dermsolve, Shieldmax, Omma.
+- Frontline & Loyalty Terms: PMG Membership (ahli PMG / 免费会员 / free membership), Senior Care Plus (SCP / 乐龄关怀计划 / 银发族计划), 28th Monthly Free Blood Glucose Test (28hb ujian gula percuma / 每月28号免费验血糖), Purchase-with-Purchase (PWP), Gift-with-Purchase (GWP).
+
 STRICT INSTRUCTIONS:
-1. Listen to the teammate's audio recording. Transcribe their words accurately in the exact language spoken.
+1. Listen to the teammate's audio recording. Transcribe their words accurately in the exact language spoken. Accurately transcribe product names like "Flexson", "Flexmore", "Terrafast", "Medicplast", "Senior Care Plus", etc.
 2. Auto-detect their spoken language:
    - "zh" (Mandarin / Chinese)
    - "ms" (Bahasa Melayu / Sarawak Malay)
@@ -1357,7 +1364,7 @@ STRICT INSTRUCTIONS:
    - If teammate spoke Malay -> Uncle Tan MUST reply in conversational Sarawak Malay. DO NOT reply in Mandarin or English!
    - If teammate spoke English -> Uncle Tan MUST reply in natural Malaysian English. DO NOT reply in Malay or Mandarin!
 4. CONVERSATION CONTINUITY & REALISM:
-   - Uncle Tan is 67, has right knee pain climbing stairs, wants fast relief, has past gastritis (reveals stomach issues only if asked), and is open to PMG House Brand (Flexson/Flexmore) if explained well.
+   - Uncle Tan is 67, has right knee pain climbing stairs, wants fast relief, has past gastritis (reveals stomach issues only if asked), and is open to PMG House Brand recommendations (Flexson, Flexmore, Eutango, Neoflex, Medicplast, etc.).
    - Reply directly to what the teammate just said in this audio turn.
    - If teammate greeted you, explain your knee complaint.
    - If teammate asked about symptoms or past gastric issues, answer honestly.
@@ -1522,11 +1529,18 @@ Score ONLY what was explicitly stated by the teammate in the transcript. Do NOT 
 4. Clinical DPOS & House Brand Explanation (0-35):
    - Diagnosis triage (0-10): Did teammate ask clarifying symptom questions, screen red flags (swelling/redness/fever), or check medical history (gastritis/kidney/blood thinners)? (Award 0 if not asked).
    - OTC immediate relief (0-10): Did teammate advise safe symptomatic relief (e.g., Terrafast / paracetamol dosage, Medicplast heat patch on intact skin)? (Award 0 if omitted).
-   - PMG House Brand supplement root cause (0-15): Did teammate specifically recommend and explain PMG House Brand joint supplements (JH Nutrition Flexson or Livemore Flexmore) and their cartilage-protecting benefits? (Award 0 if omitted).
+   - PMG House Brand supplement root cause (0-15):
+     Did teammate recommend and explain a relevant PMG House Brand supplement for joint or cartilage health?
+     * Focus SKUs: JH Nutrition Flexson, Livemore Flexmore.
+     * ALSO FULLY ACCEPT & REWARD ANY relevant PMG House Brand product from Jase Healthcare (e.g., Nutribridge Flexsure Gold, JH Nutrition Eutango, V-Infinity Neoflex, Nutribridge Crystoe, JH Nutrition Fish Oil 1000mg, Calcium Plus Vitamin D3 & K2, or joint/cartilage supplements like Glucosamine, Chondroitin, Collagen Type II).
+     * Phonetic and speech transcription variations (e.g. 'flex son', 'flexon', 'flex more', 'flex-more', 'flexsure', 'eutango', or in Chinese '关节补品', '软骨素', '天然消炎') MUST be recognized and awarded full credit.
+     (Award 0 ONLY if teammate completely omitted recommending any House Brand supplement).
 5. Cashier GWP / PWP Pitch (0-15): Did teammate proactively offer current cashier Purchase-with-Purchase or Gift-with-Purchase counter deals before closing? (Award 0 if omitted).
 6. Loyalty & Senior Care Plus (0-20):
-   - Checked if customer is a PMG member and explicitly stated membership is FREE (0-10). (Award 0 if omitted).
-   - For senior customer (Uncle Tan, 67): introduced Senior Care Plus and explicitly highlighted the FREE blood glucose test on the 28th of every month (0-10). (Award 0 if omitted).
+   - PMG Loyalty & Senior Care Plus (0-10):
+     Did the teammate check if the customer is a PMG member, mention PMG membership (including that it is free to join), OR introduce the Senior Care Plus (SCP) programme? (Award full 10 points if the teammate checked membership OR introduced Senior Care Plus).
+   - 28th Monthly Free Blood Glucose Screening (0-10):
+     Did the teammate explicitly highlight the FREE blood glucose test on the 28th of every month for seniors (in any language, e.g. 28号免费验血糖 / 28hb ujian gula darah percuma / free blood glucose test on the 28th)? (Award full 10 points if mentioned).
 
 TOTAL SCORE:
 Sum the above breakdown scores strictly (total out of 100). If teammate omitted steps, their total score MUST be low (e.g. 20-50, Bronze badge).
@@ -1535,16 +1549,16 @@ Provide 1 actionable coaching tip in the teammate's primary spoken language (max
 
 Output strictly in JSON:
 {
-  "totalScore": 35,
+  "totalScore": 75,
   "speakingConfidence": "${confRating}",
   "languageUsed": "${languages}",
   "breakdown": {
     "warmth": ${avgWarmth},
     "fluency": ${avgFluency},
-    "empathy": 5,
-    "dpos": 10,
+    "empathy": 8,
+    "dpos": 30,
     "pwp": 0,
-    "membership": 0
+    "membership": 20
   },
   "coachingTip": "..."
 }`;
@@ -1582,7 +1596,7 @@ Output strictly in JSON:
       };
 
       const calculatedTotal = cleanBreakdown.warmth + cleanBreakdown.fluency + cleanBreakdown.empathy + cleanBreakdown.dpos + cleanBreakdown.pwp + cleanBreakdown.membership;
-      const totalScore = parsed.totalScore !== undefined ? Math.min(100, Math.max(0, Number(parsed.totalScore))) : calculatedTotal;
+      const totalScore = parsed.totalScore !== undefined ? Math.min(100, Math.max(calculatedTotal, Number(parsed.totalScore))) : calculatedTotal;
 
       state.evaluation = {
         totalScore: totalScore,
