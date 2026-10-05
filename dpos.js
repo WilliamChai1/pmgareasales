@@ -311,29 +311,81 @@
     return 'Bahasa Melayu';
   }
 
-  function pickVoice(langCode) {
+  function detectPersonaGender(personaStr) {
+    const text = String(personaStr || '').toLowerCase();
+    const maleKeywords = ['uncle', 'man', 'gentleman', 'pakcik', 'pak cik', 'lelaki', 'encik', 'mr.', 'mr ', 'he ', 'his ', 'him ', 'tan', 'ah pek', 'ah bert', '大叔', '阿伯', '伯伯', '老伯', '先生', '爷爷'];
+    const femaleKeywords = ['auntie', 'aunty', 'woman', 'lady', 'makcik', 'mak cik', 'wanita', 'puan', 'cik', 'mrs.', 'ms.', 'she ', 'her ', 'mrs ', 'ms ', '阿姨', '大婶', '女士', '小姐', '婆婆', '奶奶'];
+    let maleScore = 0, femaleScore = 0;
+    for (const k of maleKeywords) if (text.includes(k)) maleScore++;
+    for (const k of femaleKeywords) if (text.includes(k)) femaleScore++;
+    if (femaleScore > maleScore) return 'female';
+    if (maleScore > 0) return 'male';
+    return 'male';
+  }
+
+  function getPersonaCustomerLabel(personaStr) {
+    const text = String(personaStr || '');
+    const gender = detectPersonaGender(text);
+    const match = text.match(/(Uncle\s+[A-Za-z]+|Auntie\s+[A-Za-z]+|Aunty\s+[A-Za-z]+|Pak\s+Cik\s+[A-Za-z]+|Mak\s+Cik\s+[A-Za-z]+|Mr\.?\s+[A-Za-z]+|Mrs\.?\s+[A-Za-z]+|Mdm\.?\s+[A-Za-z]+)/i);
+    const namePart = match ? ` (${match[1]})` : (gender === 'female' ? ' (Customer)' : ' (Uncle Tan)');
+    const icon = gender === 'female' ? '👵' : '👴';
+    return `${icon} Walk-in Customer${namePart}`;
+  }
+
+  function pickVoice(langCode, gender) {
     const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
     if (!voices || voices.length === 0) return null;
 
     const code = normalizeLangCode(langCode);
-    let targets = [];
+    const targetGender = gender || 'male';
+
+    let langTargets = [];
     if (code === 'zh') {
-      targets = ['zh-my', 'zh-cn', 'zh-sg', 'zh-tw', 'zh-hk', 'zh'];
+      langTargets = ['zh-my', 'zh-cn', 'zh-sg', 'zh-tw', 'zh-hk', 'zh'];
     } else if (code === 'en') {
-      targets = ['en-my', 'en-gb', 'en-sg', 'en-au', 'en-us', 'en'];
+      langTargets = ['en-my', 'en-gb', 'en-sg', 'en-au', 'en-us', 'en'];
     } else {
-      targets = ['ms-my', 'ms', 'id-id', 'id'];
+      langTargets = ['ms-my', 'ms', 'id-id', 'id'];
     }
 
-    for (let t of targets) {
-      const match = voices.find(v => {
+    const matchingLangVoices = [];
+    for (const t of langTargets) {
+      for (const v of voices) {
         const vl = (v.lang || '').toLowerCase().replace(/_/g, '-');
-        return vl === t || vl.startsWith(t);
-      });
-      if (match) return match;
+        if ((vl === t || vl.startsWith(t)) && !matchingLangVoices.includes(v)) {
+          matchingLangVoices.push(v);
+        }
+      }
     }
 
-    return voices[0] || null;
+    if (matchingLangVoices.length === 0) {
+      return voices[0] || null;
+    }
+
+    const maleKeywords = ['male', 'man', 'guy', 'david', 'george', 'james', 'richard', 'mark', 'danny', 'brian', 'paul', 'yunxi', 'yunjian', 'yunyang', 'zhiwei', 'kangkang', 'qiang', 'fadli', 'osman', 'wan', 'pria'];
+    const femaleKeywords = ['female', 'woman', 'girl', 'zira', 'hazel', 'susan', 'catherine', 'xiaoxiao', 'xiaoyi', 'xiaohan', 'huihui', 'yaoyao', 'siti', 'nurul', 'wanita'];
+
+    if (targetGender === 'male') {
+      const maleVoice = matchingLangVoices.find(v => {
+        const n = (v.name || '').toLowerCase();
+        return maleKeywords.some(k => n.includes(k)) && !femaleKeywords.some(k => n.includes(k));
+      });
+      if (maleVoice) return maleVoice;
+
+      const nonFemaleVoice = matchingLangVoices.find(v => {
+        const n = (v.name || '').toLowerCase();
+        return !femaleKeywords.some(k => n.includes(k));
+      });
+      if (nonFemaleVoice) return nonFemaleVoice;
+    } else {
+      const femaleVoice = matchingLangVoices.find(v => {
+        const n = (v.name || '').toLowerCase();
+        return femaleKeywords.some(k => n.includes(k));
+      });
+      if (femaleVoice) return femaleVoice;
+    }
+
+    return matchingLangVoices[0];
   }
 
   function computeBadge(score) {
@@ -743,7 +795,10 @@
 
   // ─── TAB 3: TWO-WAY VOICE ROLE-PLAY ────────────────────────────────────────
   function renderRolePlay(container) {
-    const persona = splitPersona((state.currentWeek && state.currentWeek.persona) || "");
+    const rawPersona = (state.currentWeek && state.currentWeek.persona) || "";
+    const persona = splitPersona(rawPersona);
+    const customerLabel = getPersonaCustomerLabel(rawPersona);
+    const gender = detectPersonaGender(rawPersona);
     const turns = state.rolePlayTurns;
     const userTurns = turns.filter(t => t.speaker === 'user');
     const userTurnCount = userTurns.length;
@@ -755,7 +810,7 @@
       return `
         <div class="dpos-bubble ${isUser ? 'bubble-user' : 'bubble-customer'}">
           <div class="bubble-meta">
-            <span>${isUser ? '👤 You (Teammate)' : '👴 Walk-in Customer (Uncle Tan)'}</span>
+            <span>${isUser ? '👤 You (Teammate)' : escapeHtml(customerLabel)}</span>
             ${langBadge ? `<span class="badge-lang">${escapeHtml(langBadge)}</span>` : ''}
           </div>
           <div class="bubble-text">${escapeHtml(t.text)}</div>
@@ -776,7 +831,7 @@
           <div style="font-weight:700; color:#334155; margin-bottom:4px;">Ready to start consultation?</div>
           <div style="font-size:0.75rem; line-height:1.4;">
             Press and hold the button to speak in <b>Mandarin</b>, <b>Bahasa Melayu</b>, or <b>English</b>.<br>
-            Uncle Tan will automatically match your language and respond realistically.
+            ${gender === 'female' ? 'The customer' : 'Uncle Tan'} will automatically match your language and respond realistically.
           </div>
         </div>
       `;
@@ -1462,14 +1517,25 @@ Output strictly in JSON format:
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       const code = normalizeLangCode(lang);
-      const voice = pickVoice(code);
+      const personaRaw = (state.currentWeek && (state.currentWeek.persona || state.currentWeek.topic)) || '';
+      const gender = detectPersonaGender(personaRaw);
+      const voice = pickVoice(code, gender);
       if (voice) {
         u.voice = voice;
         u.lang = voice.lang;
       } else {
         u.lang = code === 'zh' ? 'zh-CN' : (code === 'en' ? 'en-US' : 'ms-MY');
       }
-      u.rate = 0.95;
+
+      // Male / Female acoustic pitch and rate tuning
+      if (gender === 'male') {
+        u.pitch = 0.72; // Lower vocal formant into mature senior male register
+        u.rate = 0.90;  // Measured, mature speaking pace
+      } else {
+        u.pitch = 1.05; // Friendly female vocal pitch
+        u.rate = 0.95;
+      }
+
       window.speechSynthesis.speak(u);
     } catch (e) {
       console.warn("Speech synthesis error:", e);
@@ -1732,6 +1798,8 @@ Output strictly in JSON:
     extractJson: extractJson,
     splitPersona: splitPersona,
     encodeWav16: encodeWav16,
+    detectPersonaGender: detectPersonaGender,
+    getPersonaCustomerLabel: getPersonaCustomerLabel,
     pickVoice: pickVoice,
     computeBadge: computeBadge,
     computeConfidence: computeConfidence
