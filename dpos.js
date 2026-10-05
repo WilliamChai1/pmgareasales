@@ -509,6 +509,128 @@
     return `Developing (${avg.toFixed(1)}/10)`;
   }
 
+  // ─── UNIVERSAL CLINICAL INTEGRITY & PHARMACOLOGY AUDIT ENGINE ──────────────
+  function auditClinicalIntegrity(transcriptText, userTurns, currentWeek, aiClinicalAudit) {
+    const text = (transcriptText || '').toLowerCase();
+    const userWords = (userTurns || []).map(t => t.text || '').join(' ').toLowerCase();
+    const w = currentWeek || {};
+    const topic = (w.topic || '').toLowerCase();
+    const personaRaw = (w.persona || '').toLowerCase();
+
+    const issues = [];
+
+    // 1. NSAID adverse effect vs true drug allergy
+    if (/(sakit\s*perut.*(allergic|alergi|alahan)|(allergic|alergi|alahan).*sakit\s*perut|gastrik.*(allergic|alergi|alahan)|(allergic|alergi|alahan).*gastrik|nsaid.*(allergic|alergi|alahan)|(allergic|alergi|alahan).*nsaid)/i.test(userWords)) {
+      issues.push({
+        title: "Clinical Misconception: NSAID Adverse Effect vs True Allergy",
+        stated: "Sakit perut / gastrik akibat NSAID disalah anggap sebagai alahan (allergy)",
+        correction: "Sakit gastrik atau pedih hulu hati selepas mengambil NSAID (cth: Ibuprofen) adalah kesan sampingan farmakologi (perencatan enzim COX-1 yang menghakis mukosa perut), BUKAN alahan ubat. Alahan ubat sebenar melibatkan ruam gatal, bengkak muka/bibir, atau sesak nafas.",
+        deduction: 5
+      });
+    }
+
+    // 2. JH Nutrition Flexson vs Livemore Flexmore formulation accuracy
+    if (/(flexson.*(ikan|telur|fish|egg)|(ikan|telur|fish|egg).*flexson)/i.test(userWords)) {
+      issues.push({
+        title: "Formulation Error: Flexson (Herbal) vs Flexmore (Fish & Egg)",
+        stated: "Mendakwa Flexson mengandungi ikan atau telur",
+        correction: "JH Nutrition Flexson adalah 100% ekstrak herba (Kunyit Curcuma longa 250mg + Boswellia serrata 200mg) dan mesra vegetarian, TIADA ikan atau telur. Livemore Flexmore adalah produk yang mengandungi kolagen ikan hidrolisis (4000mg) dan membran kulit telur ayam.",
+        deduction: 5
+      });
+    }
+
+    // 3. Paracetamol overdose (>4000mg or >8 tablets daily)
+    if (/(makan|ambil|take)\s*([3-9]|\d{2,})\s*(biji|tablet|tabs|caps).*paracetamol|(paracetamol|panadol|terrafast).*(lebih|more\s*than)\s*(4000\s*mg|4\s*g|8\s*(biji|tablet))/i.test(userWords)) {
+      issues.push({
+        title: "Dosing Safety Violation: Paracetamol Overdose Risk",
+        stated: "Dos paracetamol melebihi had selamat",
+        correction: "Dos maksimum Paracetamol 500mg adalah 1-2 tablet 4 kali sehari (maksimum 4,000mg atau 8 tablet sehari dengan jarak 4-6 jam). Dos berlebihan menyebabkan ketoksikan hati (hepatotoksik).",
+        deduction: 10
+      });
+    }
+
+    // 4. Antibiotics for viral cold / cough / flu
+    if (/cough|cold|flu|demam|selsema|batuk/i.test(topic) && /(makan|ambil|bagi|minta|perlu)\s*antibiotik/i.test(userWords)) {
+      issues.push({
+        title: "Antimicrobial Stewardship Violation: Antibiotics for Viral Illness",
+        stated: "Mencadangkan atau meminta antibiotik untuk batuk/selsema biasa",
+        correction: "Selsema biasa, batuk akut, dan flu adalah jangkitan virus. Antibiotik tidak berkesan terhadap virus dan penggunaannya menyumbang kepada rintangan antibiotik (antimicrobial resistance). Rawatan perlu fokus kepada kelegaan simptomatik.",
+        deduction: 10
+      });
+    }
+
+    // 5. Topical steroids on fungal skin infections (Tinea / Kurap / Panau)
+    if (/fungal|kurap|panau|tinea|kulat/i.test(topic) && /(krim\s*steroid|hydrocortisone|betamethasone)/i.test(userWords)) {
+      issues.push({
+        title: "Dermatology Safety Violation: Steroids on Fungal Infection",
+        stated: "Mencadangkan krim steroid untuk jangkitan kulat/kurap",
+        correction: "Penggunaan steroid topikal pada jangkitan kulat menekan imuniti tempatan dan menyebabkan 'Tinea Incognito' (jangkitan kulat merebak lebih teruk). Krim antikulat spesifik (Clotrimazole/Terbinafine) wajib digunakan.",
+        deduction: 10
+      });
+    }
+
+    // 6. Oral pseudoephedrine/decongestant in hypertension
+    if (/darah\s*tinggi|hypertension|bp|amlodipine|losartan|perindopril/i.test(personaRaw) && /(decongestant|pseudoephedrine|clarinase|actifed)/i.test(userWords)) {
+      issues.push({
+        title: "Contraindication Warning: Oral Decongestant in Hypertension",
+        stated: "Mencadangkan dekongestan oral kepada pesakit darah tinggi",
+        correction: "Dekongestan oral sistemik (Pseudoephedrine/Phenylephrine) mengecutkan salur darah dan boleh menyebabkan lonjakan tekanan darah berbahaya (hypertensive spike). Gunakan semburan saline nasal atau antihistamin generasi baru.",
+        deduction: 8
+      });
+    }
+
+    // 7. Oral NSAIDs in active asthma without screening
+    if (/asma|asthma|lelah/i.test(personaRaw) && /(ibuprofen|diclofenac|ponstan|voltaren|mefenamic|nsaid)/i.test(userWords)) {
+      issues.push({
+        title: "Contraindication Warning: Oral NSAIDs in Asthma (AERD Risk)",
+        stated: "Mencadangkan NSAID oral kepada pesakit asma tanpa saringan alahan",
+        correction: "Sehingga 20% pesakit asma dewasa mengalami Aspirin/NSAID-Exacerbated Respiratory Disease (AERD) yang boleh mencetuskan serangan asma akut. Paracetamol atau koyok topikal adalah pilihan yang jauh lebih selamat.",
+        deduction: 8
+      });
+    }
+
+    // 8. Stopping prescribed doctor medications
+    if (/(berhenti|stop|tak\s*payah\s*makan|buang)\s*(ubat\s*hospital|ubat\s*klinik|ubat\s*doktor|ubat\s*darah\s*tinggi|ubat\s*kencing\s*manis)/i.test(userWords)) {
+      issues.push({
+        title: "Severe Professional Practice Violation: Advising Discontinuation of Rx Meds",
+        stated: "Menasihati pesakit berhenti mengambil ubat preskripsi doktor",
+        correction: "Kakitangan farmasi dilarang sama sekali menyuruh pesakit menghentikan ubat kronik hospital/doktor untuk digantikan dengan suplemen. Suplemen bertindak sebagai terapi sokongan pelengkap.",
+        deduction: 15
+      });
+    }
+
+    // 9. Emergency Red Flag case with OTC commercial sale
+    if (w.isEmergencyRedFlag && /(jual|beli|bagi|rekomen|ambil)\s*(panadol|ubat|suplemen|vitamin|paracetamol|koyok|patch)/i.test(userWords) && !/(hospital|kecemasan|doktor|999|klinik\s*kesihatan)/i.test(userWords)) {
+      issues.push({
+        title: "Critical Emergency Protocol Breach: Selling OTC in Life-Threatening Case",
+        stated: "Menjual ubat OTC dan bukannya merujuk kes kecemasan ke hospital",
+        correction: "Dalam kes tanda bahaya kecemasan (Suspek Denggi, Sakit Dada Serangan Jantung, Strok FAST), pesakit mesti dihantar serta-merta ke Hospital/Kecemasan. Menjual ubat OTC melewatkan rawatan menyelamatkan nyawa.",
+        deduction: 25
+      });
+    }
+
+    // Incorporate AI-discovered issues from Gemini (deduped)
+    if (aiClinicalAudit && Array.isArray(aiClinicalAudit.issues)) {
+      aiClinicalAudit.issues.forEach(aiIss => {
+        if (!aiIss || !aiIss.title) return;
+        const isDuplicate = issues.some(iss => iss.title.toLowerCase().includes(aiIss.title.toLowerCase().slice(0, 15)) || (iss.stated && aiIss.stated && iss.stated.toLowerCase().includes(aiIss.stated.toLowerCase().slice(0, 15))));
+        if (!isDuplicate) {
+          issues.push({
+            title: aiIss.title,
+            stated: aiIss.stated || "Stated in consultation turn",
+            correction: aiIss.correction || aiIss.explanation || "Clinical correction required",
+            deduction: Number(aiIss.deduction || 5)
+          });
+        }
+      });
+    }
+
+    return {
+      passed: issues.length === 0,
+      issues: issues
+    };
+  }
+
   // ─── API & LLM CALLS ───────────────────────────────────────────────────────
   async function dposApi(action, payload) {
     const apiUrl = typeof API_URL !== 'undefined' ? API_URL : '';
@@ -1102,6 +1224,30 @@
             </div>
           </div>
 
+          <!-- UNIVERSAL CLINICAL INTEGRITY & SAFETY AUDIT -->
+          ${ev.clinicalIntegrity && ev.clinicalIntegrity.issues && ev.clinicalIntegrity.issues.length > 0 ? `
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:12px; margin-top:14px;">
+              <div style="font-size:0.75rem; font-weight:800; color:#b45309; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                <span style="font-size:1rem;">🛡️</span>
+                <span>Clinical Integrity & Safety Audit (${ev.clinicalIntegrity.issues.length} Issues Detected)</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                ${ev.clinicalIntegrity.issues.map(iss => `
+                  <div style="background:white; border-left:3px solid #d97706; padding:8px 10px; border-radius:4px; font-size:0.75rem; color:#78350f; line-height:1.45;">
+                    <div style="font-weight:800; color:#92400e; margin-bottom:2px;">⚠️ ${escapeHtml(iss.title)} (-${iss.deduction || 5} pts)</div>
+                    <div style="margin-bottom:3px; color:#475569;"><b>What staff said:</b> <i>&ldquo;${escapeHtml(iss.stated || '')}&rdquo;</i></div>
+                    <div style="color:#166534; font-weight:600;"><b>Clinical Fact:</b> ${escapeHtml(iss.correction)}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>` : (ev.clinicalIntegrity && ev.clinicalIntegrity.passed ? `
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 12px; margin-top:14px; display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.1rem;">🛡️</span>
+              <div style="font-size:0.75rem; color:#166534; font-weight:700;">
+                <b>Clinical Integrity Verified:</b> Accurate pharmacology, safe contraindication screening, and zero allergen or formulation errors detected.
+              </div>
+            </div>` : '')}
+
           <!-- PART A: WHAT YOU MISSED (POINT BREAKDOWN) -->
           <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:10px; padding:12px; margin-top:14px;">
             <div style="font-size:0.75rem; font-weight:800; color:#be123c; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
@@ -1328,6 +1474,7 @@
     let missedItems = [];
     let exampleDialogue = [];
     let audioMetrics = null;
+    let clinicalIntegrity = null;
 
     if (r.breakdown) {
       try {
@@ -1336,6 +1483,7 @@
           missedItems = parsedBreakdown.missed_items || parsedBreakdown.missedItems || [];
           exampleDialogue = parsedBreakdown.example_dialogue || parsedBreakdown.exampleDialogue || [];
           audioMetrics = parsedBreakdown.audio_metrics || null;
+          clinicalIntegrity = parsedBreakdown.clinical_integrity || parsedBreakdown.clinicalIntegrity || null;
         }
       } catch (err) {
         parsedBreakdown = null;
@@ -1417,6 +1565,30 @@
       `;
     }
 
+    let clinicalAuditHtml = '';
+    if (clinicalIntegrity && clinicalIntegrity.issues && clinicalIntegrity.issues.length > 0) {
+      clinicalAuditHtml = `
+        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+          <div style="font-size:0.72rem; font-weight:800; color:#b45309; margin-bottom:6px; text-transform:uppercase;">🛡️ Clinical & Pharmacological Integrity Audit (${clinicalIntegrity.issues.length} Notice${clinicalIntegrity.issues.length > 1 ? 's' : ''})</div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            ${clinicalIntegrity.issues.map(iss => `
+              <div style="background:white; border-left:3px solid #d97706; padding:6px 8px; border-radius:4px; font-size:0.72rem; color:#78350f; line-height:1.4;">
+                <div style="font-weight:800; color:#92400e;">⚠️ ${escapeHtml(iss.title)} (-${iss.deduction || 5} pts)</div>
+                <div style="color:#475569; margin:2px 0;"><b>Staff said:</b> <i>&ldquo;${escapeHtml(iss.stated || '')}&rdquo;</i></div>
+                <div style="color:#166534; font-weight:600;"><b>Clinical Fact:</b> ${escapeHtml(iss.correction)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } else if (clinicalIntegrity && clinicalIntegrity.passed) {
+      clinicalAuditHtml = `
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:0.72rem; color:#166534; font-weight:700;">
+          🛡️ <b>Clinical Integrity Verified:</b> No contraindications violated, accurate product ingredients, and sound pharmacology demonstrated.
+        </div>
+      `;
+    }
+
     let deductionsHtml = '';
     if (missedItems.length > 0) {
       deductionsHtml = `
@@ -1489,6 +1661,7 @@
             </div>
 
             ${rubricGridHtml}
+            ${clinicalAuditHtml}
             ${deductionsHtml}
             ${scriptHtml}
 
@@ -2086,6 +2259,14 @@ Score ONLY what was explicitly stated by the teammate in the transcript. Do NOT 
        If the customer is a senior (such as Uncle Tan, Auntie, or age 55+) and the teammate ONLY talks about regular PMG membership / member price BUT completely OMITS mentioning "Senior Care Plus" and OMITS mentioning the "28th monthly free blood glucose test", YOU MUST AWARD 0/10 for senior_care_28th!
        In this case, the total membership score CANNOT exceed 10/20!
        You MUST ALSO add to missed_items: "Missed Senior Care Plus / 28th Screening: Did not introduce Senior Care Plus or highlight 28th monthly free blood glucose test for seniors (-10 pts)".
+
+UNIVERSAL CLINICAL & PHARMACOLOGICAL INTEGRITY AUDIT:
+Conduct an uncompromising clinical audit on every medical statement made by the teammate in the transcript:
+1. CONTRAINDICATIONS & SAFETY: Did teammate screen for customer's specific health risks (gastritis, CKD/kidney, hypertension, asthma, pregnancy, diabetes, current medications)? Did they recommend anything contraindicated?
+2. ADVERSE EFFECT VS ALLERGY: Did teammate distinguish pharmacological side effects (NSAID gastric irritation via COX-1 inhibition, ACEi dry cough, antihistamine drowsiness) from true allergies (urticaria, angioedema, anaphylaxis)? Never call side effects "allergies"!
+3. ANTIMICROBIAL STEWARDSHIP: Viral colds, flu, and uncomplicated bronchitis do NOT need antibiotics. Recommending antibiotics for viral illness is a critical violation.
+4. PRODUCT INGREDIENTS & ALLERGENS: Accurately cross-check product formulations (e.g. JH Nutrition Flexson is pure herbal Turmeric + Boswellia with zero fish/egg; Livemore Flexmore has fish collagen and eggshell membrane). Do not invent nonexistent ingredients.
+5. DOSAGE & TIMING: Paracetamol max 4g/day (max 8 tabs of 500mg); NSAIDs strictly after food; Antacids spaced 2h from other meds.
 `}
 
 MANDATORY STRUCTURED OUTPUT FORMAT:
@@ -2093,6 +2274,7 @@ You MUST provide:
 1. "missed_items": Array of itemized strings listing exact criteria missed with point deductions (e.g. "Missed Red Flag: Did not screen for swelling/gastritis (-5 pts)", "Missed OTC: Did not offer immediate topical/oral relief (-10 pts)", "Missed PWP: Did not pitch counter PWP special (-15 pts)", "Missed Senior Care Plus / 28th Screening: Did not introduce Senior Care Plus or highlight 28th monthly free blood glucose test for seniors (-10 pts)"). If nothing missed, return ["Mastered all consultation criteria! Full marks awarded."].
 2. "example_dialogue": Array of 2 to 3 verbatim sentences in the teammate's primary spoken language (${languages}) demonstrating how to smoothly deliver the missing red flags, House Brand pairing, and cashier PWP pitch.
 3. "coachingTip": Concise 1-sentence coaching summary.
+4. "clinical_audit": Object containing { "status": "passed" | "issues_found", "issues": [ { "title": "...", "stated": "...", "correction": "...", "deduction": 5 } ] }
 
 Output strictly in JSON:
 {
@@ -2117,7 +2299,11 @@ Output strictly in JSON:
     "Uncle, alang-alang berbelanja RM20 hari ini, boleh tebus pek plester ini dengan harga diskaun RM4 di kaunter!",
     "Alang-alang Uncle daftar ahli hari ini, kami ada program Senior Care Plus untuk warga emas, setiap 28hb ada ujian saringan gula darah percuma!"
   ],
-  "coachingTip": "..."
+  "coachingTip": "...",
+  "clinical_audit": {
+    "status": "passed",
+    "issues": []
+  }
 }`;
 
     try {
@@ -2164,16 +2350,26 @@ Output strictly in JSON:
         memScore = Math.min(memScore, 10);
       }
 
-      // CLINICAL ACCURACY GUARD 1: NSAID gastric pain is a side effect, NOT an allergy
-      const nsaidAllergyConfusion = /(sakit\s*perut.*(allergic|alergi|alahan)|(allergic|alergi|alahan).*sakit\s*perut|gastrik.*(allergic|alergi|alahan)|(allergic|alergi|alahan).*gastrik|nsaid.*(allergic|alergi|alahan)|(allergic|alergi|alahan).*nsaid)/i.test(teammateWords);
-      if (nsaidAllergyConfusion) {
-        dposScore = Math.max(0, dposScore - 5);
-      }
+      // Run Universal Clinical Integrity Audit (Combining Deterministic Rules + Gemini Deep Audit)
+      const clinicalAudit = auditClinicalIntegrity(transcript, userTurns, w, parsed.clinical_audit);
 
-      // CLINICAL ACCURACY GUARD 2: Flexson is Turmeric + Boswellia, contains NO fish or egg (Flexmore has fish/egg)
-      const flexsonAllergyConfusion = /(flexson.*(ikan|telur|fish|egg)|(ikan|telur|fish|egg).*flexson)/i.test(teammateWords);
-      if (flexsonAllergyConfusion) {
-        dposScore = Math.max(0, dposScore - 5);
+      // Extract missed items & example dialogue
+      let missedItems = Array.isArray(parsed.missed_items) ? parsed.missed_items.filter(Boolean) : (Array.isArray(parsed.missedItems) ? parsed.missedItems : []);
+      let exampleDialogue = Array.isArray(parsed.example_dialogue) ? parsed.example_dialogue.filter(Boolean) : (Array.isArray(parsed.exampleDialogue) ? parsed.exampleDialogue : []);
+
+      // Apply clinical integrity audit deductions to DPOS
+      let totalClinicalDeductions = 0;
+      clinicalAudit.issues.forEach(iss => {
+        const pts = Number(iss.deduction || 5);
+        totalClinicalDeductions += pts;
+        const formattedMissed = `${iss.title}: ${iss.correction} (-${pts} pts)`;
+        if (!missedItems.some(m => m.toLowerCase().includes(iss.title.toLowerCase().slice(0, 15)))) {
+          missedItems.unshift(formattedMissed);
+        }
+      });
+
+      if (totalClinicalDeductions > 0) {
+        dposScore = Math.max(0, dposScore - totalClinicalDeductions);
       }
 
       const cleanBreakdown = {
@@ -2187,25 +2383,6 @@ Output strictly in JSON:
 
       const calculatedTotal = cleanBreakdown.warmth + cleanBreakdown.fluency + cleanBreakdown.empathy + cleanBreakdown.dpos + cleanBreakdown.pwp + cleanBreakdown.membership;
       const totalScore = calculatedTotal;
-
-      // Extract missed items & example dialogue
-      let missedItems = Array.isArray(parsed.missed_items) ? parsed.missed_items.filter(Boolean) : (Array.isArray(parsed.missedItems) ? parsed.missedItems : []);
-      let exampleDialogue = Array.isArray(parsed.example_dialogue) ? parsed.example_dialogue.filter(Boolean) : (Array.isArray(parsed.exampleDialogue) ? parsed.exampleDialogue : []);
-
-      // If clinical misconceptions detected, guarantee deduction notes appear at top
-      if (nsaidAllergyConfusion) {
-        const nsaidDeduction = "Clinical Misconception: NSAID-induced gastric pain is a pharmacological adverse effect (mucosal erosion), NOT a drug allergy (-5 pts)";
-        if (!missedItems.some(m => /nsaid|alahan.*perut|perut.*alahan/i.test(m))) {
-          missedItems.unshift(nsaidDeduction);
-        }
-      }
-
-      if (flexsonAllergyConfusion) {
-        const flexsonDeduction = "Formulation Error: JH Nutrition Flexson is purely herbal (Turmeric + Boswellia) and does NOT contain egg or fish. It is Livemore Flexmore that contains fish collagen and eggshell membrane (-5 pts)";
-        if (!missedItems.some(m => /flexson.*(ikan|telur|fish|egg)/i.test(m))) {
-          missedItems.unshift(flexsonDeduction);
-        }
-      }
 
       // If senior persona omitted Senior Care Plus / 28th test, ensure deduction note is present
       if (isSeniorPersona && !mentionsSeniorCareOr28) {
@@ -2254,7 +2431,8 @@ Output strictly in JSON:
         breakdown: cleanBreakdown,
         missed_items: missedItems,
         example_dialogue: exampleDialogue,
-        audio_metrics: audioMetrics
+        audio_metrics: audioMetrics,
+        clinical_integrity: clinicalAudit
       };
 
       const richCoachingTip = missedItems.slice(0, 2).join(' | ');
@@ -2266,6 +2444,7 @@ Output strictly in JSON:
         breakdown: cleanBreakdown,
         missedItems: missedItems,
         exampleDialogue: exampleDialogue,
+        clinicalIntegrity: clinicalAudit,
         coachingTip: richCoachingTip || parsed.coachingTip || "Sila pastikan triage simptom, terangkan suplemen House Brand, dan ingatkan program Senior Care Plus 28hb."
       };
 
@@ -2424,7 +2603,8 @@ Output strictly in JSON:
     getPersonaCustomerLabel: getPersonaCustomerLabel,
     pickVoice: pickVoice,
     computeBadge: computeBadge,
-    computeConfidence: computeConfidence
+    computeConfidence: computeConfidence,
+    auditClinicalIntegrity: auditClinicalIntegrity
   };
 
   global.DPOS = DPOS;
