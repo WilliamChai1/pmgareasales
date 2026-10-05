@@ -33,6 +33,26 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(saveAmNote(request.note)))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (request.action === "dposGetWeek") {
+      return ContentService.createTextOutput(JSON.stringify(dposGetActiveWeek(request.username)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "dposSaveScore") {
+      return ContentService.createTextOutput(JSON.stringify(dposSaveScore(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "dposGetReview") {
+      return ContentService.createTextOutput(JSON.stringify(dposGetReview(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "geminiProxy") {
+      return ContentService.createTextOutput(JSON.stringify(geminiProxy(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: true, message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -495,4 +515,440 @@ function getDashboardData(requestedBranch, role, username) {
     actionPlan: actionPlan, amNote: amNote, branches: originalBranchNames, currentDay: currentDayOfMonth,
     daysInMonth: daysInMonth, pendingUsers: pendingUsers
   };
+}
+
+// ─── DPOS ACADEMY MODULE BACKEND ─────────────────────────────────────────────
+const DPOS_REVIEWER_USERNAMES = ["williamchai", "william"];
+
+function isDposReviewer(username, role) {
+  const u = String(username || '').trim().toLowerCase();
+  const r = String(role || '').trim().toLowerCase();
+  if (DPOS_REVIEWER_USERNAMES.includes(u)) return true;
+  if (r.includes('area manager') || r.includes('in-charge') || r.includes('pharmacist') || r.includes('branch manager')) return true;
+  return false;
+}
+
+function dposGetActiveWeek(username) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const weekSheet = ss.getSheetByName("DPOS_Active_Week");
+  if (!weekSheet) {
+    return { success: false, message: "DPOS_Active_Week sheet not found" };
+  }
+
+  const values = weekSheet.getDataRange().getValues();
+  if (values.length <= 1) {
+    return { success: false, message: "No active DPOS training row found in DPOS_Active_Week" };
+  }
+
+  // Find bottom-most filled row
+  let activeRow = null;
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (values[i][0] && String(values[i][0]).trim()) {
+      activeRow = values[i];
+      break;
+    }
+  }
+
+  if (!activeRow) {
+    return { success: false, message: "No valid DPOS training week found" };
+  }
+
+  const topicTitle = String(activeRow[0]).trim();
+  const clinicalSummary = String(activeRow[1] || "");
+  const skus = String(activeRow[2] || "");
+  const quizJson = String(activeRow[3] || "[]");
+  const persona = String(activeRow[4] || "");
+  const promo = String(activeRow[5] || "");
+
+  // Find staff info & user's personal score if available
+  let myScore = null;
+  let userStaffName = "";
+  let userRole = "Staff";
+
+  if (username) {
+    const staffSheet = getStaffSheet(ss);
+    if (staffSheet) {
+      const sData = staffSheet.getDataRange().getValues();
+      const uLower = String(username).trim().toLowerCase();
+      for (let i = 1; i < sData.length; i++) {
+        if (String(sData[i][0]).trim().toLowerCase() === uLower) {
+          userStaffName = String(sData[i][2]).trim();
+          userRole = String(sData[i][3]).trim();
+          break;
+        }
+      }
+    }
+  }
+
+  // Lookup personal score in DPOS_Weekly_Scores
+  const scoreSheet = ss.getSheetByName("DPOS_Weekly_Scores");
+  if (scoreSheet && userStaffName) {
+    const scoreData = scoreSheet.getDataRange().getValues();
+    const uStaffLower = userStaffName.toLowerCase();
+    const topicLower = topicTitle.toLowerCase();
+    for (let i = 1; i < scoreData.length; i++) {
+      const rowStaff = String(scoreData[i][1] || '').trim().toLowerCase();
+      const rowTopic = String(scoreData[i][3] || '').trim().toLowerCase();
+      if ((rowStaff === uStaffLower || uStaffLower.includes(rowStaff) || rowStaff.includes(uStaffLower)) && rowTopic === topicLower) {
+        myScore = {
+          timestamp: scoreData[i][0],
+          staffName: scoreData[i][1],
+          role: scoreData[i][2],
+          topicTitle: scoreData[i][3],
+          quizScore: scoreData[i][4],
+          rolePlayScore: scoreData[i][5],
+          languageUsed: scoreData[i][6],
+          speakingConfidenceRating: scoreData[i][7],
+          status: scoreData[i][8] || 'Completed'
+        };
+        break;
+      }
+    }
+  }
+
+  const canReview = isDposReviewer(username, userRole);
+
+  return {
+    success: true,
+    week: {
+      topic: topicTitle,
+      summaryMd: clinicalSummary,
+      skus: skus,
+      quizJson: quizJson,
+      persona: persona,
+      promo: promo
+    },
+    mine: myScore,
+    canReview: canReview
+  };
+}
+
+function dposSaveScore(req) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (e) {
+    return { success: false, message: "Could not obtain lock to save score. Please try again." };
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let scoreSheet = ss.getSheetByName("DPOS_Weekly_Scores");
+    if (!scoreSheet) {
+      scoreSheet = ss.insertSheet("DPOS_Weekly_Scores");
+      scoreSheet.appendRow(["Timestamp", "Staff_Name", "Role", "Topic_Title", "Quiz_Score", "RolePlay_Score", "Language_Used", "Speaking_Confidence_Rating", "Status"]);
+    }
+
+    const username = String(req.username || '').trim();
+    let staffName = String(req.staffName || '').trim();
+    let role = String(req.role || 'Staff').trim();
+
+    // Verify staff name from master sheet
+    if (username) {
+      const staffSheet = getStaffSheet(ss);
+      if (staffSheet) {
+        const sData = staffSheet.getDataRange().getValues();
+        const uLower = username.toLowerCase();
+        for (let i = 1; i < sData.length; i++) {
+          if (String(sData[i][0]).trim().toLowerCase() === uLower) {
+            staffName = String(sData[i][2]).trim();
+            role = String(sData[i][3]).trim();
+            break;
+          }
+        }
+      }
+    }
+
+    if (!staffName) {
+      staffName = username || "Teammate";
+    }
+
+    const topicTitle = String(req.topicTitle || 'DPOS Training').trim();
+    const quizScore = req.quizScore !== undefined && req.quizScore !== null ? Number(req.quizScore) : null;
+    const rolePlayScore = req.rolePlayScore !== undefined && req.rolePlayScore !== null ? Number(req.rolePlayScore) : null;
+    const languageUsed = String(req.languageUsed || '').trim();
+    const confidenceRating = String(req.speakingConfidenceRating || '').trim();
+    
+    const tz = ss.getSpreadsheetTimeZone() || "Asia/Kuala_Lumpur";
+    const timestampStr = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd HH:mm:ss");
+
+    const scoreData = scoreSheet.getDataRange().getValues();
+    let foundRowIndex = -1;
+    const staffLower = staffName.toLowerCase();
+    const topicLower = topicTitle.toLowerCase();
+
+    for (let i = 1; i < scoreData.length; i++) {
+      const rowStaff = String(scoreData[i][1] || '').trim().toLowerCase();
+      const rowTopic = String(scoreData[i][3] || '').trim().toLowerCase();
+      if ((rowStaff === staffLower || staffLower.includes(rowStaff) || rowStaff.includes(staffLower)) && rowTopic === topicLower) {
+        foundRowIndex = i + 1; // 1-indexed for Sheet API
+        break;
+      }
+    }
+
+    let existingQuiz = null;
+    let existingRolePlay = null;
+    let existingLang = "";
+    let existingConf = "";
+
+    if (foundRowIndex > 0) {
+      const currentRow = scoreData[foundRowIndex - 1];
+      existingQuiz = (currentRow[4] !== "" && currentRow[4] !== null) ? Number(currentRow[4]) : null;
+      existingRolePlay = (currentRow[5] !== "" && currentRow[5] !== null) ? Number(currentRow[5]) : null;
+      existingLang = String(currentRow[6] || "");
+      existingConf = String(currentRow[7] || "");
+    }
+
+    const finalQuiz = (quizScore !== null) ? quizScore : existingQuiz;
+    const finalRolePlay = (rolePlayScore !== null) ? rolePlayScore : existingRolePlay;
+    const finalLang = languageUsed || existingLang;
+    const finalConf = confidenceRating || existingConf;
+    const isCompleted = (finalQuiz !== null && finalRolePlay !== null);
+    const finalStatus = isCompleted ? "Completed" : "In Progress";
+
+    const rowValues = [
+      timestampStr,
+      staffName,
+      role,
+      topicTitle,
+      finalQuiz !== null ? finalQuiz : "",
+      finalRolePlay !== null ? finalRolePlay : "",
+      finalLang,
+      finalConf,
+      finalStatus
+    ];
+
+    if (foundRowIndex > 0) {
+      scoreSheet.getRange(foundRowIndex, 1, 1, 9).setValues([rowValues]);
+    } else {
+      scoreSheet.appendRow(rowValues);
+    }
+
+    return {
+      success: true,
+      saved: {
+        timestamp: timestampStr,
+        staffName: staffName,
+        role: role,
+        topicTitle: topicTitle,
+        quizScore: finalQuiz,
+        rolePlayScore: finalRolePlay,
+        languageUsed: finalLang,
+        speakingConfidenceRating: finalConf,
+        status: finalStatus
+      }
+    };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function dposGetReview(req) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const username = String(req.username || '').trim();
+  const role = String(req.role || '').trim();
+
+  if (!isDposReviewer(username, role)) {
+    return { success: false, message: "Unauthorized. Review dashboard is reserved for Pharmacist / Management." };
+  }
+
+  const weekSheet = ss.getSheetByName("DPOS_Active_Week");
+  let activeTopic = "Week 1: Joint Health & Osteoarthritis Care";
+  if (weekSheet) {
+    const wVals = weekSheet.getDataRange().getValues();
+    for (let i = wVals.length - 1; i >= 1; i--) {
+      if (wVals[i][0]) {
+        activeTopic = String(wVals[i][0]).trim();
+        break;
+      }
+    }
+  }
+
+  // 1. Read DPOS_Weekly_Scores
+  const scoreMap = {};
+  const scoreSheet = ss.getSheetByName("DPOS_Weekly_Scores");
+  if (scoreSheet) {
+    const sData = scoreSheet.getDataRange().getValues();
+    const topicLower = activeTopic.toLowerCase();
+    for (let i = 1; i < sData.length; i++) {
+      const rowTopic = String(sData[i][3] || '').trim().toLowerCase();
+      if (rowTopic === topicLower) {
+        const sName = String(sData[i][1] || '').trim();
+        scoreMap[sName.toLowerCase()] = {
+          timestamp: sData[i][0],
+          staffName: sName,
+          role: sData[i][2],
+          quizScore: sData[i][4] !== "" ? Number(sData[i][4]) : null,
+          rolePlayScore: sData[i][5] !== "" ? Number(sData[i][5]) : null,
+          languageUsed: sData[i][6] || '-',
+          confidence: sData[i][7] || '-',
+          status: sData[i][8] || 'In Progress'
+        };
+      }
+    }
+  }
+
+  // 2. Read Active Kota Sentosa Roster
+  const staffSheet = getStaffSheet(ss);
+  const masterRoster = [];
+  if (staffSheet) {
+    const mData = staffSheet.getDataRange().getValues();
+    for (let i = 1; i < mData.length; i++) {
+      const b = String(mData[i][4] || '').trim().toUpperCase();
+      const st = String(mData[i][7] || '').trim().toLowerCase();
+      const sName = String(mData[i][2] || '').trim();
+      const sNameLower = sName.toLowerCase();
+      const sRole = String(mData[i][3] || '').trim();
+
+      if (st === 'inactive' || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare") || sRole.toLowerCase() === 'hq') {
+        continue;
+      }
+      if (b === "KOTA SENTOSA" || b === "ALL") {
+        masterRoster.push({
+          username: mData[i][0],
+          name: sName,
+          role: sRole
+        });
+      }
+    }
+  }
+
+  // 3. Compute Weekly Sales for Kota Sentosa (Mon-Sun around latest date)
+  const salesSheet = ss.getSheetByName("DailySales");
+  const weeklySalesMap = {};
+  let weekLabel = "Current Week";
+
+  if (salesSheet) {
+    const sData = salesSheet.getDataRange().getValues();
+    let maxDate = new Date(0);
+    // Find latest sales date for Kota Sentosa
+    for (let i = 1; i < sData.length; i++) {
+      if (String(sData[i][1] || '').trim().toUpperCase() === "KOTA SENTOSA") {
+        const d = new Date(sData[i][0]);
+        if (d > maxDate) maxDate = d;
+      }
+    }
+
+    if (maxDate.getTime() > 0) {
+      // Find Monday of that week
+      const dayOfWeek = maxDate.getDay(); // 0 is Sun, 1 is Mon
+      const diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+      const monday = new Date(maxDate);
+      monday.setDate(maxDate.getDate() + diffToMon);
+      monday.setHours(0,0,0,0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23,59,59,999);
+
+      const tz = ss.getSpreadsheetTimeZone() || "Asia/Kuala_Lumpur";
+      weekLabel = `${Utilities.formatDate(monday, tz, "dd MMM")} – ${Utilities.formatDate(sunday, tz, "dd MMM yyyy")}`;
+
+      for (let i = 1; i < sData.length; i++) {
+        if (String(sData[i][1] || '').trim().toUpperCase() === "KOTA SENTOSA") {
+          const d = new Date(sData[i][0]);
+          if (d >= monday && d <= sunday) {
+            const sName = String(sData[i][2] || '').trim().toLowerCase();
+            if (!weeklySalesMap[sName]) weeklySalesMap[sName] = { ts: 0, hb: 0 };
+            weeklySalesMap[sName].ts += parseFloat(sData[i][3]) || 0;
+            weeklySalesMap[sName].hb += parseFloat(sData[i][4]) || 0;
+          }
+        }
+      }
+    }
+  }
+
+  // Combine Roster with Scores & Sales
+  const results = masterRoster.map(m => {
+    const mLower = m.name.toLowerCase();
+    // match score
+    let score = scoreMap[mLower];
+    if (!score) {
+      const matchKey = Object.keys(scoreMap).find(k => k.includes(mLower) || mLower.includes(k));
+      if (matchKey) score = scoreMap[matchKey];
+    }
+
+    // match sales
+    let sales = weeklySalesMap[mLower];
+    if (!sales) {
+      const matchKey = Object.keys(weeklySalesMap).find(k => k.includes(mLower) || mLower.includes(k));
+      if (matchKey) sales = weeklySalesMap[matchKey];
+    }
+
+    const ts = sales ? sales.ts : 0;
+    const hb = sales ? sales.hb : 0;
+    const hbPct = ts > 0 ? ((hb / ts) * 100).toFixed(1) : "0.0";
+
+    const qScore = score ? score.quizScore : null;
+    const rpScore = score ? score.rolePlayScore : null;
+    const isCompleted = qScore !== null && rpScore !== null;
+    const needsCoaching = !isCompleted || (qScore !== null && qScore < 7) || (rpScore !== null && rpScore < 70);
+
+    return {
+      name: m.name,
+      role: m.role,
+      username: m.username,
+      quizScore: qScore,
+      rolePlayScore: rpScore,
+      language: score ? score.languageUsed : '-',
+      confidence: score ? score.confidence : '-',
+      status: isCompleted ? 'Completed' : (qScore !== null || rpScore !== null ? 'In Progress' : 'Not Started'),
+      weeklyTs: ts,
+      weeklyHb: hb,
+      weeklyHbPct: hbPct,
+      needsCoaching: needsCoaching
+    };
+  });
+
+  return {
+    success: true,
+    topicTitle: activeTopic,
+    weekRange: weekLabel,
+    roster: results
+  };
+}
+
+function geminiProxy(req) {
+  try {
+    const apiKey = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
+    if (!apiKey) {
+      return { success: false, code: "NO_KEY", message: "Script Property GEMINI_API_KEY is not set in Apps Script." };
+    }
+
+    const model = String(req.model || 'gemini-2.5-flash').trim();
+    if (!/^gemini-[a-z0-9.\-]+$/i.test(model)) {
+      return { success: false, message: "Invalid model identifier: " + model };
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
+    const payload = {
+      contents: req.contents
+    };
+    if (req.systemInstruction) {
+      payload.systemInstruction = req.systemInstruction;
+    }
+    if (req.generationConfig) {
+      payload.generationConfig = req.generationConfig;
+    }
+
+    const options = {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const resp = UrlFetchApp.fetch(url, options);
+    const code = resp.getResponseCode();
+    const text = resp.getContentText();
+
+    if (code >= 200 && code < 300) {
+      return { success: true, data: JSON.parse(text) };
+    } else {
+      return { success: false, status: code, message: text };
+    }
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
 }

@@ -60,6 +60,8 @@ async function executeLogin() {
       selectedBranch = currentUser.branch || DEFAULT_BRANCH;
       localStorage.setItem("pmg_session", JSON.stringify(currentUser));
       document.getElementById("loginOverlay").style.display = "none";
+      const navBar = document.getElementById("mainNavBar");
+      if (navBar) navBar.style.display = "flex";
       
       loadDashboardData();
     } else {
@@ -217,6 +219,12 @@ function logout() {
   document.getElementById("managerReportsSection").style.display = "none";
   document.getElementById("editActionPlanBtn").style.display = "none";
   document.getElementById("staffPerformanceSection").style.display = "none";
+  const navBar = document.getElementById("mainNavBar");
+  if (navBar) navBar.style.display = "none";
+  switchMainTab('dashboard');
+  if (window.DPOS && typeof window.DPOS.dposReset === 'function') {
+    window.DPOS.dposReset();
+  }
 }
 
 function initSession() {
@@ -237,6 +245,8 @@ function initSession() {
       }
       selectedBranch = currentUser.branch || DEFAULT_BRANCH;
       document.getElementById("loginOverlay").style.display = "none";
+      const navBar = document.getElementById("mainNavBar");
+      if (navBar) navBar.style.display = "flex";
       loadDashboardData();
     }
   } catch (e) {
@@ -244,6 +254,31 @@ function initSession() {
   }
 }
 window.addEventListener('DOMContentLoaded', initSession);
+
+function switchMainTab(tab) {
+  const dashView = document.getElementById("dashboardView");
+  const academyView = document.getElementById("academyView");
+  const btnDash = document.getElementById("btnNavDashboard");
+  const btnAcad = document.getElementById("btnNavAcademy");
+
+  if (tab === 'academy') {
+    if (dashView) dashView.style.display = "none";
+    if (academyView) academyView.style.display = "block";
+    if (btnDash) btnDash.classList.remove("active");
+    if (btnAcad) btnAcad.classList.add("active");
+    if (window.DPOS && typeof window.DPOS.init === 'function') {
+      window.DPOS.init();
+    }
+  } else {
+    if (dashView) dashView.style.display = "block";
+    if (academyView) academyView.style.display = "none";
+    if (btnDash) btnDash.classList.add("active");
+    if (btnAcad) btnAcad.classList.remove("active");
+    if (window.DPOS && typeof window.DPOS.dposReset === 'function') {
+      window.DPOS.dposReset();
+    }
+  }
+}
 
 async function loadDashboardData() {
   document.getElementById("lastUpdated").innerText = "🔄 Syncing with Database...";
