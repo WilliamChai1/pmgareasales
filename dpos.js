@@ -485,13 +485,19 @@
       root.innerHTML = `<div style="text-align:center; padding:40px; color:#666;">🔄 Loading DPOS Academy Curriculum...</div>`;
     }
 
+    const isMgr = (typeof isManagementOrPharmacist === 'function') ? isManagementOrPharmacist(currentUser) : false;
+    if (!isMgr) {
+      state.canReview = false;
+      state.currentTab = 'spotlight';
+    }
+
     try {
       const u = (typeof currentUser !== 'undefined' && currentUser && currentUser.username) || '';
       const res = await dposApi('dposGetWeek', { username: u });
 
       if (res && res.success && res.week) {
         state.currentWeek = res.week;
-        state.canReview = !!res.canReview;
+        state.canReview = !!res.canReview && isMgr;
         state.userScore = res.mine || null;
         state.demoMode = false;
       } else {
@@ -516,7 +522,11 @@
         const savedScores = JSON.parse(localStorage.getItem('pmg_dpos_scores') || '{}');
         state.userScore = savedScores[state.currentWeek.topic] || null;
       } catch (err) {}
-      state.canReview = (typeof isManagementOrPharmacist === 'function' && isManagementOrPharmacist(currentUser));
+      state.canReview = isMgr;
+    }
+
+    if (!state.canReview && state.currentTab === 'review') {
+      state.currentTab = 'spotlight';
     }
 
     // Parse Quiz
@@ -534,6 +544,15 @@
     const root = document.getElementById("academyRoot");
     if (!root) return;
 
+    // Strict security check: if not a reviewer, never show review tab or content
+    const isMgr = (typeof isManagementOrPharmacist === 'function') ? isManagementOrPharmacist(currentUser) : false;
+    if (!state.canReview || !isMgr) {
+      state.canReview = false;
+      if (state.currentTab === 'review') {
+        state.currentTab = 'spotlight';
+      }
+    }
+
     const topicTitle = state.currentWeek ? state.currentWeek.topic : "Clinical Mastery";
     const demoBanner = state.demoMode ? `
       <div style="background:#fffbeb; color:#92400e; padding:8px 12px; border-radius:8px; font-size:0.75rem; margin-bottom:12px; border:1px solid #fde68a; display:flex; justify-content:space-between; align-items:center;">
@@ -541,7 +560,7 @@
         <span style="font-weight:bold; font-size:0.7rem; background:#fef3c7; padding:2px 6px; border-radius:4px;">Demo</span>
       </div>` : '';
 
-    const reviewTabHtml = state.canReview ? `
+    const reviewTabHtml = (state.canReview && isMgr) ? `
       <button class="dpos-subtab ${state.currentTab === 'review' ? 'active' : ''}" onclick="window.DPOS.setTab('review')">
         📊 Review
       </button>` : '';
@@ -590,6 +609,11 @@
   function renderSubTabContent() {
     const container = document.getElementById("dposContentContainer");
     if (!container) return;
+
+    const isMgr = (typeof isManagementOrPharmacist === 'function') ? isManagementOrPharmacist(currentUser) : false;
+    if (state.currentTab === 'review' && (!state.canReview || !isMgr)) {
+      state.currentTab = 'spotlight';
+    }
 
     if (state.currentTab === 'spotlight') {
       renderSpotlight(container);
@@ -968,6 +992,17 @@
 
   // ─── TAB 4: PHARMACIST-IN-CHARGE REVIEW DASHBOARD ─────────────────────────
   async function renderReview(container) {
+    const isMgr = (typeof isManagementOrPharmacist === 'function') ? isManagementOrPharmacist(currentUser) : false;
+    if (!state.canReview || !isMgr) {
+      container.innerHTML = `
+        <div class="dpos-card" style="text-align:center; padding:30px 16px; color:#64748b;">
+          🔒 <b>Access Restricted:</b> The Review Dashboard is strictly reserved for the Pharmacist-in-Charge and Management.
+        </div>
+      `;
+      state.currentTab = 'spotlight';
+      return;
+    }
+
     container.innerHTML = `<div style="text-align:center; padding:30px; color:#666;">🔄 Syncing team assessment scores and weekly sales...</div>`;
 
     let reviewData = null;
@@ -981,21 +1016,18 @@
         throw new Error(res.message || "Failed to load review roster");
       }
     } catch (e) {
-      console.warn("dposGetReview error, showing fallback demo roster:", e);
-      reviewData = {
-        topicTitle: state.currentWeek ? state.currentWeek.topic : "Week 1: Joint Health",
-        weekRange: "Current Week",
-        roster: [
-          { name: "Chai Yee Sian", role: "Pharmacist", quizScore: 10, rolePlayScore: 92, language: "English + Malay", confidence: "High (9.0/10)", status: "Completed", weeklyTs: 4200, weeklyHb: 2100, weeklyHbPct: "50.0", needsCoaching: false },
-          { name: "Fiona Fiena", role: "Staff", quizScore: 9, rolePlayScore: 84, language: "Malay", confidence: "High (8.4/10)", status: "Completed", weeklyTs: 3100, weeklyHb: 1200, weeklyHbPct: "38.7", needsCoaching: false },
-          { name: "Jong Pei Choo", role: "Staff", quizScore: 8, rolePlayScore: 78, language: "Mandarin", confidence: "Medium (7.8/10)", status: "Completed", weeklyTs: 3800, weeklyHb: 1650, weeklyHbPct: "43.4", needsCoaching: false },
-          { name: "Muhammad Nur Farizin", role: "Staff", quizScore: 6, rolePlayScore: null, language: "-", confidence: "-", status: "In Progress", weeklyTs: 2900, weeklyHb: 900, weeklyHbPct: "31.0", needsCoaching: true },
-          { name: "Nurhafizah Pauli", role: "Staff", quizScore: null, rolePlayScore: null, language: "-", confidence: "-", status: "Not Started", weeklyTs: 2400, weeklyHb: 750, weeklyHbPct: "31.3", needsCoaching: true },
-          { name: "Ting Kwang Yu", role: "Branch Manager", quizScore: 9, rolePlayScore: 88, language: "English", confidence: "High (8.8/10)", status: "Completed", weeklyTs: 2200, weeklyHb: 1100, weeklyHbPct: "50.0", needsCoaching: false },
-          { name: "Kenix Ling", role: "Pharmacist", quizScore: 10, rolePlayScore: 90, language: "English + Mandarin", confidence: "High (9.0/10)", status: "Completed", weeklyTs: 2600, weeklyHb: 1300, weeklyHbPct: "50.0", needsCoaching: false },
-          { name: "Christina Lee Ying Ying", role: "Staff", quizScore: null, rolePlayScore: null, language: "-", confidence: "-", status: "Not Started", weeklyTs: 1500, weeklyHb: 400, weeklyHbPct: "26.7", needsCoaching: true }
-        ]
-      };
+      console.warn("dposGetReview error:", e);
+      container.innerHTML = `
+        <div class="dpos-card" style="text-align:center; padding:30px 16px; color:#64748b;">
+          <div style="font-size:2rem; margin-bottom:8px;">⚠️</div>
+          <div style="font-weight:700; color:#1e293b; margin-bottom:4px;">Unable to load team review roster</div>
+          <div style="font-size:0.75rem; color:#ef4444; margin-bottom:14px;">${escapeHtml(e.message || "Could not connect to Google Sheets.")}</div>
+          <button type="button" class="btn" style="background:#0d9488; color:white; padding:8px 16px; font-size:0.8rem; font-weight:bold;" onclick="window.DPOS.setTab('review')">
+            🔄 Retry Sync
+          </button>
+        </div>
+      `;
+      return;
     }
 
     const roster = reviewData.roster || [];
@@ -1729,6 +1761,15 @@ Output strictly in JSON:
 
   // ─── GLOBAL HANDLERS & EXPORTS ─────────────────────────────────────────────
   function setTab(tab) {
+    if (tab === 'review') {
+      const isMgr = (typeof isManagementOrPharmacist === 'function') ? isManagementOrPharmacist(currentUser) : false;
+      if (!state.canReview || !isMgr) {
+        console.warn("Unauthorized attempt to access Review tab");
+        state.currentTab = 'spotlight';
+        renderAcademy();
+        return;
+      }
+    }
     state.currentTab = tab;
     renderAcademy();
   }
@@ -1766,11 +1807,20 @@ Output strictly in JSON:
   function dposReset() {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     stopRecording();
+    state.currentTab = 'spotlight';
+    state.canReview = false;
+    state.currentWeek = null;
+    state.userScore = null;
     state.rolePlayTurns = [];
     state.evaluation = null;
     state.quizIndex = 0;
     state.quizUserAnswers = [];
     state.quizAnswered = false;
+    state.quizScore = null;
+    state.demoMode = false;
+    state.isRecording = false;
+    state.isSpeaking = false;
+    state.isEvaluating = false;
   }
 
   // Pre-load browser voices

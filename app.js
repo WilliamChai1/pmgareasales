@@ -63,6 +63,10 @@ async function executeLogin() {
       const navBar = document.getElementById("mainNavBar");
       if (navBar) navBar.style.display = "flex";
       
+      if (window.DPOS && typeof window.DPOS.dposReset === 'function') {
+        window.DPOS.dposReset();
+      }
+
       loadDashboardData();
     } else {
       const errEl = document.getElementById("loginError");
