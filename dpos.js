@@ -2069,20 +2069,26 @@ Score ONLY what was explicitly stated by the teammate in the transcript. Do NOT 
    - PWP (Purchase-With-Purchase): Reward if teammate offers an add-on item at a discounted price upon minimum spend (typically RM20+, e.g. 'tambah sikit dapat barang murah di kaunter', 'promosi PWP', '特价加购', '加几块钱带走').
    - Award full 15 points if teammate pitched EITHER valid PWP OR GWP before concluding.
    - Award 0 points ONLY if teammate completely ignored counter promotions.
-6. Loyalty & Senior Care Plus (0-20):
-   - PMG Loyalty & Senior Care Plus (0-10): Checked PMG membership (free to join) OR introduced Senior Care Plus programme.
-   - 28th Monthly Free Blood Glucose Screening (0-10): Highlighted FREE blood glucose test on the 28th of every month for seniors (or health check).
+6. Loyalty & Senior Care Plus (0-20 pts total):
+   - Sub-item 6A: General PMG Membership (0-10 pts):
+     Did the teammate check if the customer has a PMG membership, offer free IC registration, or explain member pricing? (Award 0 if omitted).
+   - Sub-item 6B: Senior Care Plus (SCP) & 28th Monthly Free Glucose Screening (0-10 pts):
+     Did the teammate explicitly introduce the "Senior Care Plus" (SCP / 乐龄关怀计划) program AND/OR highlight the FREE blood glucose screening on the 28th of every month for seniors (28hb ujian gula percuma / 28号免费验血糖)?
+     * STRICT CRITICAL DEDUCTION RULE (SENIOR CUSTOMER):
+       If the customer is a senior (such as Uncle Tan, Auntie, or age 55+) and the teammate ONLY talks about regular PMG membership / member price BUT completely OMITS mentioning "Senior Care Plus" and OMITS mentioning the "28th monthly free blood glucose test", YOU MUST AWARD 0/10 for senior_care_28th!
+       In this case, the total membership score CANNOT exceed 10/20!
+       You MUST ALSO add to missed_items: "Missed Senior Care Plus / 28th Screening: Did not introduce Senior Care Plus or highlight 28th monthly free blood glucose test for seniors (-10 pts)".
 `}
 
 MANDATORY STRUCTURED OUTPUT FORMAT:
 You MUST provide:
-1. "missed_items": Array of itemized strings listing exact criteria missed with point deductions (e.g. "Missed Red Flag: Did not screen for swelling/gastritis (-5 pts)", "Missed OTC: Did not offer immediate topical/oral relief (-10 pts)", "Missed PWP: Did not pitch counter PWP special (-15 pts)", "Missed 28th Glucose: Did not mention 28th monthly free blood glucose test (-10 pts)"). If nothing missed, return ["Mastered all consultation criteria! Full marks awarded."].
+1. "missed_items": Array of itemized strings listing exact criteria missed with point deductions (e.g. "Missed Red Flag: Did not screen for swelling/gastritis (-5 pts)", "Missed OTC: Did not offer immediate topical/oral relief (-10 pts)", "Missed PWP: Did not pitch counter PWP special (-15 pts)", "Missed Senior Care Plus / 28th Screening: Did not introduce Senior Care Plus or highlight 28th monthly free blood glucose test for seniors (-10 pts)"). If nothing missed, return ["Mastered all consultation criteria! Full marks awarded."].
 2. "example_dialogue": Array of 2 to 3 verbatim sentences in the teammate's primary spoken language (${languages}) demonstrating how to smoothly deliver the missing red flags, House Brand pairing, and cashier PWP pitch.
 3. "coachingTip": Concise 1-sentence coaching summary.
 
 Output strictly in JSON:
 {
-  "totalScore": 75,
+  "totalScore": 65,
   "speakingConfidence": "${confRating}",
   "languageUsed": "${languages}",
   "breakdown": {
@@ -2091,13 +2097,17 @@ Output strictly in JSON:
     "empathy": 8,
     "dpos": 30,
     "pwp": 0,
-    "membership": 20
+    "membership_general": 10,
+    "senior_care_28th": 0,
+    "membership": 10
   },
   "missed_items": [
-    "Missed PWP: Did not pitch counter PWP special (-15 pts)"
+    "Missed PWP: Did not pitch counter PWP special (-15 pts)",
+    "Missed Senior Care Plus / 28th Screening: Did not introduce Senior Care Plus or highlight 28th monthly free blood glucose test for seniors (-10 pts)"
   ],
   "example_dialogue": [
-    "Uncle, alang-alang berbelanja RM20 hari ini, boleh tebus pek plester ini dengan harga diskaun RM4 di kaunter!"
+    "Uncle, alang-alang berbelanja RM20 hari ini, boleh tebus pek plester ini dengan harga diskaun RM4 di kaunter!",
+    "Alang-alang Uncle daftar ahli hari ini, kami ada program Senior Care Plus untuk warga emas, setiap 28hb ada ujian saringan gula darah percuma!"
   ],
   "coachingTip": "..."
 }`;
@@ -2123,7 +2133,28 @@ Output strictly in JSON:
       }
       
       const pwpScore = bd.pwp !== undefined ? Number(bd.pwp) : (bd.cashierGwpPwp !== undefined ? Number(bd.cashierGwpPwp) : 0);
-      const memScore = bd.membership !== undefined ? Number(bd.membership) : (bd.loyaltySeniorCare !== undefined ? Number(bd.loyaltySeniorCare) : 0);
+      
+      let memScore = 0;
+      if (bd.membership_general !== undefined || bd.senior_care_28th !== undefined) {
+        const memGen = Math.min(10, Math.max(0, Number(bd.membership_general || 0)));
+        const memScp = Math.min(10, Math.max(0, Number(bd.senior_care_28th || 0)));
+        memScore = memGen + memScp;
+      } else if (bd.membership !== undefined) {
+        memScore = Number(bd.membership);
+      } else {
+        memScore = Number(bd.loyaltySeniorCare || 0);
+      }
+
+      // DETERMINISTIC CODE-LEVEL GUARD: Check whether Senior Care Plus or 28th test was spoken
+      const teammateWords = userTurns.map(t => t.text || '').join(' ').toLowerCase();
+      const mentionsSeniorCareOr28 = /(senior\s*care|scp|28\s*hb|28th|28\s*号|二十八|ujian\s*gula|saringan\s*gula|cek\s*gula|gula\s*percuma|验血糖|免费验血|乐龄|银发)/i.test(teammateWords);
+      const personaRaw = (state.currentWeek && (state.currentWeek.persona || state.currentWeek.topic)) || "";
+      const isSeniorPersona = /uncle|auntie|aunty|pak\s*cik|mak\s*cik|senior|retiree|warga\s*emas|5[5-9]|6[0-9]|7[0-9]|8[0-9]/i.test(personaRaw) || (w.promo && /28/i.test(w.promo));
+
+      if (isSeniorPersona && !mentionsSeniorCareOr28) {
+        // Enforce hard cap: cannot score more than 10/20 on loyalty if SCP / 28th screening was omitted
+        memScore = Math.min(memScore, 10);
+      }
 
       const cleanBreakdown = {
         warmth: Math.min(10, Math.max(0, warmth)),
@@ -2135,11 +2166,19 @@ Output strictly in JSON:
       };
 
       const calculatedTotal = cleanBreakdown.warmth + cleanBreakdown.fluency + cleanBreakdown.empathy + cleanBreakdown.dpos + cleanBreakdown.pwp + cleanBreakdown.membership;
-      const totalScore = parsed.totalScore !== undefined ? Math.min(100, Math.max(0, Number(parsed.totalScore))) : calculatedTotal;
+      const totalScore = calculatedTotal;
 
       // Extract missed items & example dialogue
       let missedItems = Array.isArray(parsed.missed_items) ? parsed.missed_items.filter(Boolean) : (Array.isArray(parsed.missedItems) ? parsed.missedItems : []);
       let exampleDialogue = Array.isArray(parsed.example_dialogue) ? parsed.example_dialogue.filter(Boolean) : (Array.isArray(parsed.exampleDialogue) ? parsed.exampleDialogue : []);
+
+      // If senior persona omitted Senior Care Plus / 28th test, ensure deduction note is present
+      if (isSeniorPersona && !mentionsSeniorCareOr28) {
+        const scpDeduction = "Missed Senior Care Plus / 28th Screening: Did not introduce Senior Care Plus or highlight 28th monthly free blood glucose test for seniors (-10 pts)";
+        if (!missedItems.some(m => /senior\s*care|28|scp|ujian\s*gula/i.test(m))) {
+          missedItems.push(scpDeduction);
+        }
+      }
 
       // Fallback generators if model omitted them
       if (missedItems.length === 0) {
