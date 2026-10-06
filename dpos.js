@@ -37,20 +37,99 @@
     voices: []
   };
 
+  // ─── HUMANOID CUSTOMER PERSONALITY ARCHETYPES ─────────────────────────────
+  const CUSTOMER_ARCHETYPES = [
+    {
+      id: "budget_conscious",
+      name: "Price-Sensitive / Limited Budget (Jimat Cermat / 讲究性价比)",
+      trait: "Tight budget, hesitates on prices, asks for cheaper alternatives, responds warmly to daily-cost breakdown (RM2-3/day) or affordable PWP add-ons",
+      behaviorPrompt: `PERSONALITY & COMMUNICATION TRAIT - BUDGET-CONSCIOUS (JIMAT CERMAT / 讲究性价比):
+- You have a limited budget and worry about spending money.
+- When the teammate suggests medicines, patches, or supplements, hesitate and ask about the cost first: "Berapa harganya dik? Bajet saya agak ketat bulan ni...", "Ada pilihan yang lebih murah tak?", "多少钱一盒？有便宜一点的吗？".
+- OBJECTION HANDLING:
+  * If the teammate explains the cost per day (e.g. 'Uncle/Kak, sebotol ni tahan 2 bulan, jatuh RM2-RM3 je sehari'), or offers an affordable PWP counter deal (e.g. 'tambah RM4 je dapat plaster'), you feel relieved, acknowledge the good value, and agree to buy!
+  * If the teammate pushes expensive big packages without explaining daily value, remain hesitant and say you will think about it.`
+    },
+    {
+      id: "affluent_quality",
+      name: "Affluent & Premium Quality Seeker (Mementingkan Kualiti / 追求高品质)",
+      trait: "Money is no object, demands top-tier clinical efficacy, asks for the best or imported formulation",
+      behaviorPrompt: `PERSONALITY & COMMUNICATION TRAIT - AFFLUENT & QUALITY-FOCUSED (MEMENTINGKAN KUALITI / 追求高品质):
+- Money is not an issue for you. You want the highest quality and most effective solution.
+- You ask: "Ada gred yang paling bagus tak? Duit bukan masalah, yang penting paling berkesan dan selamat", "这个是最有效的吗？有没有更高吸收率或者更好的？".
+- OBJECTION HANDLING:
+  * If the teammate explains high bioavailability, patented extraction (e.g. Boswellia, fish collagen peptides, high absorption), and comprehensive care, you are impressed, appreciate their professionalism, and agree to take the complete course!`
+    },
+    {
+      id: "health_conscious",
+      name: "Health-Conscious & Natural Botanic (Takut Kesan Sampingan / 讲究天然)",
+      trait: "Fears synthetic chemicals, worried about kidneys/liver damage, prefers herbs, botanicals, and natural ingredients",
+      behaviorPrompt: `PERSONALITY & COMMUNICATION TRAIT - HEALTH-CONSCIOUS & CHEMICAL-WARY (TAKUT KESAN SAMPINGAN / 讲究天然):
+- You are very worried about taking synthetic chemical pills or damaging your kidneys and liver: "Saya takut makan banyak ubat kimia nanti rosak buah pinggang... ubat ni ada bahan kimia keras tak?", "这个西药伤肾吗？我平时比较喜欢天然的草本成份".
+- OBJECTION HANDLING:
+  * If the teammate reassures you with empathy, explains that the House Brand supplement is natural botanical/plant-based (e.g. Curcuma/Turmeric, Boswellia, herbal extracts) and explains safe OTC dosage, you feel relieved, trust their advice, and happily accept!`
+    },
+    {
+      id: "elderly_confused",
+      name: "Elderly & Hard-of-Hearing (Warga Emas / 听不清需要耐心)",
+      trait: "Elderly, slightly hard of hearing, easily confused by medical jargon, needs repetition, simple dosage, and high patience",
+      behaviorPrompt: `PERSONALITY & COMMUNICATION TRAIT - ELDERLY & HARD-OF-HEARING (WARGA EMAS / 听不清需要耐心):
+- You are an elderly customer (age 65+). Your hearing is slightly weak and you get confused easily by fast speaking or technical medical jargon.
+- You ask them to speak up or repeat: "Hah? Boleh cakap kuat sikit dik? Telinga pakcik/makcik kurang dengar...", "Makan macam mana ya? Ubat ni untuk apa tadi?", "阿妹/阿弟，讲大声一点，老人家耳朵不好... 这个怎么吃啊？".
+- OBJECTION HANDLING:
+  * If the teammate speaks with warmth, patience, clear loud tone, explains dosage very simply (e.g., 'pagi 1 biji lepas makan'), and invites you to the 28th free glucose screening under Senior Care Plus, you are deeply touched by their care and become a loyal supporter!`
+    },
+    {
+      id: "stubborn_skeptic",
+      name: "Stubborn & Skeptical (Degil & Percaya Petua Tradisional / 固执固见)",
+      trait: "Skeptical of supplements, believes minyak angin / traditional oils are sufficient, questions why they should take oral supplements",
+      behaviorPrompt: `PERSONALITY & COMMUNICATION TRAIT - STUBBORN & SKEPTICAL (DEGIL & PERCAYA PETUA TRADISIONAL / 固执固见):
+- You are skeptical about health supplements and wonder if they are just marketing gimmicks. You usually just rub Minyak Panas, Minyak Cap Kapak, or drink warm ginger water.
+- You challenge them: "Alah dik, pakcik sapu minyak angin pun boleh tahan, buat apa bazir duit beli suplemen makan?", "搽风油不就好了咯，还要吃药这么麻烦咩？".
+- OBJECTION HANDLING:
+  * If the teammate validates your feeling ('Betul tu Uncle, minyak memang cepat legakan rasa lenguh luaran...'), but gently explains that minyak only masks surface nerves while joint cartilage/blood vessels need internal nourishment to stop wearing down, you realize they are right and agree to try!`
+    },
+    {
+      id: "rushed_impatient",
+      name: "Rushed & Impatient (Tergesa-gesa / Double-Park / 赶时间)",
+      trait: "In a hurry, double-parked or rushing for work, demands fast, direct answers without long monologues",
+      behaviorPrompt: `PERSONALITY & COMMUNICATION TRAIT - RUSHED & IMPATIENT (TERGESA-GESA / DOUBLE-PARK / 赶时间):
+- You are in a huge rush (your car is double-parked outside or you have to catch an appointment).
+- You talk fast and want immediate solutions: "Cepat sikit ya dik, kereta saya double park kat luar ni... bagi yang paling cepat hilang sakit", "快一点帮我拿药，我的车停在外面 double park 等下被 saman...".
+- OBJECTION HANDLING:
+  * If the teammate is sharp, concise, decisive, and quickly recommends the right OTC and House Brand without rambling, you appreciate their quick efficiency, pay immediately, and take their recommendation!`
+    },
+    {
+      id: "anxious_worrier",
+      name: "Anxious & Catastrophizing Worrier (Cemas & Takut Penyakit Serius / 焦虑疑病)",
+      trait: "High anxiety, Googled symptoms, fears cancer, stroke, or fatal illness, needs calming empathy and clinical reassurance",
+      behaviorPrompt: `PERSONALITY & COMMUNICATION TRAIT - ANXIOUS WORRIER (CEMAS & TAKUT PENYAKIT SERIUS / 焦虑疑病):
+- You are anxious and frightened that your symptoms might be a deadly or incurable disease (e.g. heart failure, cancer, stroke, permanent disability): "Saya risau sangat dik... ni bukan tanda sakit jantung atau kanser kan? Saya takut sangat...", "我会不会是中风或者有什么大病啊？我很怕...".
+- OBJECTION HANDLING:
+  * If the teammate shows strong empathy ('Jangan panik kak/bang, bertenang dulu, kami tolong semak tanda-tanda...'), checks your red flags calmly, and reassures you about common benign causes and proper triage, your heartbeat slows down, you feel safe, and you follow all their instructions gratefully!`
+    }
+  ];
+
   // ─── RANDOM CASE GENERATOR (10 CLINICAL DOMAINS) ───────────────────────────
   function buildRandomCase(domainKey) {
     const catalog = (typeof window !== 'undefined' && window.DPOS_CLINICAL_CATALOG) ? window.DPOS_CLINICAL_CATALOG : {};
     const domainKeys = Object.keys(catalog);
     if (domainKeys.length === 0) {
+      const defaultArch = CUSTOMER_ARCHETYPES[0];
       return {
-        topic: "Random Case: Joint Health & Osteoarthritis Care",
+        topic: "Joint Health & Osteoarthritis Care",
         categoryKey: "musculoskeletal",
         categoryName: "Musculoskeletal & Pain",
         conditionName: "Osteoarthritis Knee",
         isEmergencyRedFlag: false,
+        customerName: "Uncle Tan",
+        customerGender: "male",
+        customerRole: "Retiree",
+        customerLang: "ms",
+        customerArchetype: defaultArch,
         skus: "JH Nutrition Flexson, Livemore Flexmore, Biowell Terrafast 500mg, Medicplast Heat Patch",
         summaryMd: "## Joint Care Triage\n- Screen red flags\n- Safe OTC relief\n- House brand root cause supplement",
-        persona: "VISIBLE: Uncle Tan, 67, walks in rubbing his right knee.\n\nHIDDEN BACKGROUND (customer only): You have right knee pain for 6 months. Worried about price.",
+        persona: `VISIBLE: Uncle Tan, 67, walks in rubbing his right knee.\n\nHIDDEN BACKGROUND (customer only): You have right knee pain for 6 months. Worried about price.\n\n${defaultArch.behaviorPrompt}`,
         promo: "Senior Care Plus: FREE blood glucose screening on 28th. Counter PWP special.",
         quiz: []
       };
@@ -72,6 +151,13 @@
     const cond = conditions[Math.floor(Math.random() * conditions.length)];
     const p = cond.persona || {};
 
+    // Select customer personality archetype matching age/context
+    let eligibleArchetypes = CUSTOMER_ARCHETYPES;
+    if (p.age && p.age < 55) {
+      eligibleArchetypes = CUSTOMER_ARCHETYPES.filter(a => a.id !== 'elderly_confused');
+    }
+    const archetype = eligibleArchetypes[Math.floor(Math.random() * eligibleArchetypes.length)];
+
     return {
       topic: `${cond.emergency ? '🚨 Emergency Red Flag: ' : ''}${cond.name}`,
       categoryKey: targetDomain.id,
@@ -82,9 +168,10 @@
       customerGender: p.gender || (p.name && detectPersonaGender(p.name)) || "male",
       customerRole: p.role || "Customer",
       customerLang: p.language || "ms",
+      customerArchetype: archetype,
       skus: cond.skus || "",
       summaryMd: cond.summaryMd || "",
-      persona: `${p.visible || ''}\n\nHIDDEN BACKGROUND (customer only): ${p.hidden || ''}`,
+      persona: `${p.visible || ''}\n\nHIDDEN BACKGROUND (customer only): ${p.hidden || ''}\n\n${archetype.behaviorPrompt}`,
       promo: cond.promo || "Senior Care Plus: FREE blood glucose screening on 28th. Counter PWP special.",
       quiz: cond.quiz || []
     };
@@ -95,6 +182,7 @@
     state.topicMode = mode;
 
     if (mode === 'weekly') {
+      state.currentTab = 'spotlight';
       state.currentWeek = state.weeklyTopic || window.DPOS_SEED_WEEK;
       state.quizQuestions = parseQuizJson(state.currentWeek.quiz || state.currentWeek.quizJson);
       state.quizIndex = 0;
@@ -104,6 +192,7 @@
       state.rolePlayTurns = [];
       state.evaluation = null;
     } else {
+      state.currentTab = 'roleplay';
       if (!state.randomTopic) {
         generateNewRandomCase(state.selectedDomain || 'all');
         return;
@@ -125,6 +214,7 @@
   function generateNewRandomCase(domainKey) {
     state.selectedDomain = domainKey || 'all';
     state.topicMode = 'random';
+    state.currentTab = 'roleplay';
 
     const newCase = buildRandomCase(state.selectedDomain);
     state.randomTopic = newCase;
@@ -822,7 +912,15 @@
       }
     }
 
-    const topicTitle = state.currentWeek ? state.currentWeek.topic : "Clinical Mastery";
+    let topicTitle = state.currentWeek ? state.currentWeek.topic : "Clinical Mastery";
+    if (state.topicMode === 'random') {
+      if (state.evaluation) {
+        topicTitle = `🎭 Unmasked: ${state.currentWeek ? state.currentWeek.topic : 'Mystery Case'}`;
+      } else {
+        topicTitle = "🎭 Mystery Walk-in Customer Encounter";
+      }
+    }
+
     const demoBanner = state.demoMode ? `
       <div style="background:#fffbeb; color:#92400e; padding:8px 12px; border-radius:8px; font-size:0.75rem; margin-bottom:12px; border:1px solid #fde68a; display:flex; justify-content:space-between; align-items:center;">
         <span>⚠️ <b>Offline Seed Mode:</b> Connected to local seed data. Deploy backend Code.gs to sync live Google Sheet scores.</span>
@@ -857,14 +955,14 @@
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div>
             <div style="font-size:0.68rem; text-transform:uppercase; font-weight:800; color:#0d9488; letter-spacing:0.5px;">
-              ${state.topicMode === 'weekly' ? 'DPOS Academy • Weekly Clinical Sprint' : '🎲 Infinite Clinical Challenge • AI Random Patient'}
+              ${state.topicMode === 'weekly' ? 'DPOS Academy • Weekly Clinical Sprint' : '🎲 Infinite Clinical Challenge • Blind Mystery Encounter'}
             </div>
             <h2 style="margin:4px 0 6px 0; font-size:1.15rem; color:#0f172a; font-weight:800; line-height:1.3;">${escapeHtml(topicTitle)}</h2>
           </div>
           <div>${statusBadge}</div>
         </div>
 
-        ${state.currentWeek && state.currentWeek.isEmergencyRedFlag ? `
+        ${(state.currentWeek && state.currentWeek.isEmergencyRedFlag && (state.topicMode !== 'random' || state.evaluation)) ? `
           <div class="dpos-emergency-pulse" style="margin:8px 0;">
             🚨 <b>CRITICAL EMERGENCY RED FLAG:</b> Immediate triage and urgent medical/hospital referral required. Strictly DO NOT attempt OTC sale!
           </div>` : ''}
@@ -872,7 +970,7 @@
         <div style="font-size:0.75rem; color:#64748b; line-height:1.4;">
           ${state.topicMode === 'weekly' 
             ? 'Master clinical triage, safe OTC symptomatic relief, and 3.5% House Brand supplement recommendations with real-time AI speech simulation.' 
-            : 'Challenge your clinical reflex across PMG’s 10 major disease domains. Triage symptoms, protect patient safety, and execute the complete DPOS protocol.'}
+            : 'A mystery walk-in customer has arrived with an undisclosed health condition. Greet them, investigate their symptoms from scratch, navigate their personality and objections, and deliver the DPOS frontline protocol.'}
         </div>
 
         ${state.topicMode === 'random' ? `
@@ -891,22 +989,28 @@
               <option value="eyes_oral" ${state.selectedDomain === 'eyes_oral' ? 'selected' : ''}>👁️ Eyes & Oral Care</option>
             </select>
             <button type="button" class="btn" style="background:#0d9488; color:white; padding:6px 12px; font-size:0.75rem; font-weight:800; border-radius:6px; border:none; cursor:pointer;" onclick="window.DPOS.generateNewRandomCase(document.getElementById('dposDomainSelect') ? document.getElementById('dposDomainSelect').value : 'all')">
-              🎲 Roll New Case
+              🎲 Roll New Customer
             </button>
           </div>` : ''}
       </div>
 
       <!-- SUB-NAVIGATION TABS -->
       <div class="dpos-subtabs">
-        <button class="dpos-subtab ${state.currentTab === 'spotlight' ? 'active' : ''}" onclick="window.DPOS.setTab('spotlight')">
-          📖 Spotlight
-        </button>
-        <button class="dpos-subtab ${state.currentTab === 'quiz' ? 'active' : ''}" onclick="window.DPOS.setTab('quiz')">
-          📝 Quiz ${state.quizScore !== null ? `(${state.quizScore}/10)` : ''}
-        </button>
-        <button class="dpos-subtab ${state.currentTab === 'roleplay' ? 'active' : ''}" onclick="window.DPOS.setTab('roleplay')">
-          🎙️ Role-Play
-        </button>
+        ${state.topicMode === 'weekly' ? `
+          <button class="dpos-subtab ${state.currentTab === 'spotlight' ? 'active' : ''}" onclick="window.DPOS.setTab('spotlight')">
+            📖 Spotlight
+          </button>
+          <button class="dpos-subtab ${state.currentTab === 'quiz' ? 'active' : ''}" onclick="window.DPOS.setTab('quiz')">
+            📝 Quiz ${state.quizScore !== null ? `(${state.quizScore}/10)` : ''}
+          </button>
+          <button class="dpos-subtab ${state.currentTab === 'roleplay' ? 'active' : ''}" onclick="window.DPOS.setTab('roleplay')">
+            🎙️ Role-Play
+          </button>
+        ` : `
+          <button class="dpos-subtab active" onclick="window.DPOS.setTab('roleplay')">
+            🎙️ Mystery Consultation (Blind Mode)
+          </button>
+        `}
         ${reviewTabHtml}
       </div>
 
@@ -923,7 +1027,10 @@
 
     const isMgr = (typeof isManagementOrPharmacist === 'function') ? isManagementOrPharmacist(currentUser) : false;
     if (state.currentTab === 'review' && (!state.canReview || !isMgr)) {
-      state.currentTab = 'spotlight';
+      state.currentTab = state.topicMode === 'random' ? 'roleplay' : 'spotlight';
+    }
+    if (state.topicMode === 'random' && (state.currentTab === 'spotlight' || state.currentTab === 'quiz')) {
+      state.currentTab = 'roleplay';
     }
 
     if (state.currentTab === 'spotlight') {
@@ -1160,16 +1267,32 @@
     }).join("");
 
     if (turns.length === 0) {
-      chatHtml = `
-        <div style="text-align:center; padding:30px 14px; color:#64748b;">
-          <div style="font-size:2rem; margin-bottom:6px;">👋</div>
-          <div style="font-weight:700; color:#334155; margin-bottom:4px;">Ready to start consultation?</div>
-          <div style="font-size:0.75rem; line-height:1.4;">
-            Press and hold the button to speak in <b>Mandarin</b>, <b>Bahasa Melayu</b>, or <b>English</b>.<br>
-            ${gender === 'female' ? 'The customer' : 'Uncle Tan'} will automatically match your language and respond realistically.
+      if (state.topicMode === 'random') {
+        chatHtml = `
+          <div style="text-align:center; padding:32px 14px; color:#64748b;">
+            <div style="font-size:2.5rem; margin-bottom:8px;">🚶‍♂️🔔</div>
+            <div style="font-weight:800; color:#0f172a; font-size:1.05rem; margin-bottom:4px;">A Customer Just Walked In!</div>
+            <div style="font-size:0.78rem; color:#475569; max-width:440px; margin:0 auto; line-height:1.5;">
+              <b>Blind Clinical Simulation:</b> You do not know their health condition or personality yet.<br>
+              Hold the microphone button below to greet them:<br>
+              <span style="color:#0d9488; font-weight:700; font-size:0.82rem;">&ldquo;Selamat pagi! Ada apa boleh saya bantu?&rdquo;</span><br>
+              <span style="color:#0d9488; font-weight:700; font-size:0.82rem;">&ldquo;早安！请问有什么可以帮您？&rdquo;</span><br>
+              Investigate their symptoms and navigate their objections from scratch.
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      } else {
+        chatHtml = `
+          <div style="text-align:center; padding:30px 14px; color:#64748b;">
+            <div style="font-size:2rem; margin-bottom:6px;">👋</div>
+            <div style="font-weight:700; color:#334155; margin-bottom:4px;">Ready to start consultation?</div>
+            <div style="font-size:0.75rem; line-height:1.4;">
+              Press and hold the button to speak in <b>Mandarin</b>, <b>Bahasa Melayu</b>, or <b>English</b>.<br>
+              The customer will automatically match your language and respond realistically.
+            </div>
+          </div>
+        `;
+      }
     }
 
     // Evaluation modal / card if ready
@@ -1177,8 +1300,34 @@
     if (state.evaluation) {
       const ev = state.evaluation;
       const bInfo = computeBadge(ev.totalScore !== undefined ? ev.totalScore : 0);
+      const isRandomMode = state.topicMode === 'random';
+      const arch = (state.currentWeek && state.currentWeek.customerArchetype) || null;
+
       evalHtml = `
         <div class="dpos-card" style="border:2px solid #0d9488; margin-top:16px;">
+          ${isRandomMode ? `
+            <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:12px; margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:0.7rem; font-weight:800; color:#15803d; text-transform:uppercase;">🎭 Mystery Clinical Case Unmasked</div>
+                <span style="font-size:0.65rem; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:800;">Case Solved</span>
+              </div>
+              <div style="font-size:1.1rem; font-weight:800; color:#0f172a; margin-top:4px;">
+                ${escapeHtml(state.currentWeek.topic)}
+              </div>
+              <div style="font-size:0.75rem; color:#334155; margin-top:5px; line-height:1.45;">
+                <b>Customer Persona:</b> ${escapeHtml(arch ? arch.name : (state.currentWeek.customerName || 'Walk-in Customer'))}<br>
+                ${arch ? `<b>Personality Trait:</b> ${escapeHtml(arch.trait)}<br>` : ''}
+                <b>Target House Brand SKUs:</b> ${escapeHtml(state.currentWeek.skus || 'Jase Healthcare')}
+              </div>
+              ${state.currentWeek.summaryMd ? `
+                <div style="margin-top:8px; font-size:0.75rem; color:#166534; background:white; padding:8px 10px; border-radius:6px; border:1px solid #bbf7d0;">
+                  <b>Clinical Debrief:</b>
+                  <div style="margin-top:4px; line-height:1.45; color:#334155;">
+                    ${renderMarkdown(state.currentWeek.summaryMd)}
+                  </div>
+                </div>` : ''}
+            </div>` : ''}
+
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div style="font-weight:800; font-size:1rem; color:#0f172a;">🏆 Consultation Evaluation</div>
             <span class="dpos-badge ${bInfo.class}">${bInfo.icon} ${bInfo.badge} (${ev.totalScore}/100)</span>
@@ -1284,7 +1433,8 @@
     }
 
     container.innerHTML = `
-      <!-- SCENARIO BRIEF -->
+      <!-- SCENARIO BRIEF (HIDDEN IN BLIND RANDOM CHALLENGE MODE) -->
+      ${state.topicMode === 'random' ? '' : `
       <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px 12px; border-radius:10px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div style="font-size:0.7rem; font-weight:800; color:#1d4ed8; text-transform:uppercase;">🎭 Live Customer Encounter</div>
@@ -1294,6 +1444,7 @@
           ${escapeHtml(persona.visibleText)}
         </div>
       </div>
+      `}
 
       <!-- CHAT CONVERSATION CONTAINER -->
       <div class="dpos-chat-box" id="dposChatBox">
@@ -2008,12 +2159,20 @@
       const customerName = (state.currentWeek && state.currentWeek.customerName) || customerLabel.replace(/^[^A-Za-z0-9]+/, '').trim() || "Customer";
       const isEmergency = !!(state.currentWeek && state.currentWeek.isEmergencyRedFlag);
       
+      const arch = (state.currentWeek && state.currentWeek.customerArchetype) || null;
+      
       // Build conversation history text
       const historyText = state.rolePlayTurns.map(t => `${t.speaker === 'user' ? 'Teammate' : 'Customer'}: ${t.text}`).join('\n');
 
       const systemInstruction = `You are a virtual customer role-play engine for PMG Pharmacy in Sarawak, Malaysia.
-CUSTOMER PERSONA:
+CUSTOMER PERSONA & CLINICAL BACKGROUND:
 ${personaObj.hiddenPrompt}
+${arch ? `
+ASSIGNED PERSONALITY ARCHETYPE: ${arch.name}
+TRAIT DESCRIPTION: ${arch.trait}
+BEHAVIOR INSTRUCTIONS:
+${arch.behaviorPrompt}
+` : ''}
 
 PRIOR CONVERSATION:
 ${historyText || '(No prior turns, teammate is speaking first)'}
@@ -2040,13 +2199,21 @@ STRICT INSTRUCTIONS:
    - If teammate spoke Mandarin -> Reply in natural conversational Mandarin (Chinese characters: 华语). DO NOT reply in Malay or English!
    - If teammate spoke Malay -> Reply in conversational Sarawak Malay. DO NOT reply in Mandarin or English!
    - If teammate spoke English -> Reply in natural Malaysian English. DO NOT reply in Malay or Mandarin!
-4. CONVERSATION CONTINUITY & REALISM:
-   - You are ${customerName}. Embody the customer persona background honestly.
+4. CONVERSATION CONTINUITY & HUMANOID REALISM:
+   - You are ${customerName}. Embody the customer persona and assigned personality archetype realistically. You are a real human customer in Malaysia, NOT an AI robot.
    - Reply directly to what the teammate just said in this audio turn.
-   ${isEmergency ? `- CRITICAL EMERGENCY BEHAVIOR: You are experiencing dangerous alarm symptoms! If the teammate recognizes the danger and urgently advises you to go to the hospital/emergency clinic immediately, react with alarm and relief, thank them, and agree to go to the hospital immediately without delay! If the teammate tries to sell you OTC painkillers, vitamins, or delay emergency care, complain that your pain/symptoms are unbearable and ask if this could be an emergency.` : `- If teammate greeted you, explain your symptoms.
-   - If teammate asked about symptoms or past history, answer honestly.
-   - If teammate recommended House Brand or relief, ask about pricing or confirm interest.
-   - If teammate pitches a PWP counter add-on or mentions a GWP free gift (e.g. adding a discounted item for RM20+ or free gift for RM250+ spend), agree or show warm interest.`}
+   - IF THIS IS TURN 1 (Teammate just greeted you with 'Selamat pagi / ada apa boleh bantu / 早安'):
+     Explain your primary symptom and discomfort naturally in 1-2 sentences in character according to your personality!
+   ${isEmergency ? `- CRITICAL EMERGENCY BEHAVIOR: You are experiencing dangerous alarm symptoms! If the teammate recognizes the danger and urgently advises you to go to the hospital/emergency clinic immediately, react with alarm and relief, thank them, and agree to go to the hospital immediately without delay! If the teammate tries to sell you OTC painkillers, vitamins, or delay emergency care, complain that your pain/symptoms are unbearable and ask if this could be an emergency.` : `- PERSONALITY & OBJECTION BEHAVIOR:
+     * If PRICE-SENSITIVE / BUDGET CONSCIOUS: hesitate on cost, ask "berapa harga?", ask for discounts or cheaper items. Show genuine appreciation and agree if teammate breaks down daily cost (RM2-3/day) or offers a cheap PWP item.
+     * If AFFLUENT: ask if there is an even higher grade, faster-acting, or premium formulation ("Ada yang gred lagi bagus tak? Duit bukan masalah").
+     * If HEALTH-CONSCIOUS: express worry about chemical pill side effects harming kidneys or liver. Demand natural plant/botanic reassurance.
+     * If ELDERLY & HARD-OF-HEARING: ask teammate to speak louder or repeat, ask simple dosage questions, respond warmly to patience and Senior Care Plus free screening.
+     * If STUBBORN / SKEPTICAL: mention rubbing Minyak Panas/Cap Kapak or drinking hot water, doubt pills until teammate explains cartilage wear vs temporary skin cooling.
+     * If RUSHED: speak fast, mention being double-parked or in a rush, demand swift direct recommendations.
+     * If ANXIOUS: worry that symptoms are fatal (cancer/stroke/heart attack), respond gratefully to calming empathy and clear triage.
+     * If teammate recommended House Brand or relief, react according to your personality.
+     * If teammate pitches a PWP counter add-on or mentions a GWP free gift (e.g. adding a discounted item for RM20+ or free gift for RM250+ spend), respond positively.`}
    - DO NOT repeat previous statements or say the opening greeting if the conversation has already progressed.
    - Keep customer replies natural, concise (1-3 sentences), and conversational.
 5. Evaluate per-turn vocal audio metrics:
@@ -2198,6 +2365,7 @@ Output strictly in JSON format:
     const languages = [...new Set(userTurns.map(t => getLangBadgeLabel(t.lang || 'ms')))].join(' + ');
 
     const w = state.currentWeek || {};
+    const arch = (w && w.customerArchetype) || null;
     const isEmergency = !!(w.isEmergencyRedFlag || (w.topic && w.topic.includes('Emergency Red Flag')));
 
     const evalPrompt = `You are a strict clinical pharmacy training evaluator for PMG Pharmacy in Malaysia.
@@ -2209,6 +2377,7 @@ ${w.summaryMd || ""}
 Target House Brand SKUs: ${w.skus || "Relevant PMG House Brand / Jase Healthcare formulations"}
 Promo / Loyalty Context: ${w.promo || "Senior Care Plus free glucose test on 28th, counter PWP / GWP"}
 Scenario Mode: ${isEmergency ? "🚨 CRITICAL EMERGENCY RED FLAG" : "Standard Minor Ailment Consultation"}
+${arch ? `CUSTOMER PERSONALITY ARCHETYPE: ${arch.name} (${arch.trait})` : ''}
 
 TRANSCRIPT OF CONSULTATION:
 ${transcript}
@@ -2230,7 +2399,9 @@ CRITICAL SCORING RULES - STRICT ZERO TOLERANCE FOR OMISSIONS:
 Score ONLY what was explicitly stated by the teammate in the transcript. Do NOT award points for unsaid recommendations:
 1. Vocal Warmth: Award ${avgWarmth}/10 based on recorded voice intonation.
 2. Fluency & Confidence: Award ${avgFluency}/10 based on vocal pacing and filler count.
-3. Positive Vocabulary & Empathy (0-10): Caring words, reassurance, polite address (e.g., Uncle, Auntie, jangan risau, 别担心).
+3. Positive Vocabulary, Empathy & Personality Handling (0-10):
+   - Caring words, reassurance, polite address (e.g., Uncle, Auntie, jangan risau, 别担心).
+   ${arch ? `- Adaptability to customer personality (${arch.name}): Did teammate effectively acknowledge their personality and handle their objection (e.g. price hesitation with daily breakdown/PWP, chemical worry with natural botanical safety, elderly hearing with loud patience and Senior Care Plus, skepticism with cartilage wear root cause, anxiousness with reassuring triage)?` : ''}
 4. Clinical DPOS & House Brand Explanation (0-35):
    - Diagnosis triage (0-10): Did teammate ask clarifying symptom questions, screen red flags (swelling/redness/fever/severity), or check medical history (gastritis/kidney/blood thinners)? (Award 0 if not asked).
    - OTC immediate relief (0-10): Did teammate advise safe symptomatic relief (e.g., paracetamol/Terrafast dosage, topical patch/cream)? (Award 0 if omitted).
@@ -2508,11 +2679,14 @@ Output strictly in JSON:
 
   // ─── GLOBAL HANDLERS & EXPORTS ─────────────────────────────────────────────
   function setTab(tab) {
+    if (state.topicMode === 'random' && (tab === 'spotlight' || tab === 'quiz')) {
+      tab = 'roleplay';
+    }
     if (tab === 'review') {
       const isMgr = (typeof isManagementOrPharmacist === 'function') ? isManagementOrPharmacist(currentUser) : false;
       if (!state.canReview || !isMgr) {
         console.warn("Unauthorized attempt to access Review tab");
-        state.currentTab = 'spotlight';
+        state.currentTab = state.topicMode === 'random' ? 'roleplay' : 'spotlight';
         renderAcademy();
         return;
       }
