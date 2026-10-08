@@ -931,6 +931,36 @@ function dposGetReview(req) {
     };
   });
 
+  // Safety guard: ensure any staff who submitted a score for this topic is included even if inactive/missing from masterRoster
+  const rosterNameSet = new Set(results.map(function(r) { return r.name.toLowerCase(); }));
+  Object.keys(scoreMap).forEach(function(sKey) {
+    const s = scoreMap[sKey];
+    if (!rosterNameSet.has(sKey) && !results.some(function(r) { return r.name.toLowerCase().indexOf(sKey) !== -1 || sKey.indexOf(r.name.toLowerCase()) !== -1; })) {
+      const qScore = s.quizScore !== null ? s.quizScore : null;
+      const rpScore = s.rolePlayScore !== null ? s.rolePlayScore : null;
+      const isCompleted = qScore !== null && rpScore !== null;
+      const needsCoaching = !isCompleted || (qScore !== null && qScore < 7) || (rpScore !== null && rpScore < 70);
+      results.push({
+        name: s.staffName,
+        role: s.role || 'Staff',
+        username: s.staffName,
+        quizScore: qScore,
+        rolePlayScore: rpScore,
+        language: s.languageUsed || '-',
+        confidence: s.confidence || '-',
+        status: isCompleted ? 'Completed' : (qScore !== null || rpScore !== null ? 'In Progress' : 'Not Started'),
+        weeklyTs: 0,
+        weeklyHb: 0,
+        weeklyHbPct: "0.0",
+        needsCoaching: needsCoaching,
+        transcript: s.transcript || '',
+        coachingTip: s.coachingTip || '',
+        breakdown: s.breakdown || ''
+      });
+      rosterNameSet.add(sKey);
+    }
+  });
+
   return {
     success: true,
     topicTitle: activeTopic,

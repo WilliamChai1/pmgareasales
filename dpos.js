@@ -177,6 +177,18 @@
     };
   }
 
+  function ensureWeeklyArchetype(weekObj) {
+    if (!weekObj) return;
+    const personaText = String(weekObj.persona || '');
+    const isSenior = /uncle|auntie|aunty|pak\s*cik|mak\s*cik|6[0-9]|7[0-9]|warga\s*emas/i.test(personaText);
+    let eligible = CUSTOMER_ARCHETYPES;
+    if (!isSenior) {
+      eligible = CUSTOMER_ARCHETYPES.filter(a => a.id !== 'elderly_confused');
+    }
+    const arch = eligible[Math.floor(Math.random() * eligible.length)];
+    weekObj.customerArchetype = arch;
+  }
+
   function setTopicMode(mode) {
     if (mode === state.topicMode) return;
     state.topicMode = mode;
@@ -184,6 +196,7 @@
     if (mode === 'weekly') {
       state.currentTab = 'spotlight';
       state.currentWeek = state.weeklyTopic || window.DPOS_SEED_WEEK;
+      ensureWeeklyArchetype(state.currentWeek);
       state.quizQuestions = parseQuizJson(state.currentWeek.quiz || state.currentWeek.quizJson);
       state.quizIndex = 0;
       state.quizUserAnswers = [];
@@ -845,6 +858,7 @@
 
       if (res && res.success && res.week) {
         state.weeklyTopic = res.week;
+        ensureWeeklyArchetype(state.weeklyTopic);
         state.currentWeek = state.topicMode === 'random' && state.randomTopic ? state.randomTopic : state.weeklyTopic;
         state.canReview = !!res.canReview && isMgr;
         state.userScore = res.mine || null;
@@ -876,6 +890,7 @@
           promo: "Senior Care Plus FREE glucose test on 28th."
         };
       }
+      ensureWeeklyArchetype(state.weeklyTopic);
       state.currentWeek = state.topicMode === 'random' && state.randomTopic ? state.randomTopic : state.weeklyTopic;
       try {
         const savedScores = JSON.parse(localStorage.getItem('pmg_dpos_scores') || '{}');
@@ -1245,6 +1260,7 @@
     const userTurns = turns.filter(t => t.speaker === 'user');
     const userTurnCount = userTurns.length;
     const canEvaluate = userTurnCount >= 3;
+    const arch = (state.currentWeek && state.currentWeek.customerArchetype) || (state.weeklyTopic && state.weeklyTopic.customerArchetype) || null;
 
     let chatHtml = turns.map(t => {
       const isUser = t.speaker === 'user';
@@ -1288,7 +1304,7 @@
             <div style="font-weight:700; color:#334155; margin-bottom:4px;">Ready to start consultation?</div>
             <div style="font-size:0.75rem; line-height:1.4;">
               Press and hold the button to speak in <b>Mandarin</b>, <b>Bahasa Melayu</b>, or <b>English</b>.<br>
-              The customer will automatically match your language and respond realistically.
+              The customer will automatically match your language, jab with realistic questions, and respond in character.
             </div>
           </div>
         `;
@@ -1301,7 +1317,6 @@
       const ev = state.evaluation;
       const bInfo = computeBadge(ev.totalScore !== undefined ? ev.totalScore : 0);
       const isRandomMode = state.topicMode === 'random';
-      const arch = (state.currentWeek && state.currentWeek.customerArchetype) || null;
 
       evalHtml = `
         <div class="dpos-card" style="border:2px solid #0d9488; margin-top:16px;">
@@ -1326,7 +1341,17 @@
                     ${renderMarkdown(state.currentWeek.summaryMd)}
                   </div>
                 </div>` : ''}
-            </div>` : ''}
+            </div>` : (arch ? `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; margin-bottom:14px;">
+              <div style="font-size:0.7rem; font-weight:800; color:#0369a1; text-transform:uppercase;">🥊 Weekly Spotlight Customer Encountered</div>
+              <div style="font-size:0.9rem; font-weight:800; color:#0f172a; margin-top:2px;">
+                ${escapeHtml(arch.name)}
+              </div>
+              <div style="font-size:0.75rem; color:#475569; margin-top:3px; line-height:1.4;">
+                <b>Personality Trait & Jabs:</b> ${escapeHtml(arch.trait)}<br>
+                <b>House Brand Focus:</b> ${escapeHtml(state.currentWeek.skus || 'Jase Healthcare')}
+              </div>
+            </div>` : '')}
 
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div style="font-weight:800; font-size:1rem; color:#0f172a;">🏆 Consultation Evaluation</div>
@@ -1437,12 +1462,16 @@
       ${state.topicMode === 'random' ? '' : `
       <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px 12px; border-radius:10px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="font-size:0.7rem; font-weight:800; color:#1d4ed8; text-transform:uppercase;">🎭 Live Customer Encounter</div>
-          <span style="font-size:0.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:4px; font-weight:700;">Speech-to-Speech</span>
+          <div style="font-size:0.7rem; font-weight:800; color:#1d4ed8; text-transform:uppercase;">🎭 Live Customer Encounter • Weekly Spotlight</div>
+          <span style="font-size:0.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:4px; font-weight:700;">Humanoid AI Voice</span>
         </div>
         <div style="font-size:0.8rem; color:#1e3a8a; font-weight:600; margin-top:3px; line-height:1.35;">
           ${escapeHtml(persona.visibleText)}
         </div>
+        ${arch ? `
+          <div style="margin-top:8px; font-size:0.72rem; color:#0369a1; background:#e0f2fe; padding:4px 8px; border-radius:6px; display:inline-block; border:1px solid #bae6fd;">
+            🥊 <b>Customer Personality:</b> ${escapeHtml(arch.name)} • <i>Expect realistic jabs & objections!</i>
+          </div>` : ''}
       </div>
       `}
 
@@ -2159,7 +2188,14 @@
       const customerName = (state.currentWeek && state.currentWeek.customerName) || customerLabel.replace(/^[^A-Za-z0-9]+/, '').trim() || "Customer";
       const isEmergency = !!(state.currentWeek && state.currentWeek.isEmergencyRedFlag);
       
-      const arch = (state.currentWeek && state.currentWeek.customerArchetype) || null;
+      let arch = (state.currentWeek && state.currentWeek.customerArchetype) || null;
+      if (!arch && state.weeklyTopic && state.weeklyTopic.customerArchetype) {
+        arch = state.weeklyTopic.customerArchetype;
+      }
+      if (!arch) {
+        ensureWeeklyArchetype(state.currentWeek || state.weeklyTopic);
+        arch = (state.currentWeek && state.currentWeek.customerArchetype) || CUSTOMER_ARCHETYPES[0];
+      }
       
       // Build conversation history text
       const historyText = state.rolePlayTurns.map(t => `${t.speaker === 'user' ? 'Teammate' : 'Customer'}: ${t.text}`).join('\n');
@@ -2170,7 +2206,7 @@ ${personaObj.hiddenPrompt}
 ${arch ? `
 ASSIGNED PERSONALITY ARCHETYPE: ${arch.name}
 TRAIT DESCRIPTION: ${arch.trait}
-BEHAVIOR INSTRUCTIONS:
+BEHAVIOR & JABBING INSTRUCTIONS:
 ${arch.behaviorPrompt}
 ` : ''}
 
@@ -2200,20 +2236,34 @@ STRICT INSTRUCTIONS:
    - If teammate spoke Malay -> Reply in conversational Sarawak Malay. DO NOT reply in Mandarin or English!
    - If teammate spoke English -> Reply in natural Malaysian English. DO NOT reply in Malay or Mandarin!
 4. CONVERSATION CONTINUITY & HUMANOID REALISM:
-   - You are ${customerName}. Embody the customer persona and assigned personality archetype realistically. You are a real human customer in Malaysia, NOT an AI robot.
+   - You are ${customerName}. Embody the customer persona and assigned personality archetype (${arch ? arch.name : 'Humanoid Customer'}) realistically. You are a real human customer in Sarawak, Malaysia, NOT an AI robot.
    - Reply directly to what the teammate just said in this audio turn.
    - IF THIS IS TURN 1 (Teammate just greeted you with 'Selamat pagi / ada apa boleh bantu / 早安'):
-     Explain your primary symptom and discomfort naturally in 1-2 sentences in character according to your personality!
-   ${isEmergency ? `- CRITICAL EMERGENCY BEHAVIOR: You are experiencing dangerous alarm symptoms! If the teammate recognizes the danger and urgently advises you to go to the hospital/emergency clinic immediately, react with alarm and relief, thank them, and agree to go to the hospital immediately without delay! If the teammate tries to sell you OTC painkillers, vitamins, or delay emergency care, complain that your pain/symptoms are unbearable and ask if this could be an emergency.` : `- PERSONALITY & OBJECTION BEHAVIOR:
-     * If PRICE-SENSITIVE / BUDGET CONSCIOUS: hesitate on cost, ask "berapa harga?", ask for discounts or cheaper items. Show genuine appreciation and agree if teammate breaks down daily cost (RM2-3/day) or offers a cheap PWP item.
-     * If AFFLUENT: ask if there is an even higher grade, faster-acting, or premium formulation ("Ada yang gred lagi bagus tak? Duit bukan masalah").
-     * If HEALTH-CONSCIOUS: express worry about chemical pill side effects harming kidneys or liver. Demand natural plant/botanic reassurance.
-     * If ELDERLY & HARD-OF-HEARING: ask teammate to speak louder or repeat, ask simple dosage questions, respond warmly to patience and Senior Care Plus free screening.
-     * If STUBBORN / SKEPTICAL: mention rubbing Minyak Panas/Cap Kapak or drinking hot water, doubt pills until teammate explains cartilage wear vs temporary skin cooling.
-     * If RUSHED: speak fast, mention being double-parked or in a rush, demand swift direct recommendations.
-     * If ANXIOUS: worry that symptoms are fatal (cancer/stroke/heart attack), respond gratefully to calming empathy and clear triage.
-     * If teammate recommended House Brand or relief, react according to your personality.
-     * If teammate pitches a PWP counter add-on or mentions a GWP free gift (e.g. adding a discounted item for RM20+ or free gift for RM250+ spend), respond positively.`}
+     Explain your primary symptom and main discomfort naturally in 1-2 sentences in character according to your personality!
+   ${isEmergency ? `- CRITICAL EMERGENCY BEHAVIOR: You are experiencing dangerous alarm symptoms! If the teammate recognizes the danger and urgently advises you to go to the hospital/emergency clinic immediately, react with alarm and relief, thank them, and agree to go to the hospital immediately without delay! If the teammate tries to sell you OTC painkillers, vitamins, or delay emergency care, complain that your pain/symptoms are unbearable and ask if this could be an emergency.` : `- 🥊 MANDATORY TRAINING DIRECTIVE: ACTIVELY JAB WITH REALISTIC RESISTANCE & OBJECTIONS!
+     Do NOT be an overly easy pushover customer who immediately agrees to everything on the first mention!
+     You MUST challenge / jab the teammate with realistic frontline resistance based on your assigned personality:
+     * THE PRICE JAB (Budget / Limited Pension):
+       When they recommend an OTC item, patch, or House Brand supplement (e.g., Flexson/Flexmore/etc.), JAB BACK with price hesitation:
+       "Eh, berapa harga ni dik? Bajet saya ketat sikit... ubat ni mahal tak? Ada pilihan murah?", "多少钱一盒？有没有便宜一点的？"
+       -> Only accept if the teammate explains the daily cost (RM2-3/day) or pitches an affordable PWP / value deal!
+     * THE SKEPTICISM & MINYAK ANGIN JAB:
+       When they recommend supplements, JAB BACK with doubt:
+       "Alah dik, pakcik biasa sapu minyak angin / minyak panas cap kapak je kat rumah, buat apa nak bazir beli suplemen makan?", "搽风油不就好了咯，还要吃药这么麻烦咩？"
+       -> Only accept if the teammate explains that topical oil only masks surface nerves while joint cartilage needs internal repair!
+     * THE CHEMICAL FEAR JAB (Health-Conscious / Gastric):
+       JAB BACK with worry:
+       "Dulu makan ubat klinik pedih ulu hati... ubat ni ada bahan kimia keras tak? Rosak buah pinggang nanti kalau makan!", "这个西药伤肾吗？我怕吃多了伤身体..."
+       -> Only accept if the teammate explains natural botanicals (Turmeric/Boswellia) and safe dosing!
+     * THE HEARING & DOSAGE CONFUSION JAB (Elderly):
+       JAB BACK with confusion:
+       "Hah? Boleh cakap kuat sikit dik? Telinga pakcik kurang dengar... ubat ni makan macam mana tadi? Banyak sangat pening pakcik nak ingat..."
+       -> Only warm up if the teammate speaks with clear loud patience, simple dosage, and mentions Senior Care Plus!
+     * THE RUSHED JAB:
+       "Cepat sikit ya dik, kereta saya double park kat luar ni..."
+     * THE ANXIETY JAB:
+       "Saya risau sangat dik... bukan tanda nak kena operate atau lumpuh kan?"
+     - If teammate pitches a PWP counter add-on or mentions a GWP free gift (e.g. adding a discounted item for RM20+ or free gift for RM250+ spend), respond positively and agree to pay.`}
    - DO NOT repeat previous statements or say the opening greeting if the conversation has already progressed.
    - Keep customer replies natural, concise (1-3 sentences), and conversational.
 5. Evaluate per-turn vocal audio metrics:
@@ -2636,6 +2686,9 @@ Output strictly in JSON:
     state.evaluation = null;
     state.isRecording = false;
     state.isEvaluating = false;
+    if (state.topicMode === 'weekly' && (state.currentWeek || state.weeklyTopic)) {
+      ensureWeeklyArchetype(state.currentWeek || state.weeklyTopic);
+    }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     renderRolePlay(document.getElementById("dposContentContainer"));
   }
