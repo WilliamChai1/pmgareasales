@@ -32,6 +32,7 @@
     recordingTimerId: null,
     recordingSeconds: 0,
     canReview: false,
+    selectedReviewTopic: null,
     userScore: null,
     demoMode: false,
     voices: []
@@ -1055,7 +1056,7 @@
     } else if (state.currentTab === 'roleplay') {
       renderRolePlay(container);
     } else if (state.currentTab === 'review') {
-      renderReview(container);
+      renderReview(container, state.selectedReviewTopic);
     }
   }
 
@@ -1330,8 +1331,7 @@
                 ${escapeHtml(state.currentWeek.topic)}
               </div>
               <div style="font-size:0.75rem; color:#334155; margin-top:5px; line-height:1.45;">
-                <b>Customer Persona:</b> ${escapeHtml(arch ? arch.name : (state.currentWeek.customerName || 'Walk-in Customer'))}<br>
-                ${arch ? `<b>Personality Trait:</b> ${escapeHtml(arch.trait)}<br>` : ''}
+                <b>Customer Encountered:</b> ${escapeHtml(state.currentWeek.customerName || 'Walk-in Customer')}<br>
                 <b>Target House Brand SKUs:</b> ${escapeHtml(state.currentWeek.skus || 'Jase Healthcare')}
               </div>
               ${state.currentWeek.summaryMd ? `
@@ -1341,17 +1341,16 @@
                     ${renderMarkdown(state.currentWeek.summaryMd)}
                   </div>
                 </div>` : ''}
-            </div>` : (arch ? `
+            </div>` : `
             <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; margin-bottom:14px;">
-              <div style="font-size:0.7rem; font-weight:800; color:#0369a1; text-transform:uppercase;">🥊 Weekly Spotlight Customer Encountered</div>
+              <div style="font-size:0.7rem; font-weight:800; color:#0369a1; text-transform:uppercase;">🎭 Weekly Spotlight Consultation</div>
               <div style="font-size:0.9rem; font-weight:800; color:#0f172a; margin-top:2px;">
-                ${escapeHtml(arch.name)}
+                ${escapeHtml(state.currentWeek.customerName || (persona && persona.visibleText ? persona.visibleText.split(',')[0] : 'Walk-in Customer'))}
               </div>
               <div style="font-size:0.75rem; color:#475569; margin-top:3px; line-height:1.4;">
-                <b>Personality Trait & Jabs:</b> ${escapeHtml(arch.trait)}<br>
                 <b>House Brand Focus:</b> ${escapeHtml(state.currentWeek.skus || 'Jase Healthcare')}
               </div>
-            </div>` : '')}
+            </div>`}
 
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div style="font-weight:800; font-size:1rem; color:#0f172a;">🏆 Consultation Evaluation</div>
@@ -1468,10 +1467,6 @@
         <div style="font-size:0.8rem; color:#1e3a8a; font-weight:600; margin-top:3px; line-height:1.35;">
           ${escapeHtml(persona.visibleText)}
         </div>
-        ${arch ? `
-          <div style="margin-top:8px; font-size:0.72rem; color:#0369a1; background:#e0f2fe; padding:4px 8px; border-radius:6px; display:inline-block; border:1px solid #bae6fd;">
-            🥊 <b>Customer Personality:</b> ${escapeHtml(arch.name)} • <i>Expect realistic jabs & objections!</i>
-          </div>` : ''}
       </div>
       `}
 
@@ -1525,7 +1520,7 @@
   }
 
   // ─── TAB 4: PHARMACIST-IN-CHARGE REVIEW DASHBOARD ─────────────────────────
-  async function renderReview(container) {
+  async function renderReview(container, topicToFetch) {
     const isMgr = (typeof isManagementOrPharmacist === 'function') ? isManagementOrPharmacist(currentUser) : false;
     if (!state.canReview || !isMgr) {
       container.innerHTML = `
@@ -1537,13 +1532,21 @@
       return;
     }
 
+    if (topicToFetch) {
+      state.selectedReviewTopic = topicToFetch;
+    }
+
     container.innerHTML = `<div style="text-align:center; padding:30px; color:#666;">🔄 Syncing team assessment scores and weekly sales...</div>`;
 
     let reviewData = null;
     try {
       const u = (typeof currentUser !== 'undefined' && currentUser && currentUser.username) || '';
       const r = (typeof currentUser !== 'undefined' && currentUser && currentUser.role) || '';
-      const res = await dposApi('dposGetReview', { username: u, role: r });
+      const res = await dposApi('dposGetReview', { 
+        username: u, 
+        role: r, 
+        topicTitle: state.selectedReviewTopic || '' 
+      });
       if (res && res.success) {
         reviewData = res;
       } else {
@@ -1564,11 +1567,18 @@
       return;
     }
 
+    state.selectedReviewTopic = reviewData.topicTitle;
     const roster = reviewData.roster || [];
     state.reviewRoster = roster;
     const totalCount = roster.length;
     const completedCount = roster.filter(r => r.status === 'Completed').length;
     const coachingCount = roster.filter(r => r.needsCoaching).length;
+
+    const availableTopics = (reviewData.availableTopics && reviewData.availableTopics.length > 0) 
+      ? reviewData.availableTopics 
+      : [{ title: reviewData.topicTitle, submissionsCount: completedCount, isActive: true }];
+
+    const isHistorical = reviewData.activeTopic && (reviewData.topicTitle.toLowerCase() !== reviewData.activeTopic.toLowerCase());
 
     let rowsHtml = roster.map((r, idx) => {
       const isComplete = r.status === 'Completed';
@@ -1602,6 +1612,48 @@
 
     container.innerHTML = `
       <div class="dpos-card">
+        <!-- TOPIC SELECTOR & HISTORICAL WEEKS SWITCHER -->
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:1rem;">📅</span>
+              <span style="font-size:0.75rem; font-weight:800; color:#334155; text-transform:uppercase;">Topic Review Selector:</span>
+            </div>
+            <div style="font-size:0.75rem; color:#64748b;">
+              Showing: <b style="color:#0f172a;">${escapeHtml(reviewData.topicTitle)}</b>
+              ${isHistorical 
+                ? '<span style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:4px; font-weight:700; margin-left:6px; font-size:0.68rem;">📁 Previous Week Archive</span>' 
+                : '<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-weight:700; margin-left:6px; font-size:0.68rem;">⭐ Current Active Week</span>'}
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <select id="dposReviewTopicSelect" style="flex:1; min-width:240px; padding:7px 10px; font-size:0.8rem; font-weight:700; border:1px solid #cbd5e1; border-radius:6px; background:white; color:#0f172a; cursor:pointer;" onchange="window.DPOS.changeReviewTopic(this.value)">
+              ${availableTopics.map(t => {
+                const isSelected = t.title.toLowerCase() === reviewData.topicTitle.toLowerCase();
+                const prefix = t.isActive ? '⭐ [Active Week] ' : '📁 [Past Week] ';
+                return `<option value="${escapeHtml(t.title)}" ${isSelected ? 'selected' : ''}>${prefix}${escapeHtml(t.title)} (${t.submissionsCount} assessed)</option>`;
+              }).join('')}
+            </select>
+
+            <!-- Quick Pill Buttons for Instant Switching -->
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              ${availableTopics.slice(0, 5).map(t => {
+                const isSelected = t.title.toLowerCase() === reviewData.topicTitle.toLowerCase();
+                const shortLabel = (t.title.split(':')[0] || t.title).trim();
+                return `
+                  <button type="button" class="btn" style="padding:5px 10px; font-size:0.72rem; font-weight:800; border-radius:6px; cursor:pointer; transition:all 0.15s ease; ${isSelected ? 'background:#0d9488; color:white; border:1px solid #0d9488; box-shadow:0 1px 3px rgba(13,148,136,0.3);' : 'background:white; color:#475569; border:1px solid #cbd5e1;'}" onclick="window.DPOS.changeReviewTopic('${escapeHtml(t.title).replace(/'/g, "\\'")}')">
+                    ${t.isActive ? '⭐ ' : '📁 '}${escapeHtml(shortLabel)} (${t.submissionsCount})
+                  </button>
+                `;
+              }).join('')}
+              <button type="button" class="btn" style="background:#e2e8f0; color:#334155; border:none; padding:5px 10px; font-size:0.72rem; font-weight:700; border-radius:6px; cursor:pointer;" onclick="window.DPOS.changeReviewTopic(document.getElementById('dposReviewTopicSelect').value)">
+                🔄 Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; gap:8px;">
           <div>
             <div style="font-size:0.7rem; font-weight:800; color:#0d9488; text-transform:uppercase;">Pharmacist-in-Charge Review Dashboard</div>
@@ -1644,6 +1696,14 @@
         </div>
       </div>
     `;
+  }
+
+  function changeReviewTopic(topic) {
+    state.selectedReviewTopic = topic;
+    const container = document.getElementById("dposContentContainer");
+    if (container) {
+      renderReview(container, topic);
+    }
   }
 
   function openReviewTranscript(idx) {
@@ -2818,6 +2878,7 @@ Output strictly in JSON:
     resetRolePlay: resetRolePlay,
     openReviewTranscript: openReviewTranscript,
     closeReviewTranscript: closeReviewTranscript,
+    changeReviewTopic: changeReviewTopic,
     dposReset: dposReset,
     // Pure functions for testing
     escapeHtml: escapeHtml,

@@ -778,46 +778,107 @@ function dposGetReview(req) {
     return { success: false, message: "Unauthorized. Review dashboard is reserved for Pharmacist / Management." };
   }
 
+  // 1. Discover scheduled topics from DPOS_Active_Week
   const weekSheet = ss.getSheetByName("DPOS_Active_Week");
   let activeTopic = "Week 1: Joint Health & Osteoarthritis Care";
+  const scheduledTopics = [];
   if (weekSheet) {
     const wVals = weekSheet.getDataRange().getValues();
-    for (let i = wVals.length - 1; i >= 1; i--) {
-      if (wVals[i][0]) {
-        activeTopic = String(wVals[i][0]).trim();
-        break;
+    for (let i = 1; i < wVals.length; i++) {
+      if (wVals[i][0] && String(wVals[i][0]).trim()) {
+        const t = String(wVals[i][0]).trim();
+        scheduledTopics.push(t);
+        activeTopic = t; // bottom-most is current active
       }
     }
   }
 
-  // 1. Read DPOS_Weekly_Scores
-  const scoreMap = {};
+  // 2. Discover historical topics & submission counts from DPOS_Weekly_Scores
   const scoreSheet = ss.getSheetByName("DPOS_Weekly_Scores");
-  if (scoreSheet) {
-    const sData = scoreSheet.getDataRange().getValues();
-    const topicLower = activeTopic.toLowerCase();
-    for (let i = 1; i < sData.length; i++) {
-      const rowTopic = String(sData[i][3] || '').trim().toLowerCase();
-      if (rowTopic === topicLower) {
-        const sName = String(sData[i][1] || '').trim();
-        scoreMap[sName.toLowerCase()] = {
-          timestamp: sData[i][0],
-          staffName: sName,
-          role: sData[i][2],
-          quizScore: sData[i][4] !== "" ? Number(sData[i][4]) : null,
-          rolePlayScore: sData[i][5] !== "" ? Number(sData[i][5]) : null,
-          languageUsed: sData[i][6] || '-',
-          confidence: sData[i][7] || '-',
-          status: sData[i][8] || 'In Progress',
-          transcript: sData[i][9] || '',
-          coachingTip: sData[i][10] || '',
-          breakdown: sData[i][11] || ''
-        };
+  const topicCounts = {};
+  const topicLatestDates = {};
+  const sData = scoreSheet ? scoreSheet.getDataRange().getValues() : [];
+  for (let i = 1; i < sData.length; i++) {
+    const rowTopic = String(sData[i][3] || '').trim();
+    if (rowTopic) {
+      topicCounts[rowTopic] = (topicCounts[rowTopic] || 0) + 1;
+      const ts = sData[i][0];
+      if (ts && (!topicLatestDates[rowTopic] || String(ts) > String(topicLatestDates[rowTopic]))) {
+        topicLatestDates[rowTopic] = ts;
       }
     }
   }
 
-  // 2. Read Active Kota Sentosa Roster
+  // Ensure scheduled topics from DPOS_Active_Week are represented
+  scheduledTopics.forEach(function(t) {
+    if (!(t in topicCounts)) {
+      topicCounts[t] = 0;
+    }
+  });
+
+  // Build sorted list of available topics for review
+  const availableTopics = Object.keys(topicCounts).map(function(t) {
+    return {
+      title: t,
+      submissionsCount: topicCounts[t] || 0,
+      isActive: (t.toLowerCase() === activeTopic.toLowerCase()),
+      latestDate: topicLatestDates[t] ? String(topicLatestDates[t]) : ''
+    };
+  });
+
+  availableTopics.sort(function(a, b) {
+    if (a.isActive && !b.isActive) return -1;
+    if (!a.isActive && b.isActive) return 1;
+    const matchA = a.title.match(/Week\s*(\d+)/i);
+    const matchB = b.title.match(/Week\s*(\d+)/i);
+    if (matchA && matchB) {
+      return parseInt(matchB[1], 10) - parseInt(matchA[1], 10);
+    }
+    if (matchA) return -1;
+    if (matchB) return 1;
+    return (b.submissionsCount || 0) - (a.submissionsCount || 0);
+  });
+
+  // Determine target topic to review (requested or default to activeTopic)
+  const requestedTopic = String(req.topicTitle || req.topic || '').trim();
+  let targetTopic = activeTopic;
+  if (requestedTopic) {
+    const matched = availableTopics.find(function(t) {
+      return t.title.toLowerCase() === requestedTopic.toLowerCase();
+    });
+    targetTopic = matched ? matched.title : requestedTopic;
+  }
+
+  // Filter scores for targetTopic
+  const scoreMap = {};
+  let topicDate = null;
+  const targetTopicLower = targetTopic.toLowerCase();
+  for (let i = 1; i < sData.length; i++) {
+    const rowTopic = String(sData[i][3] || '').trim().toLowerCase();
+    if (rowTopic === targetTopicLower) {
+      const sName = String(sData[i][1] || '').trim();
+      const ts = sData[i][0];
+      if (ts) {
+        const d = new Date(ts);
+        if (!isNaN(d.getTime())) topicDate = d;
+      }
+      scoreMap[sName.toLowerCase()] = {
+        timestamp: sData[i][0],
+        staffName: sName,
+        role: sData[i][2],
+        quizScore: sData[i][4] !== "" ? Number(sData[i][4]) : null,
+        rolePlayScore: sData[i][5] !== "" ? Number(sData[i][5]) : null,
+        languageUsed: sData[i][6] || '-',
+        confidence: sData[i][7] || '-',
+        status: sData[i][8] || 'In Progress',
+        transcript: sData[i][9] || '',
+        coachingTip: sData[i][10] || '',
+        breakdown: sData[i][11] || ''
+      };
+    }
+  }
+
+  // 3. Read Active Kota Sentosa Roster
   const staffSheet = getStaffSheet(ss);
   const masterRoster = [];
   if (staffSheet) {
@@ -842,28 +903,30 @@ function dposGetReview(req) {
     }
   }
 
-  // 3. Compute Weekly Sales for Kota Sentosa (Mon-Sun around latest date)
+  // 4. Compute Weekly Sales for Kota Sentosa (Mon-Sun around topicDate or latest date)
   const salesSheet = ss.getSheetByName("DailySales");
   const weeklySalesMap = {};
-  let weekLabel = "Current Week";
+  let weekLabel = "Weekly Sales";
 
   if (salesSheet) {
-    const sData = salesSheet.getDataRange().getValues();
-    let maxDate = new Date(0);
-    // Find latest sales date for Kota Sentosa
-    for (let i = 1; i < sData.length; i++) {
-      if (String(sData[i][1] || '').trim().toUpperCase() === "KOTA SENTOSA") {
-        const d = new Date(sData[i][0]);
-        if (d > maxDate) maxDate = d;
+    const dailyData = salesSheet.getDataRange().getValues();
+    let refDate = topicDate;
+    if (!refDate) {
+      let maxDate = new Date(0);
+      for (let i = 1; i < dailyData.length; i++) {
+        if (String(dailyData[i][1] || '').trim().toUpperCase() === "KOTA SENTOSA") {
+          const d = new Date(dailyData[i][0]);
+          if (d > maxDate) maxDate = d;
+        }
       }
+      if (maxDate.getTime() > 0) refDate = maxDate;
     }
 
-    if (maxDate.getTime() > 0) {
-      // Find Monday of that week
-      const dayOfWeek = maxDate.getDay(); // 0 is Sun, 1 is Mon
+    if (refDate && refDate.getTime() > 0) {
+      const dayOfWeek = refDate.getDay(); // 0 is Sun, 1 is Mon
       const diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
-      const monday = new Date(maxDate);
-      monday.setDate(maxDate.getDate() + diffToMon);
+      const monday = new Date(refDate);
+      monday.setDate(refDate.getDate() + diffToMon);
       monday.setHours(0,0,0,0);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
@@ -872,14 +935,14 @@ function dposGetReview(req) {
       const tz = ss.getSpreadsheetTimeZone() || "Asia/Kuala_Lumpur";
       weekLabel = `${Utilities.formatDate(monday, tz, "dd MMM")} – ${Utilities.formatDate(sunday, tz, "dd MMM yyyy")}`;
 
-      for (let i = 1; i < sData.length; i++) {
-        if (String(sData[i][1] || '').trim().toUpperCase() === "KOTA SENTOSA") {
-          const d = new Date(sData[i][0]);
+      for (let i = 1; i < dailyData.length; i++) {
+        if (String(dailyData[i][1] || '').trim().toUpperCase() === "KOTA SENTOSA") {
+          const d = new Date(dailyData[i][0]);
           if (d >= monday && d <= sunday) {
-            const sName = String(sData[i][2] || '').trim().toLowerCase();
+            const sName = String(dailyData[i][2] || '').trim().toLowerCase();
             if (!weeklySalesMap[sName]) weeklySalesMap[sName] = { ts: 0, hb: 0 };
-            weeklySalesMap[sName].ts += parseFloat(sData[i][3]) || 0;
-            weeklySalesMap[sName].hb += parseFloat(sData[i][4]) || 0;
+            weeklySalesMap[sName].ts += parseFloat(dailyData[i][3]) || 0;
+            weeklySalesMap[sName].hb += parseFloat(dailyData[i][4]) || 0;
           }
         }
       }
@@ -887,19 +950,19 @@ function dposGetReview(req) {
   }
 
   // Combine Roster with Scores & Sales
-  const results = masterRoster.map(m => {
+  const results = masterRoster.map(function(m) {
     const mLower = m.name.toLowerCase();
     // match score
     let score = scoreMap[mLower];
     if (!score) {
-      const matchKey = Object.keys(scoreMap).find(k => k.includes(mLower) || mLower.includes(k));
+      const matchKey = Object.keys(scoreMap).find(function(k) { return k.includes(mLower) || mLower.includes(k); });
       if (matchKey) score = scoreMap[matchKey];
     }
 
     // match sales
     let sales = weeklySalesMap[mLower];
     if (!sales) {
-      const matchKey = Object.keys(weeklySalesMap).find(k => k.includes(mLower) || mLower.includes(k));
+      const matchKey = Object.keys(weeklySalesMap).find(function(k) { return k.includes(mLower) || mLower.includes(k); });
       if (matchKey) sales = weeklySalesMap[matchKey];
     }
 
@@ -963,7 +1026,9 @@ function dposGetReview(req) {
 
   return {
     success: true,
-    topicTitle: activeTopic,
+    topicTitle: targetTopic,
+    activeTopic: activeTopic,
+    availableTopics: availableTopics,
     weekRange: weekLabel,
     roster: results
   };
