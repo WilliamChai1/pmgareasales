@@ -990,31 +990,6 @@
         </div>
       </div>
 
-      <!-- PHARMACIST REVIEW QUICK SWITCHER BANNER -->
-      ${(state.canReview && isMgr) ? `
-        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:1.1rem;">📊</span>
-            <div>
-              <div style="font-size:0.68rem; font-weight:800; color:#1d4ed8; text-transform:uppercase;">Pharmacist Review Mode:</div>
-              <div style="font-size:0.75rem; color:#1e3a8a; font-weight:600;">Choose a week to review teammate assessments:</div>
-            </div>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <select id="dposTopReviewTopicSelect" style="padding:6px 10px; font-size:0.75rem; font-weight:700; border:1px solid #93c5fd; border-radius:6px; background:white; color:#0f172a; cursor:pointer;" onchange="window.DPOS.goToReviewTopic(this.value)">
-              ${(state.availableTopics || []).map(t => `
-                <option value="${escapeHtml(t.title)}" ${t.title.toLowerCase() === (state.selectedReviewTopic || topicTitle || '').toLowerCase() ? 'selected' : ''}>
-                  ${t.isActive ? '⭐ [Active Week] ' : '📁 [Past Week] '}${escapeHtml(t.title)} (${t.submissionsCount} assessed)
-                </option>
-              `).join('')}
-            </select>
-            <button type="button" class="btn" style="background:#0d9488; color:white; padding:6px 12px; font-size:0.75rem; font-weight:800; border-radius:6px; border:none; cursor:pointer;" onclick="window.DPOS.goToReviewTopic(document.getElementById('dposTopReviewTopicSelect') ? document.getElementById('dposTopReviewTopicSelect').value : null)">
-              View Results ➔
-            </button>
-          </div>
-        </div>
-      ` : ''}
-
       <!-- HERO HEADER -->
       <div class="dpos-hero">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
@@ -1661,46 +1636,24 @@
 
     container.innerHTML = `
       <div class="dpos-card">
-        <!-- TOPIC SELECTOR & HISTORICAL WEEKS SWITCHER -->
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; margin-bottom:14px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+        <!-- TOPIC SELECTOR (CLEAN SINGLE DROPDOWN ONLY) -->
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
             <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-size:1rem;">📅</span>
-              <span style="font-size:0.75rem; font-weight:800; color:#334155; text-transform:uppercase;">Topic Review Selector:</span>
+              <span style="font-size:0.95rem;">📅</span>
+              <span style="font-size:0.72rem; font-weight:800; color:#334155; text-transform:uppercase;">Select Week to Review:</span>
             </div>
-            <div style="font-size:0.75rem; color:#64748b;">
-              Showing: <b style="color:#0f172a;">${escapeHtml(reviewData.topicTitle)}</b>
-              ${isHistorical 
-                ? '<span style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:4px; font-weight:700; margin-left:6px; font-size:0.68rem;">📁 Previous Week Archive</span>' 
-                : '<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-weight:700; margin-left:6px; font-size:0.68rem;">⭐ Current Active Week</span>'}
-            </div>
+            ${isHistorical 
+              ? '<span style="background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:4px; font-weight:700; font-size:0.68rem;">📁 Previous Week Archive</span>' 
+              : '<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-weight:700; font-size:0.68rem;">⭐ Current Active Week</span>'}
           </div>
-
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <select id="dposReviewTopicSelect" style="flex:1; min-width:240px; padding:7px 10px; font-size:0.8rem; font-weight:700; border:1px solid #cbd5e1; border-radius:6px; background:white; color:#0f172a; cursor:pointer;" onchange="window.DPOS.changeReviewTopic(this.value)">
-              ${availableTopics.map(t => {
-                const isSelected = t.title.toLowerCase() === reviewData.topicTitle.toLowerCase();
-                const prefix = t.isActive ? '⭐ [Active Week] ' : '📁 [Past Week] ';
-                return `<option value="${escapeHtml(t.title)}" ${isSelected ? 'selected' : ''}>${prefix}${escapeHtml(t.title)} (${t.submissionsCount} assessed)</option>`;
-              }).join('')}
-            </select>
-
-            <!-- Quick Pill Buttons for Instant Switching -->
-            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              ${availableTopics.slice(0, 5).map(t => {
-                const isSelected = t.title.toLowerCase() === reviewData.topicTitle.toLowerCase();
-                const shortLabel = (t.title.split(':')[0] || t.title).trim();
-                return `
-                  <button type="button" class="btn" style="padding:5px 10px; font-size:0.72rem; font-weight:800; border-radius:6px; cursor:pointer; transition:all 0.15s ease; ${isSelected ? 'background:#0d9488; color:white; border:1px solid #0d9488; box-shadow:0 1px 3px rgba(13,148,136,0.3);' : 'background:white; color:#475569; border:1px solid #cbd5e1;'}" onclick="window.DPOS.changeReviewTopic('${escapeHtml(t.title).replace(/'/g, "\\'")}')">
-                    ${t.isActive ? '⭐ ' : '📁 '}${escapeHtml(shortLabel)} (${t.submissionsCount})
-                  </button>
-                `;
-              }).join('')}
-              <button type="button" class="btn" style="background:#e2e8f0; color:#334155; border:none; padding:5px 10px; font-size:0.72rem; font-weight:700; border-radius:6px; cursor:pointer;" onclick="window.DPOS.changeReviewTopic(document.getElementById('dposReviewTopicSelect').value)">
-                🔄 Refresh
-              </button>
-            </div>
-          </div>
+          <select id="dposReviewTopicSelect" style="width:100%; padding:8px 10px; font-size:0.8rem; font-weight:700; border:1px solid #cbd5e1; border-radius:6px; background:white; color:#0f172a; cursor:pointer;" onchange="window.DPOS.changeReviewTopic(this.value)">
+            ${availableTopics.map(t => {
+              const isSelected = t.title.toLowerCase() === reviewData.topicTitle.toLowerCase();
+              const prefix = t.isActive ? '⭐ [Active Week] ' : '📁 ';
+              return `<option value="${escapeHtml(t.title)}" ${isSelected ? 'selected' : ''}>${prefix}${escapeHtml(t.title)} (${t.submissionsCount} assessed)</option>`;
+            }).join('')}
+          </select>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; gap:8px;">
