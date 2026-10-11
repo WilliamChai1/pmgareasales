@@ -33,6 +33,7 @@
     recordingSeconds: 0,
     canReview: false,
     selectedReviewTopic: null,
+    availableTopics: [],
     userScore: null,
     demoMode: false,
     voices: []
@@ -873,6 +874,22 @@
             console.log("Auto-synced Gemini API key from central server for teammate.");
           }
         }
+
+        // Pre-fetch available topics for Pharmacist/Manager review selector
+        if (state.canReview && isMgr) {
+          try {
+            const rRole = (typeof currentUser !== 'undefined' && currentUser && currentUser.role) || '';
+            const revRes = await dposApi('dposGetReview', { username: u, role: rRole });
+            if (revRes && revRes.success && revRes.availableTopics) {
+              state.availableTopics = revRes.availableTopics;
+              if (!state.selectedReviewTopic) {
+                state.selectedReviewTopic = revRes.topicTitle;
+              }
+            }
+          } catch (revErr) {
+            console.warn("Pre-fetch review topics error:", revErr);
+          }
+        }
       } else {
         throw new Error(res.message || "No active week returned");
       }
@@ -902,6 +919,13 @@
 
     if (!state.canReview && state.currentTab === 'review') {
       state.currentTab = 'spotlight';
+    }
+
+    if (state.canReview && isMgr && (!state.availableTopics || state.availableTopics.length === 0)) {
+      state.availableTopics = [
+        { title: (state.weeklyTopic && state.weeklyTopic.topic) || "Week 2: Severe Calcaneal Xerosis, Cracked Heels & Fissure Repair", submissionsCount: 1, isActive: true },
+        { title: "Week 1: Joint Health & Osteoarthritis Care", submissionsCount: 9, isActive: false }
+      ];
     }
 
     // Parse Quiz
@@ -965,6 +989,31 @@
           </button>
         </div>
       </div>
+
+      <!-- PHARMACIST REVIEW QUICK SWITCHER BANNER -->
+      ${(state.canReview && isMgr) ? `
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.1rem;">📊</span>
+            <div>
+              <div style="font-size:0.68rem; font-weight:800; color:#1d4ed8; text-transform:uppercase;">Pharmacist Review Mode:</div>
+              <div style="font-size:0.75rem; color:#1e3a8a; font-weight:600;">Choose a week to review teammate assessments:</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <select id="dposTopReviewTopicSelect" style="padding:6px 10px; font-size:0.75rem; font-weight:700; border:1px solid #93c5fd; border-radius:6px; background:white; color:#0f172a; cursor:pointer;" onchange="window.DPOS.goToReviewTopic(this.value)">
+              ${(state.availableTopics || []).map(t => `
+                <option value="${escapeHtml(t.title)}" ${t.title.toLowerCase() === (state.selectedReviewTopic || topicTitle || '').toLowerCase() ? 'selected' : ''}>
+                  ${t.isActive ? '⭐ [Active Week] ' : '📁 [Past Week] '}${escapeHtml(t.title)} (${t.submissionsCount} assessed)
+                </option>
+              `).join('')}
+            </select>
+            <button type="button" class="btn" style="background:#0d9488; color:white; padding:6px 12px; font-size:0.75rem; font-weight:800; border-radius:6px; border:none; cursor:pointer;" onclick="window.DPOS.goToReviewTopic(document.getElementById('dposTopReviewTopicSelect') ? document.getElementById('dposTopReviewTopicSelect').value : null)">
+              View Results ➔
+            </button>
+          </div>
+        </div>
+      ` : ''}
 
       <!-- HERO HEADER -->
       <div class="dpos-hero">
@@ -1704,6 +1753,11 @@
     if (container) {
       renderReview(container, topic);
     }
+  }
+
+  function goToReviewTopic(topic) {
+    if (topic) state.selectedReviewTopic = topic;
+    setTab('review');
   }
 
   function openReviewTranscript(idx) {
@@ -2879,6 +2933,7 @@ Output strictly in JSON:
     openReviewTranscript: openReviewTranscript,
     closeReviewTranscript: closeReviewTranscript,
     changeReviewTopic: changeReviewTopic,
+    goToReviewTopic: goToReviewTopic,
     dposReset: dposReset,
     // Pure functions for testing
     escapeHtml: escapeHtml,
