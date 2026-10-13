@@ -383,12 +383,27 @@ function parseMytDate(dateVal) {
 }
 
 // ─── ACTIVE PMG MEDICARE APP INSTALLS RESOLVER ──────────────────────────────
+function formatMytIsoDate(dateVal) {
+  const d = dateVal ? new Date(dateVal) : new Date();
+  const md = parseMytDate(d);
+  if (!md) return "";
+  return `${md.year}-${String(md.month + 1).padStart(2, "0")}-${String(md.day).padStart(2, "0")}`;
+}
+
 function getActivePmgApp(branchName) {
   const bKey = findBranchKey(currentData && currentData.summary, branchName || selectedBranch) || "KOTA SENTOSA";
   const sumObj = (currentData && currentData.summary && currentData.summary[bKey]) || {};
+  const todayIsoKey = formatMytIsoDate(new Date());
+  const todayLocalVal = localStorage.getItem("pmg_app_installs_" + bKey + "_" + todayIsoKey);
   const localVal = localStorage.getItem("pmg_app_installs_" + bKey);
   if (sumObj.pmgApp !== undefined && sumObj.pmgApp !== null && Number(sumObj.pmgApp) > 0) {
     return Number(sumObj.pmgApp);
+  }
+  if (currentData && currentData.pmgApps && currentData.pmgApps[todayIsoKey] !== undefined && Number(currentData.pmgApps[todayIsoKey]) > 0) {
+    return Number(currentData.pmgApps[todayIsoKey]);
+  }
+  if (todayLocalVal !== null && todayLocalVal !== undefined && !isNaN(Number(todayLocalVal)) && Number(todayLocalVal) > 0) {
+    return Number(todayLocalVal);
   }
   if (localVal !== null && localVal !== undefined && !isNaN(Number(localVal)) && Number(localVal) > 0) {
     return Number(localVal);
@@ -767,16 +782,21 @@ async function saveActionPlan() {
   
   const pmgCount = Number(document.getElementById("apPmgApp").value) || 0;
   const bKey = findBranchKey(currentData.summary, selectedBranch) || "KOTA SENTOSA";
+  const todayIsoKey = formatMytIsoDate(new Date());
 
-  // Immediate synchronous UI and persistence update
+  // Immediate synchronous UI and persistence update (both general branch key and date-specific key)
   try {
     localStorage.setItem("pmg_app_installs_" + bKey, String(pmgCount));
+    localStorage.setItem("pmg_app_installs_" + bKey + "_" + todayIsoKey, String(pmgCount));
   } catch (e) {}
 
   currentData.actionPlan = plans;
   if (!currentData.summary) currentData.summary = {};
   if (!currentData.summary[bKey]) currentData.summary[bKey] = {};
   currentData.summary[bKey].pmgApp = pmgCount;
+
+  if (!currentData.pmgApps) currentData.pmgApps = {};
+  currentData.pmgApps[todayIsoKey] = pmgCount;
 
   if (currentData.history && currentData.history.length > 0) {
     const todayMyt = parseMytDate(new Date());
@@ -792,7 +812,7 @@ async function saveActionPlan() {
   try {
     await fetch(API_URL, {
       method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans, pmgCount: pmgCount, date: new Date().toDateString() })
+      body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans, pmgCount: pmgCount, date: todayIsoKey })
     });
     
     renderDashboard();
@@ -1432,8 +1452,20 @@ function openReportModal(type) {
 
         const isToday = d === todayDay;
         const colData = matched ? { ...matched } : { ts: 0, hb: 0, hm: 0, cust: 0, pmgApp: 0 };
+        const dayIsoKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const bKey = findBranchKey(currentData.summary, selectedBranch) || "KOTA SENTOSA";
+        const storedDayVal = localStorage.getItem("pmg_app_installs_" + bKey + "_" + dayIsoKey);
+
         if (isToday) {
           colData.pmgApp = activePmgApp;
+        } else {
+          // Preserve past daily pmgApp from history, backend pmgApps dictionary, or daily local storage
+          const pastAppVal = (matched && matched.pmgApp !== undefined && matched.pmgApp !== null && Number(matched.pmgApp) > 0)
+            ? Number(matched.pmgApp)
+            : ((currentData.pmgApps && currentData.pmgApps[dayIsoKey] !== undefined)
+              ? Number(currentData.pmgApps[dayIsoKey])
+              : ((storedDayVal !== null && !isNaN(Number(storedDayVal))) ? Number(storedDayVal) : 0));
+          colData.pmgApp = pastAppVal;
         }
 
         cols.push({

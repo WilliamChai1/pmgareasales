@@ -218,6 +218,59 @@ function approveUser(targetUsername, adminUsername) {
   }
 }
 
+function normalizeDateKey(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "Asia/Kuala_Lumpur", "yyyy-MM-dd");
+  }
+  const s = String(val).trim();
+  if (!s) return "";
+
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    return s.substring(0, 10);
+  }
+
+  // DD-Mon-YYYY (e.g. "12-Oct-2026")
+  const monMatch = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/);
+  if (monMatch) {
+    const day = parseInt(monMatch[1], 10);
+    const monStr = monMatch[2].toLowerCase();
+    const year = parseInt(monMatch[3], 10);
+    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    const month = months.indexOf(monStr);
+    if (month !== -1) {
+      return year + "-" + String(month + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+    }
+  }
+
+  // Slash formats: D/M/YYYY or M/D/YYYY
+  if (s.includes("/")) {
+    const parts = s.split("/");
+    if (parts.length === 3) {
+      let p1 = parseInt(parts[0], 10);
+      let p2 = parseInt(parts[1], 10);
+      let year = parseInt(parts[2], 10);
+      if (year < 100) year += 2000;
+      
+      // If p1 <= 12 and p2 > 12 -> month/day/year (e.g. 9/18/2026)
+      if (p1 <= 12 && p2 > 12) {
+        return year + "-" + String(p1).padStart(2, "0") + "-" + String(p2).padStart(2, "0");
+      }
+      // If p1 > 12 and p2 <= 12 -> day/month/year (e.g. 18/09/2026)
+      if (p1 > 12 && p2 <= 12) {
+        return year + "-" + String(p2).padStart(2, "0") + "-" + String(p1).padStart(2, "0");
+      }
+    }
+  }
+
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return Utilities.formatDate(d, "Asia/Kuala_Lumpur", "yyyy-MM-dd");
+  }
+  return s;
+}
+
 function saveActionPlan(branch, plans, pmgCount, dateStr) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const branchUpper = String(branch).trim().toUpperCase();
@@ -244,16 +297,19 @@ function saveActionPlan(branch, plans, pmgCount, dateStr) {
     pmgSheet.appendRow(["Date", "Branch", "AppCount"]);
   }
   const pmgData = pmgSheet.getDataRange().getValues();
+  const targetDateKey = normalizeDateKey(dateStr || new Date());
   let pmgFound = false;
   for (let i = 1; i < pmgData.length; i++) {
-    if (new Date(pmgData[i][0]).toDateString() === new Date(dateStr).toDateString() && String(pmgData[i][1]).trim().toUpperCase() === branchUpper) {
+    const rowDateKey = normalizeDateKey(pmgData[i][0]);
+    if (rowDateKey === targetDateKey && String(pmgData[i][1]).trim().toUpperCase() === branchUpper) {
+      pmgSheet.getRange(i + 1, 1).setValue(targetDateKey);
       pmgSheet.getRange(i + 1, 3).setValue(pmgCount);
       pmgFound = true;
       break;
     }
   }
   if (!pmgFound) {
-    pmgSheet.appendRow([new Date(dateStr).toLocaleDateString(), branch, pmgCount]);
+    pmgSheet.appendRow([targetDateKey, branch, pmgCount]);
   }
 
   return { success: true };
@@ -359,8 +415,10 @@ function getDashboardData(requestedBranch, role, username) {
     const pmgData = pmgSheet.getDataRange().getValues();
     for (let i = 1; i < pmgData.length; i++) {
       if (String(pmgData[i][1]).trim().toUpperCase() === reqBranchUpper) {
-        let dKey = new Date(pmgData[i][0]).toDateString();
-        pmgAppsMap[dKey] = parseInt(pmgData[i][2]) || 0;
+        let dKey = normalizeDateKey(pmgData[i][0]);
+        if (dKey) {
+          pmgAppsMap[dKey] = parseInt(pmgData[i][2]) || 0;
+        }
       }
     }
   }
@@ -368,6 +426,7 @@ function getDashboardData(requestedBranch, role, username) {
   // 3. Fetch Branch Summary
   const summaryData = ss.getSheetByName("BranchSummary").getDataRange().getValues();
   let summary = {};
+  const todayMytKey = normalizeDateKey(new Date());
   for(let i=1; i<summaryData.length; i++) { 
     let bNameUpper = String(summaryData[i][1]).trim().toUpperCase();
     if(bNameUpper === reqBranchUpper || isAreaManager || reqBranchUpper === 'ALL') {
@@ -376,7 +435,7 @@ function getDashboardData(requestedBranch, role, username) {
         mtdTs: summaryData[i][2] || 0, mtdHb: summaryData[i][3] || 0, mtdHm: summaryData[i][4] || 0, 
         mtdCust: summaryData[i][5] || 0, lyMtd: summaryData[i][6] || 0, lyMtdHb: summaryData[i][7] || 0, 
         lyMtdHm: summaryData[i][8] || 0, recommendation: summaryData[i][9] || summaryData[i][7] || "", 
-        pmgApp: pmgAppsMap[new Date().toDateString()] || 0 
+        pmgApp: pmgAppsMap[todayMytKey] || 0 
       };
     }
   }
@@ -452,7 +511,7 @@ function getDashboardData(requestedBranch, role, username) {
       }
 
 
-      let dateKey = rowDate.toDateString();
+      let dateKey = normalizeDateKey(salesData[i][0]) || normalizeDateKey(rowDate);
       if (!dailyHistoryMap[dateKey]) {
         dailyHistoryMap[dateKey] = { date: rowDate, ts: 0, hb: 0, hm: 0, cust: 0, pmgApp: pmgAppsMap[dateKey] || 0 };
       }
@@ -521,6 +580,7 @@ function getDashboardData(requestedBranch, role, username) {
     targets: targets, summary: summary, staff: staff, history: history,
     actionPlan: actionPlan, amNote: amNote, branches: originalBranchNames, currentDay: currentDayOfMonth,
     daysInMonth: daysInMonth, pendingUsers: pendingUsers,
+    pmgApps: pmgAppsMap,
     geminiKey: scriptKey
   };
 }
