@@ -436,24 +436,14 @@ function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
   // Exclude resigned staff
   staffList = (staffList || []).filter(s => !/daniela|janet/i.test(s.name || ''));
 
-  const now = new Date();
-  const isOctoberOrLater = now >= new Date("2026-10-01T00:00:00");
-  
-  if (!isOctoberOrLater) {
-    return staffList.map(s => ({
-      ...s,
-      octMtdTs: Number(s.mtdTs || 0),
-      octMtdHb: Number(s.mtdHb || 0),
-      octMtdHm: Number(s.mtdHm || 0),
-      octMtdCust: Number(s.mtdCust || 0)
-    }));
-  }
-
-  const storeOctTs = Number(summary.mtdTs || 0);
-  const storeOctHb = Number(summary.mtdHb || 0);
+  const storeOctTs = Number(summary && summary.mtdTs || 0);
+  const storeOctHb = Number(summary && summary.mtdHb || 0);
   const totalRawStaffTs = staffList.reduce((acc, s) => acc + Number(s.mtdTs || 0), 0);
   const totalRawStaffHb = staffList.reduce((acc, s) => acc + Number(s.mtdHb || 0), 0);
-  const hasSeptemberBlended = totalRawStaffTs > (storeOctTs * 1.5) || totalRawStaffTs > 100000;
+
+  // September blending ONLY happens if total raw staff sales is significantly greater than outlet MTD sales (e.g. > 1.5x)
+  // NEVER use a fixed threshold like 100,000 which naturally gets exceeded in normal business
+  const hasSeptemberBlended = storeOctTs > 0 && (totalRawStaffTs > storeOctTs * 1.5);
 
   return staffList.map(s => {
     const rawTs = Number(s.mtdTs || 0);
@@ -480,12 +470,13 @@ function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
         if (found) base = found[1];
       }
 
-      if (base) {
+      // ONLY subtract baseline if rawTs is actually greater than baseline (proving September is blended)
+      if (base && rawTs > base.sepMtdTs) {
         octMtdTs = Math.max(sDailyTs, +(rawTs - base.sepMtdTs).toFixed(2));
         octMtdHb = Math.max(sDailyHb, +(rawHb - base.sepMtdHb).toFixed(2));
         octMtdHm = Math.max(sDailyHm, +(rawHm - base.sepMtdHm).toFixed(2));
         octMtdCust = Math.max(sDailyCust, Math.round(rawCust - base.sepMtdCust));
-      } else {
+      } else if (!base) {
         // Fallback proportional share using historical MTD ratio (never single-day ratio)
         const hbShare = totalRawStaffHb > 0 ? (rawHb / totalRawStaffHb) : 0;
         const tsShare = totalRawStaffTs > 0 ? (rawTs / totalRawStaffTs) : 0;
@@ -495,6 +486,12 @@ function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
         octMtdCust = Math.max(sDailyCust, Math.round(sDailyCust * (currentDay || 3)));
       }
     }
+
+    // Ensure MTD accumulated sales is never less than today's sales
+    octMtdTs = Math.max(sDailyTs, octMtdTs);
+    octMtdHb = Math.max(sDailyHb, octMtdHb);
+    octMtdHm = Math.max(sDailyHm, octMtdHm);
+    octMtdCust = Math.max(sDailyCust, octMtdCust);
 
     return {
       ...s,

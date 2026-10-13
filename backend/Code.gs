@@ -495,9 +495,15 @@ function getDashboardData(requestedBranch, role, username) {
       let hm = parseFloat(salesData[i][5]) || 0;
       let cust = parseInt(salesData[i][6]) || 0;
 
-      // Accumulate MTD strictly for the current calendar month
-      const now = new Date();
-      if (rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()) {
+      // Accumulate MTD strictly for the current calendar month in Malaysian Time
+      const nowParts = normalizeDateKey(new Date()).split("-");
+      const curYear = parseInt(nowParts[0], 10);
+      const curMonth = parseInt(nowParts[1], 10);
+      const rowParts = (normalizeDateKey(salesData[i][0]) || normalizeDateKey(rowDate)).split("-");
+      const rYear = parseInt(rowParts[0], 10);
+      const rMonth = parseInt(rowParts[1], 10);
+
+      if (rYear === curYear && rMonth === curMonth) {
         staffMap[sName].mtdTs += ts;
         staffMap[sName].mtdHb += hb;
         staffMap[sName].mtdHm += hm;
