@@ -1725,39 +1725,39 @@ function openDailyBriefingModal(targetDateStr) {
   const expectedHb = (targetHb / daysInMonth) * currentDay;
   const tsPacingGap = mtdTs - expectedTs;
   const hbPacingGap = mtdHb - expectedHb;
-  const tsGapStr = tsPacingGap >= 0 ? `+RM ${Math.round(tsPacingGap).toLocaleString()} (超前 🟢)` : `-RM ${Math.round(Math.abs(tsPacingGap)).toLocaleString()} (需追赶 🔴)`;
-  const hbGapStr = hbPacingGap >= 0 ? `+RM ${Math.round(hbPacingGap).toLocaleString()} (超前 🟢)` : `-RM ${Math.round(Math.abs(hbPacingGap)).toLocaleString()} (需追赶 🔴)`;
+  const tsGapStr = tsPacingGap >= 0 ? `+RM ${Math.round(tsPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(tsPacingGap)).toLocaleString()} (Behind 🔴)`;
+  const hbGapStr = hbPacingGap >= 0 ? `+RM ${Math.round(hbPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(hbPacingGap)).toLocaleString()} (Behind 🔴)`;
 
   let takeaway = "";
   if (Number(hbPct) >= 40) {
-    takeaway = `💡 营运总结: 昨天全店HB达到 ${hbPct}% 突破40%目标！客单价 RM ${avgBasket}，HB客单 RM ${hbBasket}，客流 ${dailyCust} 人次，高转化配合良好，今天继续保持！`;
+    takeaway = `💡 Operational Takeaway: Store HB achieved ${hbPct}%, surpassing the 40% benchmark! Basket size RM ${avgBasket} (HB Basket: RM ${hbBasket}) across ${dailyCust} transactions. Strong clinical conversion yesterday—let's maintain this momentum today!`;
   } else {
-    takeaway = `💡 营运总结: 昨天全店HB录得 ${hbPct}%，客单价 RM ${avgBasket}，客流 ${dailyCust} 人次。今天需强化处方收银 1+1 黄金搭配，全力将HB占比推上40%！`;
+    takeaway = `💡 Operational Takeaway: Store HB closed at ${hbPct}% with RM ${avgBasket} basket size and ${dailyCust} transactions. Strengthen 1+1 acute pairing at the counter today to push HB ratio beyond 40%!`;
   }
 
-  const sec1Text = `• 营业总额 (TS): RM ${dailyTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+  const sec1Text = `• Total Sales (TS): RM ${dailyTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
 • House Brand (HB): RM ${dailyHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hbPct}%)
 • High Margin (HM): RM ${dailyHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hmPct}%)
-• 来客数 (Customers): ${dailyCust} 人次
-• 平均客单价 (Basket Size): RM ${avgBasket} (HB客单: RM ${hbBasket})
-• 本月 MTD 进度: TS ${formatRM(mtdTs)} / ${formatRM(targetTs)} (${mtdTsPct}% | ${tsGapStr}), HB ${formatRM(mtdHb)} / ${formatRM(targetHb)} (${mtdHbPct}% | ${hbGapStr})
+• Customer Count: ${dailyCust} transactions
+• Average Basket Size: RM ${avgBasket} (HB Basket: RM ${hbBasket})
+• MTD Progress: TS ${formatRM(mtdTs)} / ${formatRM(targetTs)} (${mtdTsPct}% | ${tsGapStr}), HB ${formatRM(mtdHb)} / ${formatRM(targetHb)} (${mtdHbPct}% | ${hbGapStr})
 ${takeaway}`;
 
   const dailyTargetTs = Math.round(targetTs / daysInMonth);
   const dailyTargetHb = Math.round(targetHb / daysInMonth);
 
-  const dposTopic = (window.dposState && window.dposState.activeWeekTopic) || "高血压与慢病调理";
+  const dposTopic = (window.dposState && window.dposState.activeWeekTopic) || "Hypertension & Chronic Care";
   const featuredModule = (window.getPmgHouseBrandRecommendation && window.getPmgHouseBrandRecommendation(salesDateObj, dposTopic)) || (window.PMG_CLINICAL_UPSELL_MODULES && window.PMG_CLINICAL_UPSELL_MODULES[0]);
 
-  const sec2Default = `• [今日销售重点]: 今日全店目标 TS RM ${dailyTargetTs.toLocaleString()}，HB 目标 RM ${dailyTargetHb.toLocaleString()} (占比冲刺 40%+)。昨日已达 ${hbPct}%，今天乘胜追击！
-• [DPOS 搭配重点]: (本周重点: ${featuredModule ? featuredModule.chineseTitle : '慢病调理'}) 凡有相关咨询，主推 ${featuredModule ? featuredModule.hbProduct : 'JH Nutrition 重点品类'}。
-• [PWP 推荐]: 柜台收银时主动推介本周特惠 PWP (${profile ? profile.pwpFocus : '消毒喷雾 / 维C泡腾片 / 医用急救贴'})，拉高连带客单价。`;
+  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${hbPct}%—let's build on this momentum today!
+• [DPOS Clinical Pairing]: (Weekly Focus: ${featuredModule ? featuredModule.condition : 'Chronic Care'}) For relevant patient consultations, actively recommend ${featuredModule ? featuredModule.hbProduct : 'featured House Brand regimens'}.
+• [Cashier PWP]: Proactively offer weekly counter PWP promo (${profile ? profile.pwpFocus : 'Sanitizer / Effervescent Vit C / Medicated Plaster'}) to maximize basket size.`;
 
-  const sec3Default = `• [HQ 奖励进度]: 门市已完成本月 HB 进度 RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%)，正朝向 FY2027 Tier 3 (RM 500/人 达标奖励) 稳步迈进！
-• [门市合规宣导]: 今日门市 PMG Medicare App 注册目标至少 3 位新会员；门市小红书/TikTok 今日素材按时拍摄并发布。`;
+  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!
+• [Compliance & Outreach]: Target at least 3 new PMG Medicare App registrations today; complete and post today's social media content on schedule.`;
 
-  const sec4Default = `• [库存与效期]: 执行近效期产品 FEFO (先到期先出) 检查，重点巡视保健品与奶粉专区；新到货品今日内完成清点上架。
-• [门市/柜台 SOP]: 处方与受管制药物调配严格执行 Double-check 签名制度，柜台交接班准时核对 Cash Float 与刷卡结算单。`;
+  const sec4Default = `• [Stock & Expiry]: Conduct FEFO (First-Expired, First-Out) shelf checks, focusing on supplements and nutrition milk; complete stock receiving and shelving by end of shift.
+• [Counter SOP]: Ensure double-checking and signing for prescription dispensing; verify cash float and card terminal settlement slips during shift handover.`;
 
   const sortedStaff = [...staff].sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
   let rankingLines = [];
@@ -1765,22 +1765,22 @@ ${takeaway}`;
     const sHb = Number(s.dailyHb || 0);
     const comm = (sHb * 0.035).toFixed(2);
     if (idx === 0 && sHb > 0) {
-      rankingLines.push(`🥇 冠军: *${s.name}* (HB RM ${sHb.toFixed(2)}, 个人获得佣金 RM ${comm}) 🌟`);
+      rankingLines.push(`🥇 1st Place: *${s.name}* (HB RM ${sHb.toFixed(2)} | Earned Commission: RM ${comm}) 🌟`);
     } else if (idx === 1 && sHb > 0) {
-      rankingLines.push(`🥈 亚军: *${s.name}* (HB RM ${sHb.toFixed(2)}, 个人获得佣金 RM ${comm}) 👏`);
+      rankingLines.push(`🥈 2nd Place: *${s.name}* (HB RM ${sHb.toFixed(2)} | Earned Commission: RM ${comm}) 👏`);
     } else if (idx === 2 && sHb > 0) {
-      rankingLines.push(`🥉 季军: *${s.name}* (HB RM ${sHb.toFixed(2)}, 个人获得佣金 RM ${comm}) 👍`);
+      rankingLines.push(`🥉 3rd Place: *${s.name}* (HB RM ${sHb.toFixed(2)} | Earned Commission: RM ${comm}) 👍`);
     } else {
-      rankingLines.push(`• *${s.name}*: HB RM ${sHb.toFixed(2)} (个人佣金 RM ${comm})`);
+      rankingLines.push(`• *${s.name}*: HB RM ${sHb.toFixed(2)} (Earned Commission: RM ${comm})`);
     }
   });
 
-  const hbRecBlock = featuredModule ? `\n💡 *今日门市重点 House Brand 推荐 (Clinical Upsell):*\n【${featuredModule.chineseTitle} (${featuredModule.condition})】\n• 基础缓解 (OTC): ${featuredModule.standardOtc}\n• 黄金搭配 (HB): ${featuredModule.hbProduct}\n• 推荐话术: "${featuredModule.scriptZh}"\n• 警惕红旗 (Refer Pharmacist): ${featuredModule.redFlags}` : '';
+  const hbRecBlock = featuredModule ? `\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${featuredModule.condition}】\n• Standard Relief (OTC): ${featuredModule.standardOtc}\n• Golden Pairing (HB): ${featuredModule.hbProduct}\n• Recommended Dialogue: "${featuredModule.script}"\n• Red Flags (Refer Pharmacist): ${featuredModule.redFlags}` : '';
 
-  const sec5Text = `🏆 *昨天 House Brand 冲刺英雄榜：*
+  const sec5Text = `🏆 *Yesterday's House Brand Top Performers:*
 ${rankingLines.join('\n')}
 
-感谢大家昨天的辛勤付出与默契配合！每一笔专业的搭配都是对顾客健康的负责，大家今天继续加油冲刺！💪🔥
+Thank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness. Let's keep up the great effort today! 💪🔥
 ${hbRecBlock}`;
 
   const pmgAppVal = (currentData.pmgApps && currentData.pmgApps[dateIsoKey] !== undefined)
@@ -1813,7 +1813,7 @@ ${hbRecBlock}`;
   if (select && window.PMG_CLINICAL_UPSELL_MODULES) {
     select.innerHTML = window.PMG_CLINICAL_UPSELL_MODULES.map(m => `
       <option value="${m.id}" ${featuredModule && featuredModule.id === m.id ? 'selected' : ''}>
-        ${m.id}. ${m.chineseTitle} (${m.condition})
+        ${m.id}. ${m.condition}
       </option>
     `).join('');
   }
@@ -1840,10 +1840,10 @@ function changeBriefingHouseBrand(conditionId) {
 
   currentBriefingState.featuredModule = mod;
 
-  const lines = currentBriefingState.sec5.split('\n💡 *今日门市重点 House Brand 推荐');
+  const lines = currentBriefingState.sec5.split(/\n💡 \*(?:Featured House Brand Clinical Pairing|今日门市重点 House Brand 推荐)/);
   const topPart = lines[0];
 
-  const newHbBlock = `\n💡 *今日门市重点 House Brand 推荐 (Clinical Upsell):*\n【${mod.chineseTitle} (${mod.condition})】\n• 基础缓解 (OTC): ${mod.standardOtc}\n• 黄金搭配 (HB): ${mod.hbProduct}\n• 推荐话术: "${mod.scriptZh}"\n• 警惕红旗 (Refer Pharmacist): ${mod.redFlags}`;
+  const newHbBlock = `\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${mod.condition}】\n• Standard Relief (OTC): ${mod.standardOtc}\n• Golden Pairing (HB): ${mod.hbProduct}\n• Recommended Dialogue: "${mod.script}"\n• Red Flags (Refer Pharmacist): ${mod.redFlags}`;
 
   currentBriefingState.sec5 = topPart + newHbBlock;
   document.getElementById("briefingSec5Text").innerText = currentBriefingState.sec5;
@@ -1852,8 +1852,8 @@ function changeBriefingHouseBrand(conditionId) {
   if (sec2Area) {
     const sec2Lines = sec2Area.value.split('\n');
     const updated = sec2Lines.map(l => {
-      if (l.includes('[DPOS 搭配重点]')) {
-        return `• [DPOS 搭配重点]: (本周重点: ${mod.chineseTitle}) 凡有相关咨询，主推 ${mod.hbProduct}。`;
+      if (l.includes('[DPOS Clinical Pairing]') || l.includes('[DPOS 搭配重点]')) {
+        return `• [DPOS Clinical Pairing]: (Weekly Focus: ${mod.condition}) For relevant patient consultations, actively recommend ${mod.hbProduct}.`;
       }
       return l;
     });
@@ -1907,42 +1907,42 @@ function copyBriefingMessage(format = 'whatsapp') {
 
   let text = "";
   if (format === 'whatsapp') {
-    text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} 门市早会晨报 (Daily Briefing)*\n`;
-    text += `📅 日期: ${currentBriefingState.dateDisplay}\n\n`;
+    text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} - DAILY BRIEFING*\n`;
+    text += `📅 Date: ${currentBriefingState.dateDisplay}\n\n`;
 
-    text += `*1. 回顾昨天工作流程 (Yesterday's Operational & Financial Review)*\n`;
+    text += `*1. Yesterday's Operational & Financial Review*\n`;
     text += `${sec1}\n\n`;
 
-    text += `*2. 说明今天工作重点 (Today's Key Priorities)*\n`;
+    text += `*2. Today's Key Priorities*\n`;
     text += `${sec2}\n\n`;
 
-    text += `*3. 通知上级领导要求 (HQ Directives & Target Alignment)*\n`;
+    text += `*3. HQ Directives & Target Alignment*\n`;
     text += `${sec3}\n\n`;
 
-    text += `*4. 强调近期注意事项 (Operational Precautions & Compliance)*\n`;
+    text += `*4. Operational Precautions & Compliance*\n`;
     text += `${sec4}\n\n`;
 
-    text += `*5. 鼓励员工持续努力 (Recognition & Team Encouragement)*\n`;
+    text += `*5. Recognition & Team Encouragement*\n`;
     text += `${sec5}\n\n`;
 
     text += `🔗 *View Live Performance Hub:* ${WEBAPP_LINK}`;
   } else {
-    text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} 门市早会晨报 (Daily Briefing)*\n`;
-    text += `📅 日期: ${currentBriefingState.dateDisplay}\n\n`;
+    text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} - DAILY BRIEFING*\n`;
+    text += `📅 Date: ${currentBriefingState.dateDisplay}\n\n`;
 
-    text += `*1. 回顾昨天工作流程 (Yesterday's Operational & Financial Review)*\n`;
+    text += `*1. Yesterday's Operational & Financial Review*\n`;
     text += `${sec1}\n\n`;
 
-    text += `*2. 说明今天工作重点 (Today's Key Priorities)*\n`;
+    text += `*2. Today's Key Priorities*\n`;
     text += `${sec2}\n\n`;
 
-    text += `*3. 通知上级领导要求 (HQ Directives & Target Alignment)*\n`;
+    text += `*3. HQ Directives & Target Alignment*\n`;
     text += `${sec3}\n\n`;
 
-    text += `*4. 强调近期注意事项 (Operational Precautions & Compliance)*\n`;
+    text += `*4. Operational Precautions & Compliance*\n`;
     text += `${sec4}\n\n`;
 
-    text += `*5. 鼓励员工持续努力 (Recognition & Team Encouragement)*\n`;
+    text += `*5. Recognition & Team Encouragement*\n`;
     text += `${sec5}\n\n`;
 
     text += `🔗 View Live Performance Hub: ${WEBAPP_LINK}`;
