@@ -371,15 +371,40 @@ function findBranchKey(dict, branchName) {
 // ─── MALAYSIA TIMEZONE DATE PARSER ──────────────────────────────────────────
 function parseMytDate(dateVal) {
   if (!dateVal) return null;
+  if (typeof dateVal === 'string') {
+    const s = dateVal.trim();
+    // YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(s) && !s.includes('T')) {
+      const parts = s.substring(0, 10).split('-');
+      return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10) - 1, day: parseInt(parts[2], 10) };
+    }
+    // Slash format: DD/MM/YYYY
+    const slashParts = s.split('/');
+    if (slashParts.length === 3) {
+      let p1 = parseInt(slashParts[0], 10);
+      let p2 = parseInt(slashParts[1], 10);
+      let year = parseInt(slashParts[2], 10);
+      if (year < 100) year += 2000;
+      let day = p1, month = p2;
+      if (p1 <= 12 && p2 > 12) { month = p1; day = p2; }
+      return { year, month: month - 1, day };
+    }
+    // DD-Mon-YYYY (e.g. 12-Oct-2026)
+    const monMatch = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/);
+    if (monMatch) {
+      const day = parseInt(monMatch[1], 10);
+      const monStr = monMatch[2].toLowerCase();
+      const year = parseInt(monMatch[3], 10);
+      const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const month = months.indexOf(monStr);
+      if (month !== -1) return { year, month, day };
+    }
+  }
   const d = new Date(dateVal);
-  // Malaysia is UTC+8. UTC 16:00 is midnight next day MYT
-  const mytStr = d.toLocaleDateString("en-US", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "numeric", day: "numeric" });
-  const parts = mytStr.split("/");
-  return {
-    month: parseInt(parts[0], 10) - 1, // 0-indexed
-    day: parseInt(parts[1], 10),
-    year: parseInt(parts[2], 10)
-  };
+  if (isNaN(d.getTime())) return null;
+  const mytStr = d.toLocaleDateString('en-US', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: 'numeric', day: 'numeric' });
+  const parts = mytStr.split('/');
+  return { month: parseInt(parts[0], 10) - 1, day: parseInt(parts[1], 10), year: parseInt(parts[2], 10) };
 }
 
 // ─── ACTIVE PMG MEDICARE APP INSTALLS RESOLVER ──────────────────────────────
@@ -442,7 +467,6 @@ function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
   const totalRawStaffHb = staffList.reduce((acc, s) => acc + Number(s.mtdHb || 0), 0);
 
   // September blending ONLY happens if total raw staff sales is significantly greater than outlet MTD sales (e.g. > 1.5x)
-  // NEVER use a fixed threshold like 100,000 which naturally gets exceeded in normal business
   const hasSeptemberBlended = storeOctTs > 0 && (totalRawStaffTs > storeOctTs * 1.5);
 
   return staffList.map(s => {
@@ -477,7 +501,6 @@ function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
         octMtdHm = Math.max(sDailyHm, +(rawHm - base.sepMtdHm).toFixed(2));
         octMtdCust = Math.max(sDailyCust, Math.round(rawCust - base.sepMtdCust));
       } else if (!base) {
-        // Fallback proportional share using historical MTD ratio (never single-day ratio)
         const hbShare = totalRawStaffHb > 0 ? (rawHb / totalRawStaffHb) : 0;
         const tsShare = totalRawStaffTs > 0 ? (rawTs / totalRawStaffTs) : 0;
         octMtdTs = Math.max(sDailyTs, Math.min(rawTs, +(storeOctTs * tsShare).toFixed(2)));
@@ -1146,10 +1169,510 @@ function generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPer
   return header + content + "\n\n";
 }
 
-// ─── BRIEFING GENERATOR WITH AI & FALLBACK ────────────────────────────────────
-async function copyWhatsAppBriefing() {
+// ─── DAILY SALES CSV UPLOAD & PARSING ENGINE ────────────────────────────────
+let currentParsedUploadData = null;
+
+function normalizePosStaffName(posName) {
+  if (!posName) return '';
+  const s = String(posName).trim();
+  const lower = s.toLowerCase();
+
+  if (lower.includes('chai yee sian') || lower.includes('william')) return 'Chai Yee Sian';
+  if (lower.includes('fiona') || lower.includes('fiena')) return 'Fiona Fiena';
+  if (lower.includes('jong pei choo') || lower.includes('penny')) return 'Jong Pei Choo';
+  if (lower.includes('kenix')) return 'Kenix Ling';
+  if (lower.includes('farizin') || lower.includes('muhammad nur')) return 'Muhammad Nur Farizin';
+  if (lower.includes('ting kwang yu') || lower.includes('ting')) return 'Ting Kwang Yu';
+  if (lower.includes('christina') || lower.includes('lee ying ying')) return 'Christina Lee Ying Ying';
+  if (lower.includes('louna') || lower.includes('haniesha')) return 'Haniesha Louna';
+  if (lower.includes('nurhafizah') || lower.includes('pauli')) return 'Nurhafizah Pauli';
+
+  return s;
+}
+
+function cleanMoneyString(val) {
+  if (!val) return 0;
+  const cleaned = String(val).replace(/RM|\$|,|\s/g, '').trim();
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : Math.round(num * 100) / 100;
+}
+
+function parseRawCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  const rows = [];
+  for (const line of lines) {
+    const row = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        row.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    row.push(current.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+function openUploadSalesModal() {
   if (!isManagementOrPharmacist(currentUser)) {
-    alert("Access restricted: WhatsApp Briefing is only available to Pharmacist and Management.");
+    alert("Access restricted: Daily Sales CSV upload is only available to Pharmacist and Management.");
+    return;
+  }
+  const modal = document.getElementById("uploadSalesModal");
+  if (!modal) return;
+  modal.style.display = "flex";
+  history.pushState({ modal: 'uploadSalesModal' }, '');
+
+  currentParsedUploadData = null;
+  const fileInput = document.getElementById("csvFileInput");
+  if (fileInput) fileInput.value = "";
+  const preview = document.getElementById("uploadPreviewSection");
+  if (preview) preview.style.display = "none";
+  const btn = document.getElementById("confirmUploadSyncBtn");
+  if (btn) {
+    btn.disabled = false;
+    btn.innerText = "🚀 Confirm & Synchronize to Google Sheets";
+  }
+
+  setupCsvDragAndDrop();
+}
+
+function closeUploadSalesModal(shouldPop = true) {
+  const modal = document.getElementById("uploadSalesModal");
+  if (modal) modal.style.display = "none";
+  if (shouldPop && history.state && history.state.modal === 'uploadSalesModal') {
+    history.back();
+  }
+}
+
+function setupCsvDragAndDrop() {
+  const dropZone = document.getElementById("csvDropZone");
+  if (!dropZone || dropZone.dataset.dndInit) return;
+  dropZone.dataset.dndInit = "true";
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.style.background = "#dbeafe";
+      dropZone.style.borderColor = "#2563eb";
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.style.background = "#eff6ff";
+      dropZone.style.borderColor = "#3b82f6";
+    }, false);
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files && files.length > 0) {
+      processUploadedFiles(Array.from(files));
+    }
+  }, false);
+}
+
+function handleCsvFileSelect(event) {
+  const files = event.target.files;
+  if (files && files.length > 0) {
+    processUploadedFiles(Array.from(files));
+  }
+}
+
+async function processUploadedFiles(files) {
+  const csvFiles = files.filter(f => f.name.toLowerCase().endsWith('.csv'));
+  if (csvFiles.length === 0) {
+    alert("Please select or drop valid .csv files.");
+    return;
+  }
+
+  const fileContents = [];
+  for (const file of csvFiles) {
+    const text = await file.text();
+    fileContents.push({ name: file.name, text, rows: parseRawCsv(text) });
+  }
+
+  let file1 = null;
+  let file2 = null;
+  let file3 = null;
+
+  for (const item of fileContents) {
+    const lower = item.name.toLowerCase() + " " + item.text.substring(0, 1000).toLowerCase();
+    if (lower.includes("sales performance by teammate") || lower.includes("customers served") || lower.includes("sales person,(count)")) {
+      file2 = item;
+    } else if (lower.includes("daily sales reporting")) {
+      if (lower.includes("2025") || lower.includes("01/10/2025") || lower.includes("last year")) {
+        file3 = item;
+      } else {
+        file1 = item;
+      }
+    }
+  }
+
+  if (!file1 && !file2) {
+    alert("Could not identify POS format in uploaded files. Please ensure you upload 'Daily Sales reporting' or 'SALES PERFORMANCE BY TEAMMATE' CSV.");
+    return;
+  }
+
+  let dateFormatted = "";
+  let location = "";
+  let f1Staff = {};
+  let f1StoreTotal = { ts: 0, hb: 0, hm: 0, ehm: 0 };
+
+  if (file1) {
+    const rows = file1.rows;
+    for (let i = 0; i < Math.min(15, rows.length); i++) {
+      const r0 = rows[i][0] || '';
+      if (r0.startsWith('Location:')) location = r0.replace('Location:', '').trim();
+      if (r0.startsWith('Date:')) {
+        const dRange = r0.replace('Date:', '').trim();
+        const dParts = dRange.split('-')[0].trim().split('/');
+        if (dParts.length === 3) {
+          const d = parseInt(dParts[0], 10);
+          const m = parseInt(dParts[1], 10);
+          const y = parseInt(dParts[2], 10);
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          dateFormatted = `${String(d).padStart(2, '0')}-${months[m - 1]}-${y}`;
+        }
+      }
+    }
+
+    let hIdx = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const rStr = rows[i].join(',').toLowerCase();
+      if (rStr.includes('sales item person') && rStr.includes('grand total')) {
+        hIdx = i;
+        break;
+      }
+    }
+
+    if (hIdx !== -1) {
+      const header = rows[hIdx].map(h => h.toLowerCase());
+      const pCol = header.findIndex(h => h.includes('sales item person') || h.includes('person'));
+      const ehmCol = header.findIndex(h => h === 'ehm');
+      const hbCol = header.findIndex(h => h === 'hb');
+      const hmCol = header.findIndex(h => h === 'hm');
+      const totCol = header.findIndex(h => h.includes('grand total'));
+
+      for (let i = hIdx + 1; i < rows.length; i++) {
+        const row = rows[i];
+        const pName = row[pCol] || '';
+        const sName = row[1] || '';
+
+        if (sName.toLowerCase().includes('total') || pName.toLowerCase().includes('total')) {
+          f1StoreTotal.ehm = cleanMoneyString(row[ehmCol]);
+          f1StoreTotal.hb = cleanMoneyString(row[hbCol]);
+          f1StoreTotal.hm = cleanMoneyString(row[hmCol]);
+          f1StoreTotal.ts = cleanMoneyString(row[totCol]);
+          continue;
+        }
+
+        if (!pName) continue;
+        const canonical = normalizePosStaffName(pName);
+        const ehm = cleanMoneyString(row[ehmCol]);
+        const hm = cleanMoneyString(row[hmCol]);
+        const hb = cleanMoneyString(row[hbCol]);
+        const ts = cleanMoneyString(row[totCol]);
+
+        f1Staff[canonical] = {
+          name: canonical,
+          ehm,
+          hm: Math.round((ehm + hm) * 100) / 100,
+          hb,
+          ts
+        };
+      }
+    }
+  }
+
+  let f2Staff = {};
+  let f2GrandTotal = { cust: 0, netSold: 0 };
+
+  if (file2) {
+    const rows = file2.rows;
+    for (let i = 0; i < Math.min(15, rows.length); i++) {
+      const r0 = rows[i][0] || '';
+      if (!location && r0.startsWith('Location:')) location = r0.replace('Location:', '').trim();
+      if (!dateFormatted && r0.startsWith('Date:')) {
+        const dRange = r0.replace('Date:', '').trim();
+        const dParts = dRange.split('-')[0].trim().split('/');
+        if (dParts.length === 3) {
+          const d = parseInt(dParts[0], 10);
+          const m = parseInt(dParts[1], 10);
+          const y = parseInt(dParts[2], 10);
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          dateFormatted = `${String(d).padStart(2, '0')}-${months[m - 1]}-${y}`;
+        }
+      }
+    }
+
+    let hIdx = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const rStr = rows[i].join(',').toLowerCase();
+      if (rStr.includes('sales person') && rStr.includes('sales no')) {
+        hIdx = i;
+        break;
+      }
+    }
+
+    if (hIdx !== -1) {
+      const header = rows[hIdx].map(h => h.toLowerCase());
+      const pCol = header.findIndex(h => h.includes('sales person'));
+      const countCol = header.findIndex(h => h.includes('sales no') || h.includes('count'));
+      const priceCol = header.findIndex(h => h.includes('net sold') || h.includes('price'));
+
+      for (let i = hIdx + 1; i < rows.length; i++) {
+        const row = rows[i];
+        const pName = row[pCol] || '';
+
+        if (pName.toLowerCase().includes('grand total') || pName.toLowerCase().includes('total')) {
+          f2GrandTotal.cust = parseInt(row[countCol], 10) || 0;
+          f2GrandTotal.netSold = cleanMoneyString(row[priceCol]);
+          continue;
+        }
+
+        if (!pName) continue;
+        const canonical = normalizePosStaffName(pName);
+        const cust = parseInt(row[countCol], 10) || 0;
+        const netSold = cleanMoneyString(row[priceCol]);
+
+        f2Staff[canonical] = {
+          name: canonical,
+          cust,
+          netSold
+        };
+      }
+    }
+  }
+
+  let lastYearMtd = { mtdTs: 0, mtdHb: 0, mtdHm: 0 };
+  if (file3) {
+    const rows = file3.rows;
+    let hIdx = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const rStr = rows[i].join(',').toLowerCase();
+      if (rStr.includes('sales item person') && rStr.includes('grand total')) {
+        hIdx = i;
+        break;
+      }
+    }
+    if (hIdx !== -1) {
+      const header = rows[hIdx].map(h => h.toLowerCase());
+      const ehmCol = header.findIndex(h => h === 'ehm');
+      const hbCol = header.findIndex(h => h === 'hb');
+      const hmCol = header.findIndex(h => h === 'hm');
+      const totCol = header.findIndex(h => h.includes('grand total'));
+
+      for (let i = hIdx + 1; i < rows.length; i++) {
+        const row = rows[i];
+        const sName = row[1] || '';
+        const pName = row[0] || '';
+        if (sName.toLowerCase().includes('total') || pName.toLowerCase().includes('total')) {
+          const lyEhm = cleanMoneyString(row[ehmCol]);
+          const lyHm = cleanMoneyString(row[hmCol]);
+          lastYearMtd.mtdHb = cleanMoneyString(row[hbCol]);
+          lastYearMtd.mtdHm = Math.round((lyEhm + lyHm) * 100) / 100;
+          lastYearMtd.mtdTs = cleanMoneyString(row[totCol]);
+          break;
+        }
+      }
+    }
+  }
+
+  const mergedStaff = [];
+  const staffNames = Array.from(new Set([...Object.keys(f1Staff), ...Object.keys(f2Staff)]));
+  let totalTs = 0;
+  let totalHb = 0;
+  let totalHm = 0;
+  let totalCust = 0;
+
+  for (const name of staffNames) {
+    const s1 = f1Staff[name] || {};
+    const s2 = f2Staff[name] || {};
+    const ts = s2.netSold !== undefined ? s2.netSold : (s1.ts || 0);
+    const hb = s1.hb || 0;
+    const hm = s1.hm || 0;
+    const cust = s2.cust || 0;
+    const hbPct = ts > 0 ? ((hb / ts) * 100).toFixed(1) : "0.0";
+
+    totalTs += ts;
+    totalHb += hb;
+    totalHm += hm;
+    totalCust += cust;
+
+    mergedStaff.push({ name, ts, hb, hm, cust, hbPct });
+  }
+
+  if (f2GrandTotal.netSold > 0) totalTs = f2GrandTotal.netSold;
+  if (f1StoreTotal.hb > 0) totalHb = f1StoreTotal.hb;
+  if (f1StoreTotal.hm > 0 || f1StoreTotal.ehm > 0) totalHm = Math.round((f1StoreTotal.hm + f1StoreTotal.ehm) * 100) / 100;
+  if (f2GrandTotal.cust > 0) totalCust = f2GrandTotal.cust;
+
+  totalTs = Math.round(totalTs * 100) / 100;
+  totalHb = Math.round(totalHb * 100) / 100;
+  totalHm = Math.round(totalHm * 100) / 100;
+
+  let resolvedBranch = selectedBranch || "Kota Sentosa";
+  if (location) {
+    const locUpper = location.toUpperCase();
+    if (locUpper.includes("SENTOSA")) resolvedBranch = "Kota Sentosa";
+    else if (locUpper.includes("METROCITY")) resolvedBranch = "Metrocity";
+    else if (locUpper.includes("MEDAN")) resolvedBranch = "Medan Universiti";
+    else if (locUpper.includes("MALIHAH")) resolvedBranch = "Malihah";
+    else if (locUpper.includes("MOYAN")) resolvedBranch = "Sungai Moyan";
+    else if (locUpper.includes("ASTANA")) resolvedBranch = "Astana";
+    else if (locUpper.includes("SAMARIANG") || locUpper.includes("SEMARIANG")) resolvedBranch = "Bandar Baru Samariang";
+  }
+
+  if (!dateFormatted) {
+    const today = new Date();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    dateFormatted = `${String(today.getDate()).padStart(2, '0')}-${months[today.getMonth()]}-${today.getFullYear()}`;
+  }
+
+  const parsedD = parseMytDate(dateFormatted);
+  const dateKey = formatMytIsoDate(parsedD ? new Date(parsedD.year, parsedD.month, parsedD.day) : new Date());
+  const existingPmgApp = (currentData && currentData.pmgApps && currentData.pmgApps[dateKey] !== undefined)
+    ? currentData.pmgApps[dateKey]
+    : getActivePmgApp(resolvedBranch);
+
+  currentParsedUploadData = {
+    date: dateFormatted,
+    dateKey: dateKey,
+    branch: resolvedBranch,
+    staffSales: mergedStaff,
+    storeTotals: {
+      ts: totalTs,
+      hb: totalHb,
+      hm: totalHm,
+      cust: totalCust
+    },
+    lastYear: lastYearMtd,
+    fileCount: fileContents.length
+  };
+
+  document.getElementById("previewDate").innerText = dateFormatted;
+  document.getElementById("previewBranch").innerText = resolvedBranch;
+  document.getElementById("uploadPmgAppInput").value = existingPmgApp;
+
+  const badges = [];
+  if (file1) badges.push(`<span style="background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:4px;">✓ Daily Sales (Item Types)</span>`);
+  if (file2) badges.push(`<span style="background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:4px;">✓ Customer Counts</span>`);
+  if (file3) badges.push(`<span style="background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px;">✓ Last Year Comparison</span>`);
+  document.getElementById("previewFileBadges").innerHTML = badges.join(" ");
+
+  const totalHbPct = totalTs > 0 ? ((totalHb / totalTs) * 100).toFixed(1) : "0.0";
+  document.getElementById("previewTotalTs").innerText = formatRM(totalTs);
+  document.getElementById("previewTotalHb").innerText = `${formatRM(totalHb)} (${totalHbPct}%)`;
+  document.getElementById("previewTotalHm").innerText = formatRM(totalHm);
+  document.getElementById("previewTotalCust").innerText = totalCust;
+
+  const tbody = document.getElementById("previewStaffTableBody");
+  tbody.innerHTML = mergedStaff.map(s => `
+    <tr style="border-bottom: 1px solid #f1f5f9;">
+      <td style="padding: 6px 8px; font-weight: 600;">${s.name}</td>
+      <td style="padding: 6px 8px; text-align: right;">${formatRM(s.ts)}</td>
+      <td style="padding: 6px 8px; text-align: right; color: #15803d; font-weight: 600;">${formatRM(s.hb)}</td>
+      <td style="padding: 6px 8px; text-align: right; font-weight: 600;">${s.hbPct}%</td>
+      <td style="padding: 6px 8px; text-align: right;">${formatRM(s.hm)}</td>
+      <td style="padding: 6px 8px; text-align: right;">${s.cust}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById("uploadPreviewSection").style.display = "block";
+}
+
+async function submitSalesUpload() {
+  if (!currentParsedUploadData) {
+    alert("No sales data parsed yet. Please select CSV files first.");
+    return;
+  }
+
+  const pmgAppCount = Number(document.getElementById("uploadPmgAppInput").value) || 0;
+  currentParsedUploadData.pmgCount = pmgAppCount;
+
+  const btn = document.getElementById("confirmUploadSyncBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "⏳ Synchronizing to Google Sheets...";
+  }
+
+  try {
+    const payload = {
+      action: "uploadDailySales",
+      branch: currentParsedUploadData.branch,
+      date: currentParsedUploadData.date,
+      dateKey: currentParsedUploadData.dateKey,
+      staffSales: currentParsedUploadData.staffSales,
+      storeTotals: currentParsedUploadData.storeTotals,
+      lastYear: currentParsedUploadData.lastYear,
+      pmgCount: pmgAppCount
+    };
+
+    const res = await fetch(API_URL, {
+      method: "POST",
+      redirect: "follow",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await res.json();
+    if (result && result.success) {
+      const bKey = findBranchKey(currentData && currentData.summary, currentParsedUploadData.branch) || "KOTA SENTOSA";
+      try {
+        localStorage.setItem("pmg_app_installs_" + bKey + "_" + currentParsedUploadData.dateKey, String(pmgAppCount));
+      } catch (e) {}
+
+      if (!currentData.pmgApps) currentData.pmgApps = {};
+      currentData.pmgApps[currentParsedUploadData.dateKey] = pmgAppCount;
+
+      closeUploadSalesModal();
+      await loadDashboard();
+
+      alert(`✅ ${result.message}\nTotal Sales: RM ${currentParsedUploadData.storeTotals.ts.toLocaleString()} | HB: RM ${currentParsedUploadData.storeTotals.hb.toLocaleString()}`);
+
+      openDailyBriefingModal(currentParsedUploadData.date);
+    } else {
+      alert("Upload error from server: " + ((result && result.message) || "Unknown error"));
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = "🚀 Confirm & Synchronize to Google Sheets";
+      }
+    }
+  } catch (err) {
+    console.error("Sales upload error:", err);
+    alert("Network or script error syncing daily sales: " + err.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = "🚀 Confirm & Synchronize to Google Sheets";
+    }
+  }
+}
+
+// ─── 5-POINT OUTLET PIC DAILY BRIEFING ENGINE ────────────────────────────────
+let currentBriefingState = null;
+
+function openDailyBriefingModal(targetDateStr) {
+  if (!isManagementOrPharmacist(currentUser)) {
+    alert("Access restricted: Daily Briefing is only available to Pharmacist and Management.");
     return;
   }
   selectedBranch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
@@ -1160,93 +1683,286 @@ async function copyWhatsAppBriefing() {
   const targetKey = findBranchKey(currentData.targets, selectedBranch) || "KOTA SENTOSA";
   const summary = currentData.summary[branchKey] || {};
   const targets = currentData.targets[targetKey] || {};
-  const ap = currentData.actionPlan || {};
-  
-  const tsPct = (((summary.mtdTs || 0) / (targets.ts || 1)) * 100).toFixed(1);
-  const hbPct = (((summary.mtdHb || 0) / (targets.hb || 1)) * 100).toFixed(1);
-  
-  // Pacing Logic for October
-  const daysInMonth = currentData.daysInMonth || 31;
-  const currentDay = Math.min(daysInMonth, Math.max(1, new Date().getDate()));
-  const daysLeft = Math.max(1, daysInMonth - currentDay + 1);
-  
-  let expectedTs = ((targets.ts || 0) / daysInMonth) * currentDay;
-  let expectedHb = ((targets.hb || 0) / daysInMonth) * currentDay;
-  
-  let tsReqPerDay = Math.max(0, ((targets.ts || 0) - (summary.mtdTs || 0)) / daysLeft);
-  let hbReqPerDay = Math.max(0, ((targets.hb || 0) - (summary.mtdHb || 0)) / daysLeft);
-
-  let tsStatus = (summary.mtdTs >= expectedTs) ? "🟢 On Track" : `🔴 Off Track (Need ${formatRM(tsReqPerDay)}/day)`;
-  let hbStatus = (summary.mtdHb >= expectedHb) ? "🟢 On Track" : `🔴 Off Track (Need ${formatRM(hbReqPerDay)}/day)`;
-  
+  const historyData = currentData.history || [];
+  const staff = archiveAndGetOctoberMtd(currentData.staff || [], summary, currentData.currentDay);
   const profile = getBranchProfile(selectedBranch);
-  const hbRatio = (summary.mtdTs || 0) > 0 ? (((summary.mtdHb || 0) / summary.mtdTs) * 100).toFixed(1) : "0.0";
+  const daysInMonth = currentData.daysInMonth || 31;
 
-  const btn = document.getElementById("copyBriefingBtn");
-  const origBtnText = btn ? btn.innerText : "";
-  const activeKeys = getGeminiApiKeys();
+  let salesDateObj = new Date();
+  if (targetDateStr) {
+    const parsed = parseMytDate(targetDateStr);
+    if (parsed) salesDateObj = new Date(parsed.year, parsed.month, parsed.day);
+  }
+  const dateIsoKey = formatMytIsoDate(salesDateObj);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const dateDisplay = `${String(salesDateObj.getDate()).padStart(2, '0')}-${months[salesDateObj.getMonth()]}-${salesDateObj.getFullYear()}`;
 
-  if (btn && activeKeys.length > 0) {
-    btn.innerText = "🤖 Generating AI Strategy...";
-    btn.disabled = true;
+  const targetDay = salesDateObj.getDate();
+  const matchedHist = historyData.find(h => {
+    const md = parseMytDate(h.date);
+    return md && md.day === targetDay;
+  });
+
+  const dailyTs = matchedHist ? Number(matchedHist.ts || 0) : staff.reduce((acc, s) => acc + Number(s.dailyTs || 0), 0);
+  const dailyHb = matchedHist ? Number(matchedHist.hb || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHb || 0), 0);
+  const dailyHm = matchedHist ? Number(matchedHist.hm || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHm || 0), 0);
+  const dailyCust = matchedHist ? Number(matchedHist.cust || 0) : staff.reduce((acc, s) => acc + Number(s.dailyCust || 0), 0);
+
+  const hbPct = dailyTs > 0 ? ((dailyHb / dailyTs) * 100).toFixed(1) : "0.0";
+  const hmPct = dailyTs > 0 ? ((dailyHm / dailyTs) * 100).toFixed(1) : "0.0";
+  const avgBasket = dailyCust > 0 ? (dailyTs / dailyCust).toFixed(2) : "0.00";
+  const hbBasket = dailyCust > 0 ? (dailyHb / dailyCust).toFixed(2) : "0.00";
+
+  const mtdTs = Number(summary.mtdTs || 0);
+  const mtdHb = Number(summary.mtdHb || 0);
+  const targetTs = Number(targets.ts || 0);
+  const targetHb = Number(targets.hb || 0);
+  const mtdTsPct = targetTs > 0 ? ((mtdTs / targetTs) * 100).toFixed(1) : "0.0";
+  const mtdHbPct = targetHb > 0 ? ((mtdHb / targetHb) * 100).toFixed(1) : "0.0";
+
+  const currentDay = Math.min(daysInMonth, Math.max(1, targetDay));
+  const expectedTs = (targetTs / daysInMonth) * currentDay;
+  const expectedHb = (targetHb / daysInMonth) * currentDay;
+  const tsPacingGap = mtdTs - expectedTs;
+  const hbPacingGap = mtdHb - expectedHb;
+  const tsGapStr = tsPacingGap >= 0 ? `+RM ${Math.round(tsPacingGap).toLocaleString()} (超前 🟢)` : `-RM ${Math.round(Math.abs(tsPacingGap)).toLocaleString()} (需追赶 🔴)`;
+  const hbGapStr = hbPacingGap >= 0 ? `+RM ${Math.round(hbPacingGap).toLocaleString()} (超前 🟢)` : `-RM ${Math.round(Math.abs(hbPacingGap)).toLocaleString()} (需追赶 🔴)`;
+
+  let takeaway = "";
+  if (Number(hbPct) >= 40) {
+    takeaway = `💡 营运总结: 昨天全店HB达到 ${hbPct}% 突破40%目标！客单价 RM ${avgBasket}，HB客单 RM ${hbBasket}，客流 ${dailyCust} 人次，高转化配合良好，今天继续保持！`;
+  } else {
+    takeaway = `💡 营运总结: 昨天全店HB录得 ${hbPct}%，客单价 RM ${avgBasket}，客流 ${dailyCust} 人次。今天需强化处方收银 1+1 黄金搭配，全力将HB占比推上40%！`;
   }
 
-  let text = `*📊 PMG ${selectedBranch} Daily Briefing*\n`;
-  text += `Date: ${new Date().toLocaleDateString()}\n\n`;
-  
-  text += `*🎯 Target Achievement:*\n`;
-  text += `TS: RM ${(summary.mtdTs||0).toLocaleString()} / RM ${(targets.ts||0).toLocaleString()} (${tsPct}%) - ${tsStatus}\n`;
-  const activePmgApp = getActivePmgApp(selectedBranch);
-  if (activePmgApp > 0) {
-    text += `📱 PMG App Installs Today: ${activePmgApp}\n`;
-  }
-  text += `\n`;
-  
-  text += `*🎯 Strategy Plan:*\n`;
-  text += `W1: ${ap.w1 || '-'}\nW2: ${ap.w2 || '-'}\nW3: ${ap.w3 || '-'}\nW4: ${ap.w4 || '-'}\n\n`;
-  
-  text += `*🏆 Congratulation Board:*\n`;
-  let achievers = 0;
+  const sec1Text = `• 营业总额 (TS): RM ${dailyTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+• House Brand (HB): RM ${dailyHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hbPct}%)
+• High Margin (HM): RM ${dailyHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hmPct}%)
+• 来客数 (Customers): ${dailyCust} 人次
+• 平均客单价 (Basket Size): RM ${avgBasket} (HB客单: RM ${hbBasket})
+• 本月 MTD 进度: TS ${formatRM(mtdTs)} / ${formatRM(targetTs)} (${mtdTsPct}% | ${tsGapStr}), HB ${formatRM(mtdHb)} / ${formatRM(targetHb)} (${mtdHbPct}% | ${hbGapStr})
+${takeaway}`;
 
-  (currentData.staff || []).filter(s => !/daniela|janet/i.test(s.name || '')).forEach(s => {
-    let hits = [];
-    if(s.dailyTs >= s.targetTs) hits.push("TS");
-    if(s.dailyHb >= s.targetHb) hits.push("HB");
-    
-    if(hits.length > 0) {
-      achievers++;
-      text += `• *${s.name}*: Hit ${hits.join(" & ")}! 🌟🎉\n\n`;
+  const dailyTargetTs = Math.round(targetTs / daysInMonth);
+  const dailyTargetHb = Math.round(targetHb / daysInMonth);
+
+  const dposTopic = (window.dposState && window.dposState.activeWeekTopic) || "高血压与慢病调理";
+  const featuredModule = (window.getPmgHouseBrandRecommendation && window.getPmgHouseBrandRecommendation(salesDateObj, dposTopic)) || (window.PMG_CLINICAL_UPSELL_MODULES && window.PMG_CLINICAL_UPSELL_MODULES[0]);
+
+  const sec2Default = `• [今日销售重点]: 今日全店目标 TS RM ${dailyTargetTs.toLocaleString()}，HB 目标 RM ${dailyTargetHb.toLocaleString()} (占比冲刺 40%+)。昨日已达 ${hbPct}%，今天乘胜追击！
+• [DPOS 搭配重点]: (本周重点: ${featuredModule ? featuredModule.chineseTitle : '慢病调理'}) 凡有相关咨询，主推 ${featuredModule ? featuredModule.hbProduct : 'JH Nutrition 重点品类'}。
+• [PWP 推荐]: 柜台收银时主动推介本周特惠 PWP (${profile ? profile.pwpFocus : '消毒喷雾 / 维C泡腾片 / 医用急救贴'})，拉高连带客单价。`;
+
+  const sec3Default = `• [HQ 奖励进度]: 门市已完成本月 HB 进度 RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%)，正朝向 FY2027 Tier 3 (RM 500/人 达标奖励) 稳步迈进！
+• [门市合规宣导]: 今日门市 PMG Medicare App 注册目标至少 3 位新会员；门市小红书/TikTok 今日素材按时拍摄并发布。`;
+
+  const sec4Default = `• [库存与效期]: 执行近效期产品 FEFO (先到期先出) 检查，重点巡视保健品与奶粉专区；新到货品今日内完成清点上架。
+• [门市/柜台 SOP]: 处方与受管制药物调配严格执行 Double-check 签名制度，柜台交接班准时核对 Cash Float 与刷卡结算单。`;
+
+  const sortedStaff = [...staff].sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
+  let rankingLines = [];
+  sortedStaff.forEach((s, idx) => {
+    const sHb = Number(s.dailyHb || 0);
+    const comm = (sHb * 0.035).toFixed(2);
+    if (idx === 0 && sHb > 0) {
+      rankingLines.push(`🥇 冠军: *${s.name}* (HB RM ${sHb.toFixed(2)}, 个人获得佣金 RM ${comm}) 🌟`);
+    } else if (idx === 1 && sHb > 0) {
+      rankingLines.push(`🥈 亚军: *${s.name}* (HB RM ${sHb.toFixed(2)}, 个人获得佣金 RM ${comm}) 👏`);
+    } else if (idx === 2 && sHb > 0) {
+      rankingLines.push(`🥉 季军: *${s.name}* (HB RM ${sHb.toFixed(2)}, 个人获得佣金 RM ${comm}) 👍`);
+    } else {
+      rankingLines.push(`• *${s.name}*: HB RM ${sHb.toFixed(2)} (个人佣金 RM ${comm})`);
     }
   });
-  
-  if(achievers === 0) {
-    text += `No personal hits yesterday — let's rally together and put everyone on the board today! 💪\n\n`;
-  }
-  
-  // Dynamic AI Strategy or Profile-Aware Offline Rule
-  let strategyText = null;
-  if (activeKeys.length > 0) {
-    try {
-      strategyText = await generateGeminiOutletStrategy(selectedBranch, summary, targets, daysLeft, tsReqPerDay, hbReqPerDay, hbRatio, profile);
-    } catch (e) {
-      console.warn("AI generation failed, using rule fallback", e);
-    }
+
+  const hbRecBlock = featuredModule ? `\n💡 *今日门市重点 House Brand 推荐 (Clinical Upsell):*\n【${featuredModule.chineseTitle} (${featuredModule.condition})】\n• 基础缓解 (OTC): ${featuredModule.standardOtc}\n• 黄金搭配 (HB): ${featuredModule.hbProduct}\n• 推荐话术: "${featuredModule.scriptZh}"\n• 警惕红旗 (Refer Pharmacist): ${featuredModule.redFlags}` : '';
+
+  const sec5Text = `🏆 *昨天 House Brand 冲刺英雄榜：*
+${rankingLines.join('\n')}
+
+感谢大家昨天的辛勤付出与默契配合！每一笔专业的搭配都是对顾客健康的负责，大家今天继续加油冲刺！💪🔥
+${hbRecBlock}`;
+
+  const pmgAppVal = (currentData.pmgApps && currentData.pmgApps[dateIsoKey] !== undefined)
+    ? currentData.pmgApps[dateIsoKey]
+    : getActivePmgApp(selectedBranch);
+
+  currentBriefingState = {
+    dateDisplay,
+    dateIsoKey,
+    branch: selectedBranch,
+    sec1: sec1Text,
+    sec2: sec2Default,
+    sec3: sec3Default,
+    sec4: sec4Default,
+    sec5: sec5Text,
+    featuredModule: featuredModule
+  };
+
+  document.getElementById("briefingDateDisplay").innerText = dateDisplay;
+  document.getElementById("briefingBranchDisplay").innerText = selectedBranch;
+  document.getElementById("briefingPmgAppInput").value = pmgAppVal;
+
+  document.getElementById("briefingSec1Text").innerText = sec1Text;
+  document.getElementById("briefingSec2Input").value = sec2Default;
+  document.getElementById("briefingSec3Input").value = sec3Default;
+  document.getElementById("briefingSec4Input").value = sec4Default;
+  document.getElementById("briefingSec5Text").innerText = sec5Text;
+
+  const select = document.getElementById("briefingHbSelect");
+  if (select && window.PMG_CLINICAL_UPSELL_MODULES) {
+    select.innerHTML = window.PMG_CLINICAL_UPSELL_MODULES.map(m => `
+      <option value="${m.id}" ${featuredModule && featuredModule.id === m.id ? 'selected' : ''}>
+        ${m.id}. ${m.chineseTitle} (${m.condition})
+      </option>
+    `).join('');
   }
 
-  if (!strategyText) {
-    strategyText = generateOutletOverallSuggestion(summary, targets, tsReqPerDay, hbReqPerDay, daysLeft, expectedTs, expectedHb, profile);
+  const modal = document.getElementById("dailyBriefingModal");
+  if (modal) {
+    modal.style.display = "flex";
+    history.pushState({ modal: 'dailyBriefingModal' }, '');
+  }
+}
+
+function closeDailyBriefingModal(shouldPop = true) {
+  const modal = document.getElementById("dailyBriefingModal");
+  if (modal) modal.style.display = "none";
+  if (shouldPop && history.state && history.state.modal === 'dailyBriefingModal') {
+    history.back();
+  }
+}
+
+function changeBriefingHouseBrand(conditionId) {
+  if (!window.PMG_CLINICAL_UPSELL_MODULES || !currentBriefingState) return;
+  const mod = window.PMG_CLINICAL_UPSELL_MODULES.find(m => String(m.id) === String(conditionId));
+  if (!mod) return;
+
+  currentBriefingState.featuredModule = mod;
+
+  const lines = currentBriefingState.sec5.split('\n💡 *今日门市重点 House Brand 推荐');
+  const topPart = lines[0];
+
+  const newHbBlock = `\n💡 *今日门市重点 House Brand 推荐 (Clinical Upsell):*\n【${mod.chineseTitle} (${mod.condition})】\n• 基础缓解 (OTC): ${mod.standardOtc}\n• 黄金搭配 (HB): ${mod.hbProduct}\n• 推荐话术: "${mod.scriptZh}"\n• 警惕红旗 (Refer Pharmacist): ${mod.redFlags}`;
+
+  currentBriefingState.sec5 = topPart + newHbBlock;
+  document.getElementById("briefingSec5Text").innerText = currentBriefingState.sec5;
+
+  const sec2Area = document.getElementById("briefingSec2Input");
+  if (sec2Area) {
+    const sec2Lines = sec2Area.value.split('\n');
+    const updated = sec2Lines.map(l => {
+      if (l.includes('[DPOS 搭配重点]')) {
+        return `• [DPOS 搭配重点]: (本周重点: ${mod.chineseTitle}) 凡有相关咨询，主推 ${mod.hbProduct}。`;
+      }
+      return l;
+    });
+    sec2Area.value = updated.join('\n');
+  }
+}
+
+async function saveBriefingPmgApp() {
+  if (!currentBriefingState) return;
+  const val = Number(document.getElementById("briefingPmgAppInput").value) || 0;
+  const dateKey = currentBriefingState.dateIsoKey;
+  const branch = currentBriefingState.branch;
+  const bKey = findBranchKey(currentData && currentData.summary, branch) || "KOTA SENTOSA";
+
+  try {
+    localStorage.setItem("pmg_app_installs_" + bKey + "_" + dateKey, String(val));
+    localStorage.setItem("pmg_app_installs_" + bKey, String(val));
+  } catch (e) {}
+
+  if (!currentData.pmgApps) currentData.pmgApps = {};
+  currentData.pmgApps[dateKey] = val;
+
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'saveActionPlan',
+        branch: branch,
+        plans: currentData.actionPlan || {},
+        pmgCount: val,
+        date: dateKey
+      })
+    });
+    alert(`📱 PMG Medicare App count (${val}) saved for ${currentBriefingState.dateDisplay}!`);
+  } catch (err) {
+    console.warn("Failed to save PMG app count to server:", err);
+    alert(`Saved locally (${val}). Server update pending.`);
+  }
+}
+
+function copyBriefingMessage(format = 'whatsapp') {
+  if (!currentBriefingState) return;
+
+  const sec1 = (document.getElementById("briefingSec1Text").innerText || currentBriefingState.sec1).trim();
+  const sec2 = (document.getElementById("briefingSec2Input").value || "").trim();
+  const sec3 = (document.getElementById("briefingSec3Input").value || "").trim();
+  const sec4 = (document.getElementById("briefingSec4Input").value || "").trim();
+  const sec5 = (document.getElementById("briefingSec5Text").innerText || currentBriefingState.sec5).trim();
+
+  let text = "";
+  if (format === 'whatsapp') {
+    text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} 门市早会晨报 (Daily Briefing)*\n`;
+    text += `📅 日期: ${currentBriefingState.dateDisplay}\n\n`;
+
+    text += `*1. 回顾昨天工作流程 (Yesterday's Operational & Financial Review)*\n`;
+    text += `${sec1}\n\n`;
+
+    text += `*2. 说明今天工作重点 (Today's Key Priorities)*\n`;
+    text += `${sec2}\n\n`;
+
+    text += `*3. 通知上级领导要求 (HQ Directives & Target Alignment)*\n`;
+    text += `${sec3}\n\n`;
+
+    text += `*4. 强调近期注意事项 (Operational Precautions & Compliance)*\n`;
+    text += `${sec4}\n\n`;
+
+    text += `*5. 鼓励员工持续努力 (Recognition & Team Encouragement)*\n`;
+    text += `${sec5}\n\n`;
+
+    text += `🔗 *View Live Performance Hub:* ${WEBAPP_LINK}`;
+  } else {
+    text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} 门市早会晨报 (Daily Briefing)*\n`;
+    text += `📅 日期: ${currentBriefingState.dateDisplay}\n\n`;
+
+    text += `*1. 回顾昨天工作流程 (Yesterday's Operational & Financial Review)*\n`;
+    text += `${sec1}\n\n`;
+
+    text += `*2. 说明今天工作重点 (Today's Key Priorities)*\n`;
+    text += `${sec2}\n\n`;
+
+    text += `*3. 通知上级领导要求 (HQ Directives & Target Alignment)*\n`;
+    text += `${sec3}\n\n`;
+
+    text += `*4. 强调近期注意事项 (Operational Precautions & Compliance)*\n`;
+    text += `${sec4}\n\n`;
+
+    text += `*5. 鼓励员工持续努力 (Recognition & Team Encouragement)*\n`;
+    text += `${sec5}\n\n`;
+
+    text += `🔗 View Live Performance Hub: ${WEBAPP_LINK}`;
   }
 
-  text += strategyText;
-  text += `🔗 *View Full Dashboard:* ${WEBAPP_LINK}`;
+  navigator.clipboard.writeText(text).then(() => {
+    alert(`📋 Daily Briefing (${format === 'whatsapp' ? 'WhatsApp' : 'Google Chat'}) copied to clipboard!\nReady to paste to team chat.`);
+  }).catch(e => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    alert(`📋 Daily Briefing (${format === 'whatsapp' ? 'WhatsApp' : 'Google Chat'}) copied to clipboard!\nReady to paste to team chat.`);
+  });
+}
 
-  if (btn) {
-    btn.innerText = origBtnText || "📱 Copy WhatsApp Briefing";
-    btn.disabled = false;
-  }
-
-  navigator.clipboard.writeText(text);
-  alert("WhatsApp Daily Briefing copied to clipboard!");
+function copyWhatsAppBriefing() {
+  openDailyBriefingModal();
 }
 
 // ─── GEMINI API KEY MANAGEMENT & TEST ─────────────────────────────────────────
@@ -1453,17 +2169,14 @@ function openReportModal(type) {
         const bKey = findBranchKey(currentData.summary, selectedBranch) || "KOTA SENTOSA";
         const storedDayVal = localStorage.getItem("pmg_app_installs_" + bKey + "_" + dayIsoKey);
 
-        if (isToday) {
-          colData.pmgApp = activePmgApp;
-        } else {
-          // Preserve past daily pmgApp from history, backend pmgApps dictionary, or daily local storage
-          const pastAppVal = (matched && matched.pmgApp !== undefined && matched.pmgApp !== null && Number(matched.pmgApp) > 0)
+        let dayAppVal = (currentData.pmgApps && currentData.pmgApps[dayIsoKey] !== undefined)
+          ? Number(currentData.pmgApps[dayIsoKey])
+          : ((matched && matched.pmgApp !== undefined && matched.pmgApp !== null)
             ? Number(matched.pmgApp)
-            : ((currentData.pmgApps && currentData.pmgApps[dayIsoKey] !== undefined)
-              ? Number(currentData.pmgApps[dayIsoKey])
-              : ((storedDayVal !== null && !isNaN(Number(storedDayVal))) ? Number(storedDayVal) : 0));
-          colData.pmgApp = pastAppVal;
-        }
+            : ((storedDayVal !== null && !isNaN(Number(storedDayVal)))
+              ? Number(storedDayVal)
+              : (isToday ? activePmgApp : 0)));
+        colData.pmgApp = dayAppVal;
 
         cols.push({
           label: `${d}-${months[currentMonth]}`,

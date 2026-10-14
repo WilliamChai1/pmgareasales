@@ -58,6 +58,11 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(saveBackendGeminiApiKey(request)))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (request.action === "uploadDailySales") {
+      return ContentService.createTextOutput(JSON.stringify(uploadDailySales(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: true, message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -253,14 +258,13 @@ function normalizeDateKey(val) {
       let year = parseInt(parts[2], 10);
       if (year < 100) year += 2000;
       
-      // If p1 <= 12 and p2 > 12 -> month/day/year (e.g. 9/18/2026)
+      // In Malaysia and Commonwealth retail/POS systems, standard date is DD/MM/YYYY.
+      // If p1 <= 12 and p2 > 12 -> clearly Month/Day/Year (p2 is day > 12)
       if (p1 <= 12 && p2 > 12) {
         return year + "-" + String(p1).padStart(2, "0") + "-" + String(p2).padStart(2, "0");
       }
-      // If p1 > 12 and p2 <= 12 -> day/month/year (e.g. 18/09/2026)
-      if (p1 > 12 && p2 <= 12) {
-        return year + "-" + String(p2).padStart(2, "0") + "-" + String(p1).padStart(2, "0");
-      }
+      // Otherwise, p1 is Day and p2 is Month (DD/MM/YYYY standard)
+      return year + "-" + String(p2).padStart(2, "0") + "-" + String(p1).padStart(2, "0");
     }
   }
 
@@ -1185,3 +1189,178 @@ function saveBackendGeminiApiKey(req) {
   }
   return { success: false, message: "Unauthorized or invalid key length." };
 }
+
+// ─── DAILY SALES CSV UPLOAD HANDLER ──────────────────────────────────────────
+function uploadDailySales(req) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const branch = String(req.branch || 'Kota Sentosa').trim();
+    const branchUpper = branch.toUpperCase();
+    const rawDate = req.date || Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "dd-MMM-yyyy");
+    const targetDateKey = normalizeDateKey(rawDate);
+    const displayDate = String(rawDate).trim(); // e.g. "12-Oct-2026"
+    const staffSales = req.staffSales || [];
+    const storeTotals = req.storeTotals || {};
+    const lastYear = req.lastYear || {};
+    const pmgCount = req.pmgCount;
+    const aiRecommendation = req.aiRecommendation || "";
+
+    // 1. UPDATE DailySales IDEMPOTENTLY
+    let salesSheet = ss.getSheetByName("DailySales");
+    if (!salesSheet) {
+      salesSheet = ss.insertSheet("DailySales");
+      salesSheet.appendRow(["Date", "Branch", "StaffName", "Daily_TS", "Daily_HB", "Daily_HM", "Daily_Cust"]);
+    }
+
+    const salesData = salesSheet.getDataRange().getValues();
+    const rowsToKeep = [];
+    if (salesData.length > 0) {
+      rowsToKeep.push(salesData[0]);
+    } else {
+      rowsToKeep.push(["Date", "Branch", "StaffName", "Daily_TS", "Daily_HB", "Daily_HM", "Daily_Cust"]);
+    }
+
+    // Filter out existing rows for this date and branch to prevent duplicate entries upon re-upload
+    for (let i = 1; i < salesData.length; i++) {
+      const rowDateKey = normalizeDateKey(salesData[i][0]);
+      const rowBranchUpper = String(salesData[i][1]).trim().toUpperCase();
+      if (rowDateKey === targetDateKey && rowBranchUpper === branchUpper) {
+        continue;
+      }
+      rowsToKeep.push(salesData[i]);
+    }
+
+    // Append new staff rows
+    for (let j = 0; j < staffSales.length; j++) {
+      const s = staffSales[j];
+      rowsToKeep.push([
+        displayDate,
+        branch,
+        s.name,
+        parseFloat(s.ts) || 0,
+        parseFloat(s.hb) || 0,
+        parseFloat(s.hm) || 0,
+        parseInt(s.cust, 10) || 0
+      ]);
+    }
+
+    // Write back cleaned and updated DailySales
+    salesSheet.clearContents();
+    salesSheet.getRange(1, 1, rowsToKeep.length, 7).setValues(rowsToKeep);
+
+    // 2. COMPUTE CURRENT MTD FROM ALL CURRENT-MONTH ROWS IN DailySales
+    const targetParts = targetDateKey.split("-");
+    const tYear = parseInt(targetParts[0], 10);
+    const tMonth = parseInt(targetParts[1], 10);
+
+    let mtdTs = 0;
+    let mtdHb = 0;
+    let mtdHm = 0;
+    let mtdCust = 0;
+
+    for (let k = 1; k < rowsToKeep.length; k++) {
+      const rDateKey = normalizeDateKey(rowsToKeep[k][0]);
+      const rBranchUpper = String(rowsToKeep[k][1]).trim().toUpperCase();
+      if (rBranchUpper === branchUpper) {
+        const rParts = rDateKey.split("-");
+        const rowY = parseInt(rParts[0], 10);
+        const rowM = parseInt(rParts[1], 10);
+        if (rowY === tYear && rowM === tMonth) {
+          mtdTs += (parseFloat(rowsToKeep[k][3]) || 0);
+          mtdHb += (parseFloat(rowsToKeep[k][4]) || 0);
+          mtdHm += (parseFloat(rowsToKeep[k][5]) || 0);
+          mtdCust += (parseInt(rowsToKeep[k][6], 10) || 0);
+        }
+      }
+    }
+
+    mtdTs = Math.round(mtdTs * 100) / 100;
+    mtdHb = Math.round(mtdHb * 100) / 100;
+    mtdHm = Math.round(mtdHm * 100) / 100;
+
+    // 3. UPDATE BranchSummary IDEMPOTENTLY
+    let summarySheet = ss.getSheetByName("BranchSummary");
+    if (!summarySheet) {
+      summarySheet = ss.insertSheet("BranchSummary");
+      summarySheet.appendRow(["Date", "Branch", "MTD_TS", "MTD_HB", "MTD_HM", "MTD_Cust", "LastYear_MTD_TS", "LastYear_MTD_HB", "LastYear_MTD_HM", "AI_Recommendation"]);
+    }
+
+    const summaryData = summarySheet.getDataRange().getValues();
+    let sumFoundIndex = -1;
+
+    for (let m = 1; m < summaryData.length; m++) {
+      const sDateKey = normalizeDateKey(summaryData[m][0]);
+      const sBranchUpper = String(summaryData[m][1]).trim().toUpperCase();
+      if (sDateKey === targetDateKey && sBranchUpper === branchUpper) {
+        sumFoundIndex = m + 1; // 1-indexed row in sheet
+        break;
+      }
+    }
+
+    const lyTs = parseFloat(lastYear.mtdTs) || (sumFoundIndex > 0 ? (summaryData[sumFoundIndex - 1][6] || 0) : 0);
+    const lyHb = parseFloat(lastYear.mtdHb) || (sumFoundIndex > 0 ? (summaryData[sumFoundIndex - 1][7] || 0) : 0);
+    const lyHm = parseFloat(lastYear.mtdHm) || (sumFoundIndex > 0 ? (summaryData[sumFoundIndex - 1][8] || 0) : 0);
+    const recText = aiRecommendation || (sumFoundIndex > 0 ? (summaryData[sumFoundIndex - 1][9] || "") : "");
+
+    const newSummaryRow = [
+      displayDate,
+      branch,
+      mtdTs,
+      mtdHb,
+      mtdHm,
+      mtdCust,
+      lyTs,
+      lyHb,
+      lyHm,
+      recText
+    ];
+
+    if (sumFoundIndex > 0) {
+      summarySheet.getRange(sumFoundIndex, 1, 1, 10).setValues([newSummaryRow]);
+    } else {
+      summarySheet.appendRow(newSummaryRow);
+    }
+
+    // 4. UPDATE PMG_Apps IF PROVIDED
+    if (pmgCount !== undefined && pmgCount !== null && pmgCount !== "") {
+      let pmgSheet = ss.getSheetByName("PMG_Apps");
+      if (!pmgSheet) {
+        pmgSheet = ss.insertSheet("PMG_Apps");
+        pmgSheet.appendRow(["Date", "Branch", "AppCount"]);
+      }
+      const pmgData = pmgSheet.getDataRange().getValues();
+      let pmgFound = false;
+      const countVal = parseInt(pmgCount, 10) || 0;
+      for (let p = 1; p < pmgData.length; p++) {
+        const pDateKey = normalizeDateKey(pmgData[p][0]);
+        const pBranchUpper = String(pmgData[p][1]).trim().toUpperCase();
+        if (pDateKey === targetDateKey && pBranchUpper === branchUpper) {
+          pmgSheet.getRange(p + 1, 1).setValue(targetDateKey);
+          pmgSheet.getRange(p + 1, 3).setValue(countVal);
+          pmgFound = true;
+          break;
+        }
+      }
+      if (!pmgFound) {
+        pmgSheet.appendRow([targetDateKey, branch, countVal]);
+      }
+    }
+
+    return {
+      success: true,
+      message: "Successfully synchronized sales for " + displayDate + " (" + branch + ")!",
+      date: displayDate,
+      branch: branch,
+      staffCount: staffSales.length,
+      mtd: {
+        ts: mtdTs,
+        hb: mtdHb,
+        hm: mtdHm,
+        cust: mtdCust
+      }
+    };
+  } catch (err) {
+    return { success: false, message: "Upload failed: " + err.toString() };
+  }
+}
+
