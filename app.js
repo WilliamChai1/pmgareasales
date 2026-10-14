@@ -770,13 +770,11 @@ function renderDashboard() {
 
 function openActionPlanModal() {
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
-  const pmgVal = getActivePmgApp(selectedBranch);
   
   document.getElementById("apWeek1").value = ap.w1 || "";
   document.getElementById("apWeek2").value = ap.w2 || "";
   document.getElementById("apWeek3").value = ap.w3 || "";
   document.getElementById("apWeek4").value = ap.w4 || "";
-  document.getElementById("apPmgApp").value = pmgVal; 
   
   document.getElementById("actionPlanModal").style.display = "flex";
   history.pushState({ modal: 'actionPlanModal' }, '');
@@ -799,40 +797,13 @@ async function saveActionPlan() {
     w3: document.getElementById("apWeek3").value,
     w4: document.getElementById("apWeek4").value
   };
-  
-  const pmgCount = Number(document.getElementById("apPmgApp").value) || 0;
-  const bKey = findBranchKey(currentData.summary, selectedBranch) || "KOTA SENTOSA";
-  const todayIsoKey = formatMytIsoDate(new Date());
-
-  // Immediate synchronous UI and persistence update (both general branch key and date-specific key)
-  try {
-    localStorage.setItem("pmg_app_installs_" + bKey, String(pmgCount));
-    localStorage.setItem("pmg_app_installs_" + bKey + "_" + todayIsoKey, String(pmgCount));
-  } catch (e) {}
 
   currentData.actionPlan = plans;
-  if (!currentData.summary) currentData.summary = {};
-  if (!currentData.summary[bKey]) currentData.summary[bKey] = {};
-  currentData.summary[bKey].pmgApp = pmgCount;
-
-  if (!currentData.pmgApps) currentData.pmgApps = {};
-  currentData.pmgApps[todayIsoKey] = pmgCount;
-
-  if (currentData.history && currentData.history.length > 0) {
-    const todayMyt = parseMytDate(new Date());
-    const todayHist = currentData.history.find(h => {
-      const md = parseMytDate(h.date);
-      return md && md.day === todayMyt.day && md.month === todayMyt.month && md.year === todayMyt.year;
-    });
-    if (todayHist) {
-      todayHist.pmgApp = pmgCount;
-    }
-  }
 
   try {
     await fetch(API_URL, {
       method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans, pmgCount: pmgCount, date: todayIsoKey })
+      body: JSON.stringify({ action: 'saveActionPlan', branch: selectedBranch, plans: plans })
     });
     
     renderDashboard();

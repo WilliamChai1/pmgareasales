@@ -294,26 +294,28 @@ function saveActionPlan(branch, plans, pmgCount, dateStr) {
     if (!found) apSheet.appendRow([branch, plans.w1, plans.w2, plans.w3, plans.w4]);
   }
 
-  // 2. Save PMG App Count
-  let pmgSheet = ss.getSheetByName("PMG_Apps");
-  if (!pmgSheet) {
-    pmgSheet = ss.insertSheet("PMG_Apps");
-    pmgSheet.appendRow(["Date", "Branch", "AppCount"]);
-  }
-  const pmgData = pmgSheet.getDataRange().getValues();
-  const targetDateKey = normalizeDateKey(dateStr || new Date());
-  let pmgFound = false;
-  for (let i = 1; i < pmgData.length; i++) {
-    const rowDateKey = normalizeDateKey(pmgData[i][0]);
-    if (rowDateKey === targetDateKey && String(pmgData[i][1]).trim().toUpperCase() === branchUpper) {
-      pmgSheet.getRange(i + 1, 1).setValue(targetDateKey);
-      pmgSheet.getRange(i + 1, 3).setValue(pmgCount);
-      pmgFound = true;
-      break;
+  // 2. Save PMG App Count (Only if explicitly provided)
+  if (pmgCount !== undefined && pmgCount !== null && pmgCount !== "") {
+    let pmgSheet = ss.getSheetByName("PMG_Apps");
+    if (!pmgSheet) {
+      pmgSheet = ss.insertSheet("PMG_Apps");
+      pmgSheet.appendRow(["Date", "Branch", "AppCount"]);
     }
-  }
-  if (!pmgFound) {
-    pmgSheet.appendRow([targetDateKey, branch, pmgCount]);
+    const pmgData = pmgSheet.getDataRange().getValues();
+    const targetDateKey = normalizeDateKey(dateStr || new Date());
+    let pmgFound = false;
+    for (let i = 1; i < pmgData.length; i++) {
+      const rowDateKey = normalizeDateKey(pmgData[i][0]);
+      if (rowDateKey === targetDateKey && String(pmgData[i][1]).trim().toUpperCase() === branchUpper) {
+        pmgSheet.getRange(i + 1, 1).setValue(targetDateKey);
+        pmgSheet.getRange(i + 1, 3).setValue(pmgCount);
+        pmgFound = true;
+        break;
+      }
+    }
+    if (!pmgFound) {
+      pmgSheet.appendRow([targetDateKey, branch, pmgCount]);
+    }
   }
 
   return { success: true };
