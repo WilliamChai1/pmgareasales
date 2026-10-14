@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pmg-hub-v60';
+const CACHE_NAME = 'pmg-hub-v61';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

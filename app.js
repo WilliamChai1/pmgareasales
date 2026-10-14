@@ -344,6 +344,8 @@ async function loadDashboardData() {
   }
 }
 
+const loadDashboard = loadDashboardData;
+
 function changeBranch() {
   const sel = document.getElementById("branchSelector");
   if (sel) {
@@ -1693,6 +1695,10 @@ async function submitSalesUpload() {
     const result = await res.json();
     if (result && result.success) {
       const bKey = findBranchKey(currentData && currentData.summary, currentParsedUploadData.branch) || "KOTA SENTOSA";
+      const savedDate = currentParsedUploadData.date;
+      const savedTotalTs = currentParsedUploadData.storeTotals.ts;
+      const savedTotalHb = currentParsedUploadData.storeTotals.hb;
+
       try {
         localStorage.setItem("pmg_app_installs_" + bKey + "_" + currentParsedUploadData.dateKey, String(pmgAppCount));
       } catch (e) {}
@@ -1702,11 +1708,11 @@ async function submitSalesUpload() {
 
       accumulatedUploadedFiles = [];
       closeUploadSalesModal();
-      await loadDashboard();
+      await loadDashboardData();
 
-      alert(`✅ ${result.message}\nTotal Sales: RM ${currentParsedUploadData.storeTotals.ts.toLocaleString()} | HB: RM ${currentParsedUploadData.storeTotals.hb.toLocaleString()}`);
+      alert(`✅ ${result.message}\nTotal Sales: RM ${savedTotalTs.toLocaleString()} | HB: RM ${savedTotalHb.toLocaleString()}`);
 
-      openDailyBriefingModal(currentParsedUploadData.date);
+      openDailyBriefingModal(savedDate);
     } else {
       alert("Upload error from server: " + ((result && result.message) || "Unknown error"));
       if (btn) {
