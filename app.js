@@ -1793,9 +1793,9 @@ function openDailyBriefingModal(targetDateStr) {
 
   let takeaway = "";
   if (Number(hbPct) >= 40) {
-    takeaway = `💡 Operational Takeaway: Store HB achieved ${hbPct}%, surpassing the 40% benchmark! Basket size RM ${avgBasket} (HB Basket: RM ${hbBasket}) across ${dailyCust} transactions. Strong clinical conversion yesterday—let's maintain this momentum today!`;
+    takeaway = `💡 *Operational Takeaway:*\nStore HB achieved ${hbPct}%, surpassing the 40% benchmark! Basket size RM ${avgBasket} (HB Basket: RM ${hbBasket}) across ${dailyCust} transactions. Strong clinical conversion yesterday—let's maintain this momentum today!`;
   } else {
-    takeaway = `💡 Operational Takeaway: Store HB closed at ${hbPct}% with RM ${avgBasket} basket size and ${dailyCust} transactions. Strengthen 1+1 acute pairing at the counter today to push HB ratio beyond 40%!`;
+    takeaway = `💡 *Operational Takeaway:*\nStore HB closed at ${hbPct}% with RM ${avgBasket} basket size and ${dailyCust} transactions. Strengthen 1+1 acute pairing at the counter today to push HB ratio beyond 40%!`;
   }
 
   const sec1Text = `• Total Sales (TS): RM ${dailyTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
@@ -1804,6 +1804,7 @@ function openDailyBriefingModal(targetDateStr) {
 • Customer Count: ${dailyCust} transactions
 • Average Basket Size: RM ${avgBasket} (HB Basket: RM ${hbBasket})
 • MTD Progress: TS ${formatRM(mtdTs)} / ${formatRM(targetTs)} (${mtdTsPct}% | ${tsGapStr}), HB ${formatRM(mtdHb)} / ${formatRM(targetHb)} (${mtdHbPct}% | ${hbGapStr})
+
 ${takeaway}`;
 
   const dailyTargetTs = Math.round(targetTs / daysInMonth);
@@ -1812,39 +1813,36 @@ ${takeaway}`;
   const dposTopic = (window.dposState && window.dposState.activeWeekTopic) || "Hypertension & Chronic Care";
   const featuredModule = (window.getPmgHouseBrandRecommendation && window.getPmgHouseBrandRecommendation(salesDateObj, dposTopic)) || (window.PMG_CLINICAL_UPSELL_MODULES && window.PMG_CLINICAL_UPSELL_MODULES[0]);
 
-  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${hbPct}%—let's build on this momentum today!
-• [DPOS Clinical Pairing]: (Weekly Focus: ${featuredModule ? featuredModule.condition : 'Chronic Care'}) For relevant patient consultations, actively recommend ${featuredModule ? featuredModule.hbProduct : 'featured House Brand regimens'}.
-• [Cashier PWP]: Proactively offer weekly counter PWP promo (${profile ? profile.pwpFocus : 'Sanitizer / Effervescent Vit C / Medicated Plaster'}) to maximize basket size.`;
+  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${hbPct}%—let's build on this momentum today!\n\n• [DPOS Clinical Pairing]: (Weekly Focus: ${featuredModule ? featuredModule.condition : 'Chronic Care'}) For relevant patient consultations, actively recommend ${featuredModule ? featuredModule.hbProduct : 'featured House Brand regimens'}.\n\n• [Cashier PWP]: Proactively offer weekly counter PWP promo (${profile ? profile.pwpFocus : 'Sanitizer / Effervescent Vit C / Medicated Plaster'}) to maximize basket size.`;
 
-  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!
-• [Compliance & Outreach]: Target at least 3 new PMG Medicare App registrations today; complete and post today's social media content on schedule.`;
+  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!\n\n• [Compliance & Outreach]: Target at least 3 new PMG Medicare App registrations today; complete and post today's social media content on schedule.`;
 
-  const sec4Default = `• [Stock & Expiry]: Conduct FEFO (First-Expired, First-Out) shelf checks, focusing on supplements and nutrition milk; complete stock receiving and shelving by end of shift.
-• [Counter SOP]: Ensure double-checking and signing for prescription dispensing; verify cash float and card terminal settlement slips during shift handover.`;
+  const sec4Default = `• [Stock & Expiry]: Conduct FEFO (First-Expired, First-Out) shelf checks, focusing on supplements and nutrition milk; complete stock receiving and shelving by end of shift.\n\n• [Counter SOP]: Ensure double-checking and signing for prescription dispensing; verify cash float and card terminal settlement slips during shift handover.`;
 
   const sortedStaff = [...staff].sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
   let rankingLines = [];
   sortedStaff.forEach((s, idx) => {
     const sHb = Number(s.dailyHb || 0);
-    const comm = (sHb * 0.035).toFixed(2);
+    const sHbFormatted = sHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     if (idx === 0 && sHb > 0) {
-      rankingLines.push(`🥇 1st Place: *${s.name}* (HB RM ${sHb.toFixed(2)} | Earned Commission: RM ${comm}) 🌟`);
+      rankingLines.push(`🥇 1st Place: *${s.name}* (HB RM ${sHbFormatted}) 🌟`);
     } else if (idx === 1 && sHb > 0) {
-      rankingLines.push(`🥈 2nd Place: *${s.name}* (HB RM ${sHb.toFixed(2)} | Earned Commission: RM ${comm}) 👏`);
+      rankingLines.push(`🥈 2nd Place: *${s.name}* (HB RM ${sHbFormatted}) 👏`);
     } else if (idx === 2 && sHb > 0) {
-      rankingLines.push(`🥉 3rd Place: *${s.name}* (HB RM ${sHb.toFixed(2)} | Earned Commission: RM ${comm}) 👍`);
+      rankingLines.push(`🥉 3rd Place: *${s.name}* (HB RM ${sHbFormatted}) 👍`);
+    } else if (sHb > 0) {
+      rankingLines.push(`• *${s.name}*: HB RM ${sHbFormatted}`);
     } else {
-      rankingLines.push(`• *${s.name}*: HB RM ${sHb.toFixed(2)} (Earned Commission: RM ${comm})`);
+      rankingLines.push(`• *${s.name}*: HB RM 0.00`);
     }
   });
 
-  const hbRecBlock = featuredModule ? `\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${featuredModule.condition}】\n• Standard Relief (OTC): ${featuredModule.standardOtc}\n• Golden Pairing (HB): ${featuredModule.hbProduct}\n• Recommended Dialogue: "${featuredModule.script}"\n• Red Flags (Refer Pharmacist): ${featuredModule.redFlags}` : '';
+  const hbRecBlock = featuredModule ? `\n\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${featuredModule.condition}】\n\n• Standard Relief (OTC): ${featuredModule.standardOtc}\n\n• Golden Pairing (HB): ${featuredModule.hbProduct}\n\n• Recommended Dialogue: "${featuredModule.script}"\n\n• Red Flags (Refer Pharmacist): ${featuredModule.redFlags}` : '';
 
   const sec5Text = `🏆 *Yesterday's House Brand Top Performers:*
 ${rankingLines.join('\n')}
 
-Thank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness. Let's keep up the great effort today! 💪🔥
-${hbRecBlock}`;
+Thank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness. Let's keep up the great effort today! 💪🔥${hbRecBlock}`;
 
   const pmgAppVal = (currentData.pmgApps && currentData.pmgApps[dateIsoKey] !== undefined)
     ? currentData.pmgApps[dateIsoKey]
@@ -1903,10 +1901,10 @@ function changeBriefingHouseBrand(conditionId) {
 
   currentBriefingState.featuredModule = mod;
 
-  const lines = currentBriefingState.sec5.split(/\n💡 \*(?:Featured House Brand Clinical Pairing|今日门市重点 House Brand 推荐)/);
-  const topPart = lines[0];
+  const lines = currentBriefingState.sec5.split(/\n+💡 \*(?:Featured House Brand Clinical Pairing|今日门市重点 House Brand 推荐)/);
+  const topPart = lines[0].trimEnd();
 
-  const newHbBlock = `\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${mod.condition}】\n• Standard Relief (OTC): ${mod.standardOtc}\n• Golden Pairing (HB): ${mod.hbProduct}\n• Recommended Dialogue: "${mod.script}"\n• Red Flags (Refer Pharmacist): ${mod.redFlags}`;
+  const newHbBlock = `\n\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${mod.condition}】\n\n• Standard Relief (OTC): ${mod.standardOtc}\n\n• Golden Pairing (HB): ${mod.hbProduct}\n\n• Recommended Dialogue: "${mod.script}"\n\n• Red Flags (Refer Pharmacist): ${mod.redFlags}`;
 
   currentBriefingState.sec5 = topPart + newHbBlock;
   document.getElementById("briefingSec5Text").innerText = currentBriefingState.sec5;
@@ -1959,60 +1957,65 @@ async function saveBriefingPmgApp() {
   }
 }
 
-function copyBriefingMessage(format = 'whatsapp') {
+function formatSectionText(raw) {
+  if (!raw) return "";
+  const cleaned = raw.trim().replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+  const lines = cleaned.split('\n');
+  const formatted = [];
+  for (let i = 0; i < lines.length; i++) {
+    const cur = lines[i].trim();
+    if (!cur) continue;
+    if (formatted.length > 0 && /^[•\-\*\d\[]/.test(cur) && formatted[formatted.length - 1] !== "") {
+      formatted.push("");
+    }
+    formatted.push(cur);
+  }
+  return formatted.join('\n');
+}
+
+function copyBriefingMessage() {
   if (!currentBriefingState) return;
 
   const sec1 = (document.getElementById("briefingSec1Text").innerText || currentBriefingState.sec1).trim();
-  const sec2 = (document.getElementById("briefingSec2Input").value || "").trim();
-  const sec3 = (document.getElementById("briefingSec3Input").value || "").trim();
-  const sec4 = (document.getElementById("briefingSec4Input").value || "").trim();
+  const rawSec2 = document.getElementById("briefingSec2Input").value || currentBriefingState.sec2 || "";
+  const rawSec3 = document.getElementById("briefingSec3Input").value || currentBriefingState.sec3 || "";
+  const rawSec4 = document.getElementById("briefingSec4Input").value || currentBriefingState.sec4 || "";
   const sec5 = (document.getElementById("briefingSec5Text").innerText || currentBriefingState.sec5).trim();
 
-  let text = "";
-  if (format === 'whatsapp') {
-    text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} - DAILY BRIEFING*\n`;
-    text += `📅 Date: ${currentBriefingState.dateDisplay}\n\n`;
+  const sec2 = formatSectionText(rawSec2);
+  const sec3 = formatSectionText(rawSec3);
+  const sec4 = formatSectionText(rawSec4);
 
-    text += `*1. Yesterday's Operational & Financial Review*\n`;
-    text += `${sec1}\n\n`;
+  const divider = "━━━━━━━━━━━━━━━━━━━━━";
 
-    text += `*2. Today's Key Priorities*\n`;
-    text += `${sec2}\n\n`;
+  let text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} - DAILY BRIEFING*\n`;
+  text += `📅 Date: ${currentBriefingState.dateDisplay}\n\n`;
+  text += `${divider}\n\n`;
 
-    text += `*3. HQ Directives & Target Alignment*\n`;
-    text += `${sec3}\n\n`;
+  text += `*1. Yesterday's Operational & Financial Review*\n\n`;
+  text += `${sec1}\n\n`;
+  text += `${divider}\n\n`;
 
-    text += `*4. Operational Precautions & Compliance*\n`;
-    text += `${sec4}\n\n`;
+  text += `*2. Today's Key Priorities*\n\n`;
+  text += `${sec2}\n\n`;
+  text += `${divider}\n\n`;
 
-    text += `*5. Recognition & Team Encouragement*\n`;
-    text += `${sec5}\n\n`;
+  text += `*3. HQ Directives & Target Alignment*\n\n`;
+  text += `${sec3}\n\n`;
+  text += `${divider}\n\n`;
 
-    text += `🔗 *View Live Performance Hub:* ${WEBAPP_LINK}`;
-  } else {
-    text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} - DAILY BRIEFING*\n`;
-    text += `📅 Date: ${currentBriefingState.dateDisplay}\n\n`;
+  text += `*4. Operational Precautions & Compliance*\n\n`;
+  text += `${sec4}\n\n`;
+  text += `${divider}\n\n`;
 
-    text += `*1. Yesterday's Operational & Financial Review*\n`;
-    text += `${sec1}\n\n`;
+  text += `*5. Recognition & Team Encouragement*\n\n`;
+  text += `${sec5}\n\n`;
+  text += `${divider}\n\n`;
 
-    text += `*2. Today's Key Priorities*\n`;
-    text += `${sec2}\n\n`;
-
-    text += `*3. HQ Directives & Target Alignment*\n`;
-    text += `${sec3}\n\n`;
-
-    text += `*4. Operational Precautions & Compliance*\n`;
-    text += `${sec4}\n\n`;
-
-    text += `*5. Recognition & Team Encouragement*\n`;
-    text += `${sec5}\n\n`;
-
-    text += `🔗 View Live Performance Hub: ${WEBAPP_LINK}`;
-  }
+  text += `🔗 *View Live Performance Hub:* ${WEBAPP_LINK}`;
 
   navigator.clipboard.writeText(text).then(() => {
-    alert(`📋 Daily Briefing (${format === 'whatsapp' ? 'WhatsApp' : 'Google Chat'}) copied to clipboard!\nReady to paste to team chat.`);
+    alert(`📋 Daily Briefing copied to clipboard!\nReady to paste directly into your team chat.`);
   }).catch(e => {
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -2020,7 +2023,7 @@ function copyBriefingMessage(format = 'whatsapp') {
     ta.select();
     document.execCommand("copy");
     document.body.removeChild(ta);
-    alert(`📋 Daily Briefing (${format === 'whatsapp' ? 'WhatsApp' : 'Google Chat'}) copied to clipboard!\nReady to paste to team chat.`);
+    alert(`📋 Daily Briefing copied to clipboard!\nReady to paste directly into your team chat.`);
   });
 }
 
