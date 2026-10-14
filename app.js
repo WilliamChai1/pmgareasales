@@ -1195,6 +1195,8 @@ function parseRawCsv(text) {
     rows.push(row);
   }
   return rows;
+}
+
 let accumulatedUploadedFiles = [];
 
 function openUploadSalesModal() {
