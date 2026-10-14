@@ -160,17 +160,26 @@
         <button type="button" class="btn-logout" style="padding: 4px 10px; margin: 0; font-size: 0.85rem;" onclick="closeUploadSalesModal()">✕</button>
       </div>
 
-      <div style="background: #eff6ff; border: 1.5px dashed #3b82f6; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s;" id="csvDropZone" onclick="document.getElementById('csvFileInput').click()">
-        <input type="file" id="csvFileInput" multiple accept=".csv" style="display: none;" onchange="handleCsvFileSelect(event)">
-        <div style="font-size: 2rem; margin-bottom: 8px;">📁</div>
-        <div style="font-weight: 700; color: #1e40af; font-size: 0.95rem;">Drag & drop 1 to 3 POS CSV files here, or click to browse</div>
-        <div style="font-size: 0.75rem; color: #64748b; margin-top: 6px; line-height: 1.4;">
-          Supported files from POS Web:<br>
-          1. <b>Daily Sales reporting</b> (Staff item type breakdown: HB, HM, EHM, TS)<br>
-          2. <b>SALES PERFORMANCE BY TEAMMATE</b> (Total customers served & net sold price)<br>
-          3. <b>Daily Sales reporting (Last Year)</b> (Previous year MTD benchmark)
+      <!-- Mobile-First File Upload Drop Zone & Trigger Button -->
+      <label for="csvFileInput" id="csvDropZone" style="display: block; background: #eff6ff; border: 2px dashed #3b82f6; border-radius: 12px; padding: 22px 16px; text-align: center; cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: rgba(37,99,235,0.15);">
+        <!-- File input: Positioned offscreen rather than display:none so all mobile OS browsers allow activation -->
+        <input type="file" id="csvFileInput" multiple accept=".csv,text/csv,text/plain,application/vnd.ms-excel,application/csv,text/comma-separated-values,text/x-csv,application/x-csv,application/octet-stream,*/*" style="position: absolute; width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; z-index: -1;" onchange="handleCsvFileSelect(event)">
+        
+        <div style="font-size: 2.2rem; margin-bottom: 6px;">📂</div>
+        <div style="font-weight: 800; color: #1e40af; font-size: 1.05rem;">Tap Here to Select POS CSV Files</div>
+        
+        <div style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 0.95rem; margin: 12px auto; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.3); pointer-events: none;">
+          📱 Choose Files from Phone / Computer
         </div>
-      </div>
+
+        <div style="font-size: 0.75rem; color: #64748b; line-height: 1.4; margin-top: 4px;">
+          (You can select 1 to 3 CSV files together, or add them one by one)<br>
+          • <b>Daily Sales reporting</b> &nbsp;|&nbsp; • <b>SALES PERFORMANCE BY TEAMMATE</b> &nbsp;|&nbsp; • <b>Last Year</b>
+        </div>
+      </label>
+
+      <!-- Status of Uploaded Files (Accumulator list for single or multi-file uploads on mobile) -->
+      <div id="uploadedFilesStatus" style="display: none;"></div>
 
       <!-- Preview Section -->
       <div id="uploadPreviewSection" style="display: none; margin-top: 15px;">
@@ -490,10 +499,10 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=58.0"></script>
+  <script src="./data/clinical_upsell_modules.js?v=59.0"></script>
   <script src="./data/dpos_week1.js"></script>
   <script src="./data/dpos_catalog.js"></script>
-  <script src="./dpos.js?v=58.0"></script>
-  <script src="./app.js?v=58.0"></script>
+  <script src="./dpos.js?v=59.0"></script>
+  <script src="./app.js?v=59.0"></script>
 </body>
 </html>

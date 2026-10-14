@@ -1195,7 +1195,7 @@ function parseRawCsv(text) {
     rows.push(row);
   }
   return rows;
-}
+let accumulatedUploadedFiles = [];
 
 function openUploadSalesModal() {
   if (!isManagementOrPharmacist(currentUser)) {
@@ -1208,8 +1208,16 @@ function openUploadSalesModal() {
   history.pushState({ modal: 'uploadSalesModal' }, '');
 
   currentParsedUploadData = null;
+  accumulatedUploadedFiles = [];
   const fileInput = document.getElementById("csvFileInput");
   if (fileInput) fileInput.value = "";
+  
+  const statusContainer = document.getElementById("uploadedFilesStatus");
+  if (statusContainer) {
+    statusContainer.innerHTML = "";
+    statusContainer.style.display = "none";
+  }
+
   const preview = document.getElementById("uploadPreviewSection");
   if (preview) preview.style.display = "none";
   const btn = document.getElementById("confirmUploadSyncBtn");
@@ -1227,6 +1235,55 @@ function closeUploadSalesModal(shouldPop = true) {
   if (shouldPop && history.state && history.state.modal === 'uploadSalesModal') {
     history.back();
   }
+}
+
+function clearUploadedCsvFiles() {
+  accumulatedUploadedFiles = [];
+  currentParsedUploadData = null;
+  const fileInput = document.getElementById("csvFileInput");
+  if (fileInput) fileInput.value = "";
+  const preview = document.getElementById("uploadPreviewSection");
+  if (preview) preview.style.display = "none";
+  renderUploadedFilesStatus();
+}
+
+function renderUploadedFilesStatus() {
+  const container = document.getElementById("uploadedFilesStatus");
+  if (!container) return;
+
+  if (accumulatedUploadedFiles.length === 0) {
+    container.innerHTML = "";
+    container.style.display = "none";
+    return;
+  }
+
+  container.style.display = "block";
+  let html = `
+    <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: 12px; margin-top: 12px;">
+      <div style="font-size: 0.82rem; font-weight: 800; color: #166534; margin-bottom: 6px;">
+        📁 Loaded POS Files (${accumulatedUploadedFiles.length}):
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        ${accumulatedUploadedFiles.map(f => `
+          <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #bbf7d0; font-size: 0.75rem;">
+            <span style="font-weight: 700; color: #15803d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;">
+              ✓ ${f.name}
+            </span>
+            <span style="color: #64748b; font-size: 0.7rem;">${(f.size ? (f.size / 1024).toFixed(1) + ' KB' : '')}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <label for="csvFileInput" class="btn" style="flex: 1; background: #0284c7; color: white; padding: 8px 12px; font-size: 0.78rem; font-weight: 800; margin: 0; text-align: center; cursor: pointer; border-radius: 6px;">
+          ➕ Add / Select Another CSV
+        </label>
+        <button type="button" class="btn-logout" style="padding: 8px 14px; font-size: 0.78rem; margin: 0;" onclick="clearUploadedCsvFiles()">
+          🗑️ Clear
+        </button>
+      </div>
+    </div>
+  `;
+  container.innerHTML = html;
 }
 
 function setupCsvDragAndDrop() {
@@ -1261,32 +1318,46 @@ function setupCsvDragAndDrop() {
   }, false);
 }
 
-function handleCsvFileSelect(event) {
+async function handleCsvFileSelect(event) {
   const files = event.target.files;
   if (files && files.length > 0) {
-    processUploadedFiles(Array.from(files));
+    await processUploadedFiles(Array.from(files));
   }
 }
 
 async function processUploadedFiles(files) {
-  const csvFiles = files.filter(f => f.name.toLowerCase().endsWith('.csv'));
-  if (csvFiles.length === 0) {
-    alert("Please select or drop valid .csv files.");
-    return;
+  if (!files || files.length === 0) return;
+
+  for (const file of files) {
+    try {
+      const text = await file.text();
+      const rows = parseRawCsv(text);
+      const existingIdx = accumulatedUploadedFiles.findIndex(item => item.name === file.name);
+      const fileObj = { name: file.name, text, rows, size: file.size };
+      if (existingIdx !== -1) {
+        accumulatedUploadedFiles[existingIdx] = fileObj;
+      } else {
+        accumulatedUploadedFiles.push(fileObj);
+      }
+    } catch (err) {
+      console.error("Error reading file:", file.name, err);
+    }
   }
 
-  const fileContents = [];
-  for (const file of csvFiles) {
-    const text = await file.text();
-    fileContents.push({ name: file.name, text, rows: parseRawCsv(text) });
-  }
+  renderUploadedFilesStatus();
+  parseAndPreviewAccumulatedFiles();
+}
+
+function parseAndPreviewAccumulatedFiles() {
+  const fileContents = accumulatedUploadedFiles;
+  if (!fileContents || fileContents.length === 0) return;
 
   let file1 = null;
   let file2 = null;
   let file3 = null;
 
   for (const item of fileContents) {
-    const lower = item.name.toLowerCase() + " " + item.text.substring(0, 1000).toLowerCase();
+    const lower = item.name.toLowerCase() + " " + item.text.substring(0, 1500).toLowerCase();
     if (lower.includes("sales performance by teammate") || lower.includes("customers served") || lower.includes("sales person,(count)")) {
       file2 = item;
     } else if (lower.includes("daily sales reporting")) {
@@ -1299,7 +1370,19 @@ async function processUploadedFiles(files) {
   }
 
   if (!file1 && !file2) {
-    alert("Could not identify POS format in uploaded files. Please ensure you upload 'Daily Sales reporting' or 'SALES PERFORMANCE BY TEAMMATE' CSV.");
+    for (const item of fileContents) {
+      const rows = item.rows || [];
+      const headerStr = rows.slice(0, 15).map(r => r.join(',').toLowerCase()).join(' ');
+      if (headerStr.includes('sales item person') && headerStr.includes('grand total')) {
+        file1 = item;
+      } else if (headerStr.includes('sales person') && (headerStr.includes('sales no') || headerStr.includes('count'))) {
+        file2 = item;
+      }
+    }
+  }
+
+  if (!file1 && !file2) {
+    alert("Could not identify POS format in uploaded file(s).\n\nPlease make sure to upload:\n• 'Daily Sales reporting' (Staff item breakdown)\n• OR 'SALES PERFORMANCE BY TEAMMATE'");
     return;
   }
 
@@ -1615,6 +1698,7 @@ async function submitSalesUpload() {
       if (!currentData.pmgApps) currentData.pmgApps = {};
       currentData.pmgApps[currentParsedUploadData.dateKey] = pmgAppCount;
 
+      accumulatedUploadedFiles = [];
       closeUploadSalesModal();
       await loadDashboard();
 
