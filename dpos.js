@@ -36,6 +36,13 @@
     availableTopics: [],
     userScore: null,
     demoMode: false,
+    rolePlayLang: (function() {
+      try {
+        return localStorage.getItem('pmg_dpos_lang_pref') || 'auto';
+      } catch (e) {
+        return 'auto';
+      }
+    })(),
     voices: []
   };
 
@@ -509,11 +516,12 @@
     }
   }
 
-  function normalizeLangCode(raw) {
+  function normalizeLangCode(raw, textSample = '') {
     const s = String(raw || '').toLowerCase().trim();
-    if (s.startsWith('zh') || s.includes('chinese') || s.includes('mandarin') || s.includes('华') || s.includes('中文')) return 'zh';
+    if (s.startsWith('zh') || s.includes('chinese') || s.includes('mandarin') || s.includes('华') || s.includes('中') || s.includes('普通话') || s.includes('国语')) return 'zh';
     if (s.startsWith('en') || s.includes('english') || s.includes('inggeris')) return 'en';
     if (s.startsWith('ms') || s.includes('malay') || s.includes('melayu')) return 'ms';
+    if (/[\u4e00-\u9fa5]/.test(s) || /[\u4e00-\u9fa5]/.test(String(textSample || ''))) return 'zh';
     return 'ms';
   }
 
@@ -761,10 +769,10 @@
     const keys = getGeminiApiKeys();
     const candidateModels = [
       requestedModel,
-      'gemini-3.5-flash-lite',
-      'gemini-3.5-flash',
       'gemini-2.5-flash',
       'gemini-2.5-flash-lite',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
       'gemini-1.5-flash'
     ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
@@ -1494,6 +1502,27 @@
       </div>
       `}
 
+      <!-- LANGUAGE SELECTION BAR -->
+      <div class="dpos-lang-bar">
+        <span style="font-size:0.72rem; font-weight:800; color:#475569; display:flex; align-items:center; gap:4px;">
+          🗣️ <span>Speaking Language (语言):</span>
+        </span>
+        <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
+          <button type="button" class="btn-lang-toggle ${state.rolePlayLang === 'auto' ? 'active' : ''}" onclick="window.DPOS.setRolePlayLang('auto')">
+            🔄 Auto Match
+          </button>
+          <button type="button" class="btn-lang-toggle ${state.rolePlayLang === 'zh' ? 'active' : ''}" onclick="window.DPOS.setRolePlayLang('zh')">
+            🇨🇳 华语 (Mandarin)
+          </button>
+          <button type="button" class="btn-lang-toggle ${state.rolePlayLang === 'ms' ? 'active' : ''}" onclick="window.DPOS.setRolePlayLang('ms')">
+            🇲🇾 Bahasa Melayu
+          </button>
+          <button type="button" class="btn-lang-toggle ${state.rolePlayLang === 'en' ? 'active' : ''}" onclick="window.DPOS.setRolePlayLang('en')">
+            🇬🇧 English
+          </button>
+        </div>
+      </div>
+
       <!-- CHAT CONVERSATION CONTAINER -->
       <div class="dpos-chat-box" id="dposChatBox">
         ${chatHtml}
@@ -1513,8 +1542,14 @@
           <span style="font-size:1.4rem;">${state.isRecording ? '🔴' : '🎙️'}</span>
           <span id="dposMicBtnText">${state.isRecording ? 'Release to Send' : 'Hold to Speak'}</span>
         </button>
-        <div style="font-size:0.7rem; color:#64748b; text-align:center;">
-          Press & hold button while speaking • Release to send • Customer matches your language
+        <div style="font-size:0.7rem; text-align:center; line-height:1.4;">
+          ${state.rolePlayLang === 'zh'
+            ? '<span style="color:#0f766e; font-weight:700;">🇨🇳 华语模式：请说华语 • 虚拟顾客将用华语回应 (严禁自动翻译为外语)</span>'
+            : state.rolePlayLang === 'ms'
+            ? '<span style="color:#0f766e; font-weight:700;">🇲🇾 Mod Bahasa Melayu: Sila bertutur BM • Pelanggan membalas dalam BM</span>'
+            : state.rolePlayLang === 'en'
+            ? '<span style="color:#0f766e; font-weight:700;">🇬🇧 English Mode: Speak in English • Customer replies in English</span>'
+            : '<span style="color:#64748b;">Press & hold button while speaking • Release to send • Customer matches your language</span>'}
         </div>
         <div id="dposHoldTip" class="dpos-hold-tip" style="display:none;"></div>
         
@@ -2267,7 +2302,95 @@
       // Build conversation history text
       const historyText = state.rolePlayTurns.map(t => `${t.speaker === 'user' ? 'Teammate' : 'Customer'}: ${t.text}`).join('\n');
 
+      const chosenLang = state.rolePlayLang || 'auto';
+      let langDirective = "";
+      let part0Directive = "";
+
+      if (chosenLang === 'zh') {
+        langDirective = `
+================================================================================
+CRITICAL LANGUAGE LOCK - ENFORCED MANDARIN CHINESE (华语):
+The teammate has explicitly selected MANDARIN CHINESE (华语) as their speaking language.
+1. TRANSCRIPTION IN CHINESE CHARACTERS ONLY:
+   - You MUST transcribe the teammate's audio speech VERBATIM into Simplified Chinese characters (简体中文, 汉字).
+   - ABSOLUTE PROHIBITION: DO NOT TRANSLATE into English or Malay! (For example: NEVER write "Good morning Uncle, how can I help you?" or "Selamat pagi...").
+   - Transcribe brand names, numbers, and promo terms as spoken (e.g., "早安Uncle，请问哪里痛？", "这个JH Nutrition Flexson是天然姜黄素，每天吃一颗", "买满RM20可以PWP特价加购").
+2. CUSTOMER REPLY LANGUAGE:
+   - The customer (${customerName}) MUST reply in natural conversational Mandarin Chinese (华语) using Chinese characters.
+   - DO NOT reply in English or Malay.
+3. LANGUAGE FIELDS:
+   - "detected_language": "zh"
+   - "reply_language": "zh"
+================================================================================`;
+        part0Directive = `The teammate is speaking in MANDARIN CHINESE (华语). Transcribe their audio VERBATIM in Simplified Chinese characters (汉字). DO NOT TRANSLATE TO ENGLISH OR MALAY! Reply in character as ${customerName} in conversational Mandarin Chinese (华语).`;
+      } else if (chosenLang === 'ms') {
+        langDirective = `
+================================================================================
+CRITICAL LANGUAGE LOCK - ENFORCED BAHASA MELAYU:
+The teammate has explicitly selected BAHASA MELAYU as their speaking language.
+1. TRANSCRIPTION IN BAHASA MELAYU:
+   - Transcribe the teammate's audio speech VERBATIM into Bahasa Melayu.
+   - ABSOLUTE PROHIBITION: DO NOT TRANSLATE into English or Chinese!
+2. CUSTOMER REPLY LANGUAGE:
+   - The customer (${customerName}) MUST reply in natural conversational Bahasa Melayu (Sarawak Malay).
+3. LANGUAGE FIELDS:
+   - "detected_language": "ms"
+   - "reply_language": "ms"
+================================================================================`;
+        part0Directive = `The teammate is speaking in BAHASA MELAYU. Transcribe their audio VERBATIM in Bahasa Melayu. DO NOT TRANSLATE TO ENGLISH OR CHINESE! Reply in character as ${customerName} in conversational Bahasa Melayu.`;
+      } else if (chosenLang === 'en') {
+        langDirective = `
+================================================================================
+CRITICAL LANGUAGE LOCK - ENFORCED ENGLISH:
+The teammate has explicitly selected ENGLISH as their speaking language.
+1. TRANSCRIPTION IN ENGLISH:
+   - Transcribe the teammate's audio speech VERBATIM into English. DO NOT TRANSLATE.
+2. CUSTOMER REPLY LANGUAGE:
+   - The customer (${customerName}) MUST reply in English.
+3. LANGUAGE FIELDS:
+   - "detected_language": "en"
+   - "reply_language": "en"
+================================================================================`;
+        part0Directive = `The teammate is speaking in ENGLISH. Transcribe their audio VERBATIM in English. DO NOT TRANSLATE! Reply in character as ${customerName} in conversational English.`;
+      } else {
+        langDirective = `
+================================================================================
+CRITICAL ANTI-TRANSLATION DIRECTIVE - AUTO-DETECT & STRICT LANGUAGE MATCHING:
+You are an audio transcriber and conversational role-play engine.
+A common bug is translating the speaker's speech into another language (e.g. transcribing Chinese speech into English or Malay).
+YOU MUST NEVER TRANSLATE THE USER'S AUDIO SPEECH!
+1. VERBATIM TRANSCRIPTION IN ORIGINAL SPOKEN LANGUAGE:
+   - If the teammate speaks Mandarin Chinese:
+     * "transcript" MUST be written in Chinese characters (汉字, e.g. "早安Uncle，请问哪里痛？", "这个药膏是搽关节的").
+     * ABSOLUTE PROHIBITION: DO NOT TRANSLATE TO ENGLISH ("Good morning...") OR MALAY ("Selamat pagi...")!
+     * "detected_language": "zh"
+     * "reply_language": "zh"
+     * "customer_reply": MUST be in conversational Mandarin Chinese (华语 characters)!
+   - If the teammate speaks Bahasa Melayu:
+     * "transcript" MUST be written in Bahasa Melayu. DO NOT translate to English or Chinese!
+     * "detected_language": "ms"
+     * "reply_language": "ms"
+     * "customer_reply": MUST be in conversational Bahasa Melayu!
+   - If the teammate speaks English:
+     * "transcript" MUST be written in English.
+     * "detected_language": "en"
+     * "reply_language": "en"
+     * "customer_reply": MUST be in English!
+================================================================================`;
+        part0Directive = `Transcribe the teammate's audio input VERBATIM in the exact language spoken. DO NOT TRANSLATE (if Mandarin, transcribe in Chinese characters 汉字; if Malay, in Malay; if English, in English). Reply in character as ${customerName} matching the exact same language.`;
+      }
+
       const systemInstruction = `You are a virtual customer role-play engine for PMG Pharmacy in Sarawak, Malaysia.
+
+MULTILINGUAL SARAWAK COMMUNITY CONTEXT:
+In Sarawak, patients and pharmacy staff interact fluently across Mandarin Chinese (华语), Bahasa Melayu, and English.
+Regardless of the language in which the persona background notes below were written, ${customerName} can converse in whichever language the teammate uses!
+If addressed in Mandarin, ${customerName} replies in Mandarin Chinese (华语).
+If addressed in Malay, ${customerName} replies in Malay.
+If addressed in English, ${customerName} replies in English.
+
+${langDirective}
+
 CUSTOMER PERSONA & CLINICAL BACKGROUND:
 ${personaObj.hiddenPrompt}
 ${arch ? `
@@ -2291,7 +2414,7 @@ Accurately transcribe the teammate's speech recognizing these pharmacy brands an
   * Loyalty & Healthcare Terms: PMG Membership (ahli PMG / 免费会员 / free membership), Senior Care Plus (SCP / 乐龄关怀计划 / 银发族计划), 28th Monthly Free Blood Glucose Test (28hb ujian gula percuma / 每月28号免费验血糖).
 
 STRICT INSTRUCTIONS:
-1. Listen to the teammate's audio recording. Transcribe their words accurately in the exact language spoken. Accurately transcribe product names and promotion terms like "PWP", "GWP", "free gift", "RM250", "RM20", etc.
+1. Listen to the teammate's audio recording. Transcribe their words accurately in the exact language spoken. DO NOT TRANSLATE. Accurately transcribe product names and promotion terms like "PWP", "GWP", "free gift", "RM250", "RM20", etc.
 2. Auto-detect their spoken language:
    - "zh" (Mandarin / Chinese)
    - "ms" (Bahasa Melayu / Sarawak Malay)
@@ -2356,7 +2479,7 @@ Output strictly in JSON format:
       const contents = [
         {
           parts: [
-            { text: `Listen to the teammate's audio input. Reply in character as ${customerName} matching their spoken language and evaluate the turn.` },
+            { text: part0Directive },
             {
               inlineData: {
                 mimeType: wavObj.mimeType,
@@ -2367,17 +2490,32 @@ Output strictly in JSON format:
         }
       ];
 
-      const res = await dposGenerate('gemini-3.5-flash-lite', contents, systemInstruction);
+      const res = await dposGenerate('gemini-2.5-flash', contents, systemInstruction);
       const text = res.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       const parsed = extractJson(text) || {};
 
-      const detectedLang = normalizeLangCode(parsed.detected_language);
-      const replyLang = normalizeLangCode(parsed.reply_language || detectedLang);
-      const userText = (parsed.transcript || "").trim() || "(Voice speech received)";
-      const customerReply = (parsed.customer_reply || "").trim();
+      let userText = (parsed.transcript || "").trim() || "(Voice speech received)";
+      let customerReply = (parsed.customer_reply || "").trim();
 
       if (!customerReply) {
         throw new Error("Empty customer reply returned from AI engine.");
+      }
+
+      let detectedLang = normalizeLangCode(parsed.detected_language, userText);
+      let replyLang = normalizeLangCode(parsed.reply_language || detectedLang, customerReply);
+
+      // Chinese character detection overrides mistaken 'en' or 'ms'
+      if (/[\u4e00-\u9fa5]/.test(userText)) {
+        detectedLang = 'zh';
+      }
+      if (/[\u4e00-\u9fa5]/.test(customerReply)) {
+        replyLang = 'zh';
+      }
+
+      // If user locked a specific language mode, enforce it
+      if (chosenLang && chosenLang !== 'auto') {
+        detectedLang = chosenLang;
+        replyLang = chosenLang;
       }
 
       // Record turns
@@ -2422,8 +2560,10 @@ Output strictly in JSON format:
     if (!window.speechSynthesis) return;
     try {
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      const code = normalizeLangCode(lang);
+      let code = normalizeLangCode(lang, text);
+      if (/[\u4e00-\u9fa5]/.test(text)) {
+        code = 'zh';
+      }
       const personaRaw = (state.currentWeek && (state.currentWeek.persona || state.currentWeek.topic)) || '';
       const gender = detectPersonaGender(personaRaw);
       const voice = pickVoice(code, gender);
@@ -2748,6 +2888,14 @@ Output strictly in JSON:
     }
   }
 
+  function setRolePlayLang(lang) {
+    state.rolePlayLang = lang || 'auto';
+    try {
+      localStorage.setItem('pmg_dpos_lang_pref', state.rolePlayLang);
+    } catch (e) {}
+    renderRolePlay(document.getElementById("dposContentContainer"));
+  }
+
   function resetRolePlay() {
     state.rolePlayTurns = [];
     state.evaluation = null;
@@ -2883,6 +3031,7 @@ Output strictly in JSON:
     replaySpeech: replaySpeech,
     evaluateRolePlay: evaluateRolePlay,
     resetRolePlay: resetRolePlay,
+    setRolePlayLang: setRolePlayLang,
     openReviewTranscript: openReviewTranscript,
     closeReviewTranscript: closeReviewTranscript,
     changeReviewTopic: changeReviewTopic,
