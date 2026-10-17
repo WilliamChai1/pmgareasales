@@ -119,6 +119,323 @@
     }
   ];
 
+  // ─── PHARMACIST ASSISTANT (PA) COMPULSORY ASSESSMENT RUBRIC (8 SCHEMES) ────
+  const PA_ASSESSMENT_SCHEMES = [
+    {
+      id: "be_friendly",
+      number: 1,
+      title: "BE FRIENDLY",
+      max: 2,
+      rubric: {
+        0: "No greeting, rude",
+        1: "Greeting, friendly",
+        2: "Remember customers name, address customer with good title"
+      }
+    },
+    {
+      id: "assessment_offer_test",
+      number: 2,
+      title: "ASSESSMENT / OFFER DO TEST (BP/ GLUCOSE)",
+      max: 2,
+      rubric: {
+        0: "No assessment perform/ Did not offer",
+        1: "Satisfactory/ Offer",
+        2: "Comprehensive assessment (question, incorporate test available)"
+      }
+    },
+    {
+      id: "responding_to_symptoms",
+      number: 3,
+      title: "RESPONDING TO SYMPTOMS",
+      max: 2,
+      rubric: {
+        0: "Unable to identify",
+        1: "With doubt/ asked pharmacist",
+        2: "Able to identify accurately"
+      }
+    },
+    {
+      id: "treatment",
+      number: 4,
+      title: "TREATMENT",
+      max: 2,
+      rubric: {
+        0: "No clue what to give/ Wrong indication",
+        1: "Dispense medicines that address some of the symptoms only",
+        2: "Dispense medicines that address all symptoms, with correct dose"
+      }
+    },
+    {
+      id: "add_on",
+      number: 5,
+      title: "ADD ON",
+      max: 2,
+      rubric: {
+        0: "Did not add on supplement",
+        1: "Add on but not the most appropriate option",
+        2: "Add on appropriate supplement"
+      }
+    },
+    {
+      id: "customer_loyalty",
+      number: 6,
+      title: "CUSTOMER LOYALTY",
+      max: 2,
+      rubric: {
+        0: "Didn’t promote membership/ didn’t ask if customer has membership/ unable to resolve membership issues eg. Points, expiry of member points",
+        1: "Promote membership/ confirm if customer has membership/ Able to resolve membership issues upon request",
+        2: "Promote membership with good & fluent explanation/ Able to resolve membership issues eg. Points, expiry of member points/ Proactively assist customer to use member points during payment"
+      }
+    },
+    {
+      id: "promote_sales_campaign",
+      number: 7,
+      title: "PROMOTE SALES CAMPAIGN",
+      max: 2,
+      rubric: {
+        0: "Didn’t promote on-going sales campaign",
+        1: "Informed customer about on-going sales campaign",
+        2: "Able to incorporate & promote sales campaign to the best of customer’s benefit"
+      }
+    },
+    {
+      id: "customer_feedback",
+      number: 8,
+      title: "CUSTOMER FEEDBACK",
+      isFeedback: true,
+      tiers: {
+        "-6": { score: -6, stars: 1, face: "😡", label: "1 Star / Red Angry Face", desc: "Customer felt neglected, offended, or received wrong medication" },
+        "-3": { score: -3, stars: 2, face: "😟", label: "2 Stars / Orange Sad Face", desc: "Customer felt rushed, confused, or unhelped" },
+        "0":  { score: 0,  stars: 3, face: "😐", label: "3 Stars / Yellow Neutral Face", desc: "Standard transaction, nothing remarkable" },
+        "3":  { score: 3,  stars: 4, face: "😊", label: "4 Stars / Light Green Smiling Face", desc: "Good service, helpful advice, satisfied customer" },
+        "6":  { score: 6,  stars: 5, face: "😃", label: "5 Stars / Dark Green Happy Face", desc: "Delighted, felt well cared for, received full healthcare solution" }
+      }
+    }
+  ];
+
+  function computePaAssessment(transcriptText, userTurns, aiPaAssessment, cleanBreakdown, isEmergency) {
+    const text = (transcriptText || '').toLowerCase();
+    const userWords = (userTurns || []).map(t => t.text || '').join(' ').toLowerCase();
+    const bd = cleanBreakdown || { warmth: 8, fluency: 8, empathy: 8, dpos: 25, pwp: 0, membership: 10 };
+
+    // 1. BE FRIENDLY (0-2 pts)
+    let beFriendlyScore = 0;
+    const hasGreeting = /(selamat|pagi|petang|tengah\s*hari|malam|早安|午安|你好|您好|hello|hi|good\s*morning|good\s*afternoon)/i.test(userWords);
+    const hasTitle = /(uncle|auntie|aunty|pakcik|makcik|encik|puan|cik|tuan|mr|mrs|ms|madam|dr|tan|lee|wong|chong|khoo|chin|叔叔|阿姨|先生|女士|大爷|大妈|小姐)/i.test(userWords);
+    if (hasGreeting && hasTitle) {
+      beFriendlyScore = 2;
+    } else if (hasGreeting || hasTitle) {
+      beFriendlyScore = 1;
+    } else {
+      beFriendlyScore = 0;
+    }
+
+    // 2. ASSESSMENT / OFFER DO TEST (BP/ GLUCOSE) (0-2 pts)
+    let assessScore = 0;
+    const hasQuestions = /(berapa\s*lama|bila\s*mula|sakit\s*macam\s*mana|demam|bengkak|alahan|pedih|gastrik|perut|buah\s*pinggang|kencing|ubat\s*apa|ada\s*makan|痛了多久|几天了|发烧|红肿|有什么不舒服|对什么药过敏|空腹|饭后)/i.test(userWords);
+    const hasTestOffer = /(tekanan\s*darah|blood\s*pressure|\bbp\b|gula\s*darah|blood\s*glucose|\bglucose\b|kencing\s*manis|ujian\s*saringan|saringan\s*gula|28\s*hb|28th|28\s*号|cek\s*gula|cek\s*bp|check\s*bp|验血糖|测血压|免费验血|量血压)/i.test(userWords);
+    if (hasQuestions && hasTestOffer) {
+      assessScore = 2;
+    } else if (hasQuestions || hasTestOffer) {
+      assessScore = 1;
+    } else {
+      assessScore = 0;
+    }
+
+    // 3. RESPONDING TO SYMPTOMS (0-2 pts)
+    let symptomScore = 0;
+    if (isEmergency) {
+      const identifiedRedFlag = /(kecemasan|bahaya|hospital|doktor|klinik|emergency|ambulance|999|bukan\s*biasa|jangan\s*tunggu|segera|立刻去医院|急诊|危险|看医生)/i.test(userWords);
+      symptomScore = identifiedRedFlag ? 2 : 0;
+    } else {
+      const addressedSymptoms = (bd.dpos >= 20) || /(sendi|lutut|batuk|selsema|gastrik|angin|pedih|kulat|gatal|ekzema|mata|gusi|sakit|demam|radang|tisu|tulang|cartilage|rawan|bengkak|关节|软骨|磨损|胃酸|发炎|咳嗽|感冒|皮肤|眼睛)/i.test(userWords);
+      const askedPharmacist = /(pharmacist|ahli\s*farmasi|tanya\s*farmasi|rujuk\s*farmasi|药剂师)/i.test(userWords);
+      if (addressedSymptoms) {
+        symptomScore = 2;
+      } else if (askedPharmacist || bd.dpos >= 10) {
+        symptomScore = 1;
+      } else {
+        symptomScore = 0;
+      }
+    }
+
+    // 4. TREATMENT (0-2 pts)
+    let treatmentScore = 0;
+    if (isEmergency) {
+      const avoidedCommercialSelling = !/(flexson|flexmore|suplemen|vitamin|beli\s*ubat)/i.test(userWords);
+      treatmentScore = avoidedCommercialSelling ? 2 : 0;
+    } else {
+      const hasMed = /(paracetamol|panadol|terrafast|medicplast|patch|koyok|krim|cream|gel|ubat|tablet|capsule|syrup|spray|gargle|药水|药膏|药贴|止痛|药片)/i.test(userWords);
+      const hasDose = /(biji|tablet|capsule|kali|sehari|selepas\s*makan|sebelum\s*makan|sapu|tampal|jam|hours|times|daily|after\s*food|颗|粒|次|天|饭后|饭前|每天)/i.test(userWords);
+      if (hasMed && hasDose) {
+        treatmentScore = 2;
+      } else if (hasMed || hasDose) {
+        treatmentScore = 1;
+      } else {
+        treatmentScore = 0;
+      }
+    }
+
+    // 5. ADD ON (0-2 pts)
+    let addOnScore = 0;
+    if (isEmergency) {
+      addOnScore = 2;
+    } else {
+      const hasHbBrand = /(jh\s*nutrition|nutribridge|livemore|biowell|v-infinity|vinfinity|medicplast|vk\s*dermsolve|victoria|jase|flexson|flexmore|sleepright|crystoe|neoflex|fish\s*oil|calcium|magnesium|curcuma|glucosamine|chondroitin|collagen|probiotic|house\s*brand|自家品牌|姜黄素|软骨素|鱼油|钙片|深层修补)/i.test(userWords);
+      const hasGeneralSupp = /(suplemen|supplement|vitamin|herba|botanikal|khasiat|保健品|营养品|补充剂)/i.test(userWords);
+      if (hasHbBrand) {
+        addOnScore = 2;
+      } else if (hasGeneralSupp) {
+        addOnScore = 1;
+      } else {
+        addOnScore = 0;
+      }
+    }
+
+    // 6. CUSTOMER LOYALTY (0-2 pts)
+    let loyaltyScore = 0;
+    const hasMembership = /(ahli|member|membership|daftar\s*ahli|kad\s*ahli|pmg\s*member|free\s*membership|会员|办会员|积分)/i.test(userWords);
+    const hasPointsOrScp = /(point|mata\s*ganjaran|tolak\s*point|guna\s*point|redeem|tebus|senior\s*care|scp|28\s*hb|28th|28\s*号|扣分|兑换|抵扣|乐龄关怀)/i.test(userWords);
+    if (hasMembership && hasPointsOrScp) {
+      loyaltyScore = 2;
+    } else if (hasMembership || hasPointsOrScp || bd.membership >= 10) {
+      loyaltyScore = 1;
+    } else {
+      loyaltyScore = 0;
+    }
+
+    // 7. PROMOTE SALES CAMPAIGN (0-2 pts)
+    let campaignScore = 0;
+    const hasPwpOrGwp = /(pwp|purchase\s*with\s*purchase|gwp|gift\s*with\s*purchase|hadiah\s*percuma|free\s*gift|promosi\s*kaunter|tambah\s*(rm|\d+)|belanja\s*rm|beli\s*rm250|beli\s*rm20|harga\s*jimat|diskaun|offer|特价加购|加购|买满送|柜台特价)/i.test(userWords);
+    if (hasPwpOrGwp && bd.pwp >= 10) {
+      campaignScore = 2;
+    } else if (hasPwpOrGwp || bd.pwp >= 5) {
+      campaignScore = 1;
+    } else {
+      campaignScore = 0;
+    }
+
+    // Overlay AI evaluation if provided and valid
+    const ai = aiPaAssessment || {};
+    if (ai.be_friendly && typeof ai.be_friendly.score === 'number') {
+      beFriendlyScore = Math.min(2, Math.max(0, Math.round(ai.be_friendly.score)));
+    }
+    if (ai.assessment_offer_test && typeof ai.assessment_offer_test.score === 'number') {
+      assessScore = Math.min(2, Math.max(0, Math.round(ai.assessment_offer_test.score)));
+    }
+    if (ai.responding_to_symptoms && typeof ai.responding_to_symptoms.score === 'number') {
+      symptomScore = Math.min(2, Math.max(0, Math.round(ai.responding_to_symptoms.score)));
+    }
+    if (ai.treatment && typeof ai.treatment.score === 'number') {
+      treatmentScore = Math.min(2, Math.max(0, Math.round(ai.treatment.score)));
+    }
+    if (ai.add_on && typeof ai.add_on.score === 'number') {
+      addOnScore = Math.min(2, Math.max(0, Math.round(ai.add_on.score)));
+    }
+    if (ai.customer_loyalty && typeof ai.customer_loyalty.score === 'number') {
+      loyaltyScore = Math.min(2, Math.max(0, Math.round(ai.customer_loyalty.score)));
+    }
+    if (ai.promote_sales_campaign && typeof ai.promote_sales_campaign.score === 'number') {
+      campaignScore = Math.min(2, Math.max(0, Math.round(ai.promote_sales_campaign.score)));
+    }
+
+    const subtotal1to7 = beFriendlyScore + assessScore + symptomScore + treatmentScore + addOnScore + loyaltyScore + campaignScore;
+
+    // 8. CUSTOMER FEEDBACK (-6 to +6 pts)
+    let feedbackScore = 0;
+    if (ai.customer_feedback && typeof ai.customer_feedback.score === 'number') {
+      const s = Number(ai.customer_feedback.score);
+      if (s >= 5) feedbackScore = 6;
+      else if (s >= 2) feedbackScore = 3;
+      else if (s >= -1) feedbackScore = 0;
+      else if (s >= -4) feedbackScore = -3;
+      else feedbackScore = -6;
+    } else {
+      if (subtotal1to7 >= 12) {
+        feedbackScore = 6;
+      } else if (subtotal1to7 >= 9) {
+        feedbackScore = 3;
+      } else if (subtotal1to7 >= 6) {
+        feedbackScore = 0;
+      } else if (subtotal1to7 >= 3) {
+        feedbackScore = -3;
+      } else {
+        feedbackScore = -6;
+      }
+    }
+
+    const feedbackTier = PA_ASSESSMENT_SCHEMES[7].tiers[String(feedbackScore)] || PA_ASSESSMENT_SCHEMES[7].tiers["0"];
+    const totalScore = Math.min(20, Math.max(0, subtotal1to7 + feedbackScore));
+    const percentage = Math.round((totalScore / 20) * 100);
+    const passed = totalScore >= 14;
+
+    return {
+      be_friendly: {
+        score: beFriendlyScore,
+        max: 2,
+        title: "1. BE FRIENDLY",
+        rating: PA_ASSESSMENT_SCHEMES[0].rubric[beFriendlyScore] || "Greeting, friendly",
+        rationale: (ai.be_friendly && ai.be_friendly.rationale) || (beFriendlyScore === 2 ? "Remembered customer's name and addressed with a respectful title." : (beFriendlyScore === 1 ? "Polite greeting offered." : "No polite greeting detected."))
+      },
+      assessment_offer_test: {
+        score: assessScore,
+        max: 2,
+        title: "2. ASSESSMENT / OFFER DO TEST (BP/ GLUCOSE)",
+        rating: PA_ASSESSMENT_SCHEMES[1].rubric[assessScore] || "Satisfactory/ Offer",
+        rationale: (ai.assessment_offer_test && ai.assessment_offer_test.rationale) || (assessScore === 2 ? "Comprehensive assessment incorporating vital tests (BP/Glucose)." : (assessScore === 1 ? "Satisfactory questions asked or offered test." : "No assessment performed or offered."))
+      },
+      responding_to_symptoms: {
+        score: symptomScore,
+        max: 2,
+        title: "3. RESPONDING TO SYMPTOMS",
+        rating: PA_ASSESSMENT_SCHEMES[2].rubric[symptomScore] || "Able to identify accurately",
+        rationale: (ai.responding_to_symptoms && ai.responding_to_symptoms.rationale) || (symptomScore === 2 ? "Accurately identified symptoms and screened red flags." : (symptomScore === 1 ? "Partially identified or consulted pharmacist." : "Unable to identify root symptoms."))
+      },
+      treatment: {
+        score: treatmentScore,
+        max: 2,
+        title: "4. TREATMENT",
+        rating: PA_ASSESSMENT_SCHEMES[3].rubric[treatmentScore] || "Dispense medicines that address all symptoms, with correct dose",
+        rationale: (ai.treatment && ai.treatment.rationale) || (treatmentScore === 2 ? "Dispensed medicines addressing all symptoms with correct dose and timing." : (treatmentScore === 1 ? "Addressed some symptoms only." : "No medicines or wrong indication given."))
+      },
+      add_on: {
+        score: addOnScore,
+        max: 2,
+        title: "5. ADD ON",
+        rating: PA_ASSESSMENT_SCHEMES[4].rubric[addOnScore] || "Add on appropriate supplement",
+        rationale: (ai.add_on && ai.add_on.rationale) || (addOnScore === 2 ? "Appropriately added on relevant PMG House Brand supplement." : (addOnScore === 1 ? "Added on supplement but not the most targeted option." : "Did not add on supplement."))
+      },
+      customer_loyalty: {
+        score: loyaltyScore,
+        max: 2,
+        title: "6. CUSTOMER LOYALTY",
+        rating: PA_ASSESSMENT_SCHEMES[5].rubric[loyaltyScore] || "Promote membership with good & fluent explanation",
+        rationale: (ai.customer_loyalty && ai.customer_loyalty.rationale) || (loyaltyScore === 2 ? "Fluent explanation of membership, points redemption, and Senior Care Plus." : (loyaltyScore === 1 ? "Confirmed membership status upon request." : "Did not promote membership or assist points."))
+      },
+      promote_sales_campaign: {
+        score: campaignScore,
+        max: 2,
+        title: "7. PROMOTE SALES CAMPAIGN",
+        rating: PA_ASSESSMENT_SCHEMES[6].rubric[campaignScore] || "Able to incorporate & promote sales campaign to customer benefit",
+        rationale: (ai.promote_sales_campaign && ai.promote_sales_campaign.rationale) || (campaignScore === 2 ? "Smoothly incorporated cashier counter PWP or GWP deal." : (campaignScore === 1 ? "Informed customer about ongoing campaign." : "Did not promote ongoing sales campaigns."))
+      },
+      customer_feedback: {
+        score: feedbackScore,
+        stars: feedbackTier.stars,
+        face: feedbackTier.face,
+        label: feedbackTier.label,
+        desc: feedbackTier.desc,
+        title: "8. CUSTOMER FEEDBACK",
+        rationale: (ai.customer_feedback && ai.customer_feedback.rationale) || (feedbackScore >= 3 ? "Customer felt respected, well cared for, and thoroughly satisfied." : (feedbackScore === 0 ? "Standard transaction, customer had neutral satisfaction." : "Customer felt rushed, confused, or unserved."))
+      },
+      subtotal_1_to_7: subtotal1to7,
+      total_score: totalScore,
+      max_score: 20,
+      percentage: percentage,
+      passed: passed
+    };
+  }
+
   // ─── RANDOM CASE GENERATOR (10 CLINICAL DOMAINS) ───────────────────────────
   function buildRandomCase(domainKey) {
     const catalog = (typeof window !== 'undefined' && window.DPOS_CLINICAL_CATALOG) ? window.DPOS_CLINICAL_CATALOG : {};
@@ -1385,6 +1702,124 @@
               </div>
             </div>`}
 
+          ${(ev.paAssessment || isRandomMode) ? (function() {
+            const pa = ev.paAssessment || computePaAssessment(transcript, userTurns, null, ev.breakdown, isEmergency);
+            const fbScore = (pa.customer_feedback && pa.customer_feedback.score !== undefined) ? pa.customer_feedback.score : 0;
+            const fbClass = fbScore >= 6 ? 'score-p6' : (fbScore >= 3 ? 'score-p3' : (fbScore === 0 ? 'score-0' : (fbScore === -3 ? 'score-m3' : 'score-m6')));
+            return `
+              <!-- PHARMACIST ASSISTANT (PA) COMPULSORY ASSESSMENT SCORECARD (/20) -->
+              <div class="pa-scorecard-card">
+                <div class="pa-scorecard-header">
+                  <div>
+                    <div style="font-size:0.68rem; font-weight:800; color:#0d9488; text-transform:uppercase; letter-spacing:0.5px;">Official Pharmacist Assistant (PA) Rubric</div>
+                    <div style="font-size:1.1rem; font-weight:900; color:#0f172a; margin-top:2px;">📋 Pharmacist Assistant Competency Scorecard</div>
+                  </div>
+                  <div class="pa-score-hero">
+                    <div class="pa-score-number" style="color:${pa.passed ? '#15803d' : '#b91c1c'};">
+                      ${pa.total_score} <span style="font-size:0.9rem; font-weight:700; color:#64748b;">/ 20</span>
+                    </div>
+                    <span class="pa-status-tag ${pa.passed ? 'pa-status-pass' : 'pa-status-fail'}">
+                      ${pa.passed ? '✅ PASSED (' + pa.percentage + '%)' : '⚠️ NEEDS RETRIAL (' + pa.percentage + '%)'}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- SCHEME 8: CUSTOMER FEEDBACK HERO -->
+                <div class="pa-feedback-hero ${fbClass}">
+                  <div class="pa-feedback-face">${pa.customer_feedback.face}</div>
+                  <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <span style="font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">Scheme 8: Customer Feedback Rating</span>
+                      <span style="font-size:0.8rem; font-weight:900;">${pa.customer_feedback.score >= 0 ? '+' + pa.customer_feedback.score : pa.customer_feedback.score} pts</span>
+                    </div>
+                    <div style="font-size:0.95rem; font-weight:800; margin-top:2px;">
+                      ${'⭐'.repeat(pa.customer_feedback.stars)} ${escapeHtml(pa.customer_feedback.label)}
+                    </div>
+                    <div style="font-size:0.75rem; margin-top:2px; line-height:1.4;">
+                      ${escapeHtml(pa.customer_feedback.rationale || pa.customer_feedback.desc)}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 8-SCHEME RUBRIC BREAKDOWN TABLE -->
+                <div style="overflow-x:auto;">
+                  <table class="pa-rubric-table">
+                    <thead>
+                      <tr>
+                        <th style="width:26%;">Assessment Scheme</th>
+                        <th style="width:12%; text-align:center;">Score</th>
+                        <th style="width:38%;">Performance Criteria Achieved</th>
+                        <th style="width:24%;">Auditor Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><b>1. BE FRIENDLY</b></td>
+                        <td style="text-align:center;"><span class="pa-pill-score pa-pill-${pa.be_friendly.score}">${pa.be_friendly.score} / 2</span></td>
+                        <td>${escapeHtml(pa.be_friendly.rating)}</td>
+                        <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.be_friendly.rationale)}</td>
+                      </tr>
+                      <tr>
+                        <td><b>2. ASSESSMENT / OFFER TEST (BP/GLUCOSE)</b></td>
+                        <td style="text-align:center;"><span class="pa-pill-score pa-pill-${pa.assessment_offer_test.score}">${pa.assessment_offer_test.score} / 2</span></td>
+                        <td>${escapeHtml(pa.assessment_offer_test.rating)}</td>
+                        <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.assessment_offer_test.rationale)}</td>
+                      </tr>
+                      <tr>
+                        <td><b>3. RESPONDING TO SYMPTOMS</b></td>
+                        <td style="text-align:center;"><span class="pa-pill-score pa-pill-${pa.responding_to_symptoms.score}">${pa.responding_to_symptoms.score} / 2</span></td>
+                        <td>${escapeHtml(pa.responding_to_symptoms.rating)}</td>
+                        <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.responding_to_symptoms.rationale)}</td>
+                      </tr>
+                      <tr>
+                        <td><b>4. TREATMENT</b></td>
+                        <td style="text-align:center;"><span class="pa-pill-score pa-pill-${pa.treatment.score}">${pa.treatment.score} / 2</span></td>
+                        <td>${escapeHtml(pa.treatment.rating)}</td>
+                        <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.treatment.rationale)}</td>
+                      </tr>
+                      <tr>
+                        <td><b>5. ADD ON</b></td>
+                        <td style="text-align:center;"><span class="pa-pill-score pa-pill-${pa.add_on.score}">${pa.add_on.score} / 2</span></td>
+                        <td>${escapeHtml(pa.add_on.rating)}</td>
+                        <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.add_on.rationale)}</td>
+                      </tr>
+                      <tr>
+                        <td><b>6. CUSTOMER LOYALTY</b></td>
+                        <td style="text-align:center;"><span class="pa-pill-score pa-pill-${pa.customer_loyalty.score}">${pa.customer_loyalty.score} / 2</span></td>
+                        <td>${escapeHtml(pa.customer_loyalty.rating)}</td>
+                        <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.customer_loyalty.rationale)}</td>
+                      </tr>
+                      <tr>
+                        <td><b>7. PROMOTE SALES CAMPAIGN</b></td>
+                        <td style="text-align:center;"><span class="pa-pill-score pa-pill-${pa.promote_sales_campaign.score}">${pa.promote_sales_campaign.score} / 2</span></td>
+                        <td>${escapeHtml(pa.promote_sales_campaign.rating)}</td>
+                        <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.promote_sales_campaign.rationale)}</td>
+                      </tr>
+                      <tr style="background:#f8fafc;">
+                        <td><b>8. CUSTOMER FEEDBACK</b></td>
+                        <td style="text-align:center;">
+                          <span class="pa-pill-score" style="background:${pa.customer_feedback.score >= 0 ? '#dcfce7' : '#fee2e2'}; color:${pa.customer_feedback.score >= 0 ? '#166534' : '#991b1b'};">
+                            ${pa.customer_feedback.score >= 0 ? '+' + pa.customer_feedback.score : pa.customer_feedback.score} pts
+                          </span>
+                        </td>
+                        <td><b>${pa.customer_feedback.face} ${escapeHtml(pa.customer_feedback.label)}</b></td>
+                        <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.customer_feedback.rationale)}</td>
+                      </tr>
+                    </tbody>
+                    <tfoot>
+                      <tr style="background:#f0fdfa; font-weight:800; border-top:2px solid #0d9488;">
+                        <td colspan="2" style="font-size:0.85rem; color:#0f766e;">TOTAL PA SCORE:</td>
+                        <td colspan="2" style="font-size:0.85rem; color:#0f766e;">
+                          ${pa.total_score} / 20 (${pa.percentage}%) • ${pa.passed ? 'PASSED ✅ (Benchmark >= 70%)' : 'NEEDS PRACTICE ⚠️'}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            `;
+          })() : ''}
+
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div style="font-weight:800; font-size:1rem; color:#0f172a;">🏆 Consultation Evaluation</div>
             <span class="dpos-badge ${bInfo.class}">${bInfo.icon} ${bInfo.badge} (${ev.totalScore}/100)</span>
@@ -1490,8 +1925,31 @@
     }
 
     container.innerHTML = `
-      <!-- SCENARIO BRIEF (HIDDEN IN BLIND RANDOM CHALLENGE MODE) -->
-      ${state.topicMode === 'random' ? '' : `
+      <!-- SCENARIO BRIEF / PA COMPULSORY TRAINING BANNER -->
+      ${state.topicMode === 'random' ? `
+      <div class="pa-training-guide-card">
+        <div class="pa-guide-header">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:1.1rem;">📋</span>
+            <span style="font-weight:800; font-size:0.82rem; color:#0f766e;">Pharmacist Assistant (PA) Compulsory Rubric (8 Schemes • 20 Pts)</span>
+          </div>
+          <span class="pa-guide-badge">PA Training</span>
+        </div>
+        <div style="font-size:0.7rem; color:#0f766e; margin-bottom:8px; line-height:1.4;">
+          Compulsory frontline simulation for new Pharmacist Assistants. Deliver these 8 core competencies during your consultation:
+        </div>
+        <div class="pa-guide-grid">
+          <div class="pa-guide-item"><b>1. Be Friendly (0-2 pts):</b> Greet warmly & address with good title (Uncle / Auntie / Encik / Mr.)</div>
+          <div class="pa-guide-item"><b>2. Assessment / Offer Test (0-2 pts):</b> Check symptoms & offer BP / Blood Glucose test</div>
+          <div class="pa-guide-item"><b>3. Responding to Symptoms (0-2 pts):</b> Identify condition & triage red flags accurately</div>
+          <div class="pa-guide-item"><b>4. Treatment (0-2 pts):</b> Safe OTC relief addressing all symptoms with correct dose</div>
+          <div class="pa-guide-item"><b>5. Add-On (0-2 pts):</b> Relevant PMG House Brand supplement pairing (Jase Healthcare)</div>
+          <div class="pa-guide-item"><b>6. Loyalty (0-2 pts):</b> Check membership, explain points & Senior Care Plus 28th free test</div>
+          <div class="pa-guide-item"><b>7. Sales Campaign (0-2 pts):</b> Cashier counter PWP special or GWP gift tier</div>
+          <div class="pa-guide-item"><b>8. Customer Feedback (-6 to +6 pts):</b> Provide delightful care to earn 5 Stars 😃 (+6 pts)!</div>
+        </div>
+      </div>
+      ` : `
       <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px 12px; border-radius:10px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div style="font-size:0.7rem; font-weight:800; color:#1d4ed8; text-transform:uppercase;">🎭 Live Customer Encounter • Weekly Spotlight</div>
@@ -1819,6 +2277,32 @@
     }
 
     let rubricGridHtml = '';
+    let paAssessmentHtml = '';
+    if (parsedBreakdown && parsedBreakdown.pa_assessment) {
+      const pa = parsedBreakdown.pa_assessment;
+      const fb = pa.customer_feedback || {};
+      paAssessmentHtml = `
+        <div style="background:#f0fdfa; border:1px solid #99f6e4; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="font-size:0.72rem; font-weight:800; color:#0f766e; text-transform:uppercase;">📋 Pharmacist Assistant (PA) Rubric (/20)</div>
+            <span style="font-size:0.75rem; font-weight:900; color:${pa.passed ? '#15803d' : '#b91c1c'}; background:white; padding:2px 8px; border-radius:4px; border:1px solid #ccfbf1;">
+              ${pa.total_score} / 20 (${pa.percentage}%) • ${pa.passed ? 'PASSED ✅' : 'NEEDS RETRIAL ⚠️'}
+            </span>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:4px; font-size:0.7rem; color:#134e4a;">
+            <div>1. Friendly: <b>${pa.be_friendly ? pa.be_friendly.score : '-'}/2</b></div>
+            <div>2. Test Offer: <b>${pa.assessment_offer_test ? pa.assessment_offer_test.score : '-'}/2</b></div>
+            <div>3. Symptoms: <b>${pa.responding_to_symptoms ? pa.responding_to_symptoms.score : '-'}/2</b></div>
+            <div>4. Treatment: <b>${pa.treatment ? pa.treatment.score : '-'}/2</b></div>
+            <div>5. Add-On: <b>${pa.add_on ? pa.add_on.score : '-'}/2</b></div>
+            <div>6. Loyalty: <b>${pa.customer_loyalty ? pa.customer_loyalty.score : '-'}/2</b></div>
+            <div>7. Campaign: <b>${pa.promote_sales_campaign ? pa.promote_sales_campaign.score : '-'}/2</b></div>
+            <div>8. Feedback: <b>${fb.face || '😃'} ${fb.score !== undefined ? (fb.score >= 0 ? '+' : '') + fb.score : '-'} pts</b></div>
+          </div>
+        </div>
+      `;
+    }
+
     if (parsedBreakdown) {
       const b = parsedBreakdown.breakdown || parsedBreakdown;
       rubricGridHtml = `
@@ -1943,6 +2427,7 @@
               </div>
             </div>
 
+            ${paAssessmentHtml}
             ${rubricGridHtml}
             ${clinicalAuditHtml}
             ${deductionsHtml}
@@ -2455,6 +2940,14 @@ STRICT INSTRUCTIONS:
      * THE ANXIETY JAB:
        "Saya risau sangat dik... bukan tanda nak kena operate atau lumpuh kan?"
      - If teammate pitches a PWP counter add-on or mentions a GWP free gift (e.g. adding a discounted item for RM20+ or free gift for RM250+ spend), respond positively and agree to pay.`}
+   ${state.topicMode === 'random' ? `
+   - PHARMACIST ASSISTANT (PA) TRAINING INTERACTION DIRECTIVE:
+     You are testing a Pharmacist Assistant trainee. React naturally to their frontline competencies:
+     * If they greet you with a respectful title (Uncle, Auntie, Encik, Puan, Mr, etc.), feel acknowledged and respected.
+     * If they offer a free health test (blood pressure BP or blood glucose screening), accept warmly (e.g. 'Boleh juga, alang-alang tolong check BP/gula saya...', '好啊，顺便帮我测一下血压/血糖...').
+     * If they check your membership, confirm you have PMG membership and ask if you can redeem points ('Boleh tolak point ahli saya tak?', '我有PMG会员，这次可以扣分吗？').
+     * If they pitch a cashier PWP deal or campaign promo, respond favorably before concluding.
+     * Reflect your satisfaction level naturally in your replies so their Scheme 8 (Customer Feedback -6 to +6 pts) feels authentic.` : ''}
    - DO NOT repeat previous statements or say the opening greeting if the conversation has already progressed.
    - Keep customer replies natural, concise (1-3 sentences), and conversational.
 5. Evaluate per-turn vocal audio metrics:
@@ -2698,12 +3191,50 @@ Conduct an uncompromising clinical audit on every medical statement made by the 
 5. DOSAGE & TIMING: Paracetamol max 4g/day (max 8 tabs of 500mg); NSAIDs strictly after food; Antacids spaced 2h from other meds.
 `}
 
+OFFICIAL 8-SCHEME PHARMACIST ASSISTANT (PA) ASSESSMENT RUBRIC (TOTAL 20 PTS):
+Evaluate the teammate according to the 8 compulsory PA training schemes:
+1. BE FRIENDLY (0-2 pts):
+   - 0: No greeting, rude
+   - 1: Greeting, friendly
+   - 2: Remember customers name, address customer with good title
+2. ASSESSMENT / OFFER DO TEST (BP/ GLUCOSE) (0-2 pts):
+   - 0: No assessment perform/ Did not offer
+   - 1: Satisfactory/ Offer
+   - 2: Comprehensive assessment (question, incorporate test available)
+3. RESPONDING TO SYMPTOMS (0-2 pts):
+   - 0: Unable to identify
+   - 1: With doubt/ asked pharmacist
+   - 2: Able to identify accurately
+4. TREATMENT (0-2 pts):
+   - 0: No clue what to give/ Wrong indication
+   - 1: Dispense medicines that address some of the symptoms only
+   - 2: Dispense medicines that address all symptoms, with correct dose
+5. ADD ON (0-2 pts):
+   - 0: Did not add on supplement
+   - 1: Add on but not the most appropriate option
+   - 2: Add on appropriate supplement (relevant PMG House Brand from Jase Healthcare)
+6. CUSTOMER LOYALTY (0-2 pts):
+   - 0: Didn’t promote membership/ didn’t ask if customer has membership/ unable to resolve membership issues eg. Points, expiry of member points
+   - 1: Promote membership/ confirm if customer has membership/ Able to resolve membership issues upon request
+   - 2: Promote membership with good & fluent explanation/ Able to resolve membership issues eg. Points, expiry of member points/ Proactively assist customer to use member points during payment
+7. PROMOTE SALES CAMPAIGN (0-2 pts):
+   - 0: Didn’t promote on-going sales campaign
+   - 1: Informed customer about on-going sales campaign
+   - 2: Able to incorporate & promote sales campaign to the best of customer’s benefit
+8. CUSTOMER FEEDBACK (-6 to +6 pts):
+   - -6: 1 star / Red angry face 😡
+   - -3: 2 stars / Orange sad face 😟
+   - 0: 3 stars / Yellow neutral face 😐
+   - +3: 4 stars / Light green smiling face 😊
+   - +6: 5 stars / Dark green happy face 😃
+
 MANDATORY STRUCTURED OUTPUT FORMAT:
 You MUST provide:
-1. "missed_items": Array of itemized strings listing exact criteria missed with point deductions (e.g. "Missed Red Flag: Did not screen for swelling/gastritis (-5 pts)", "Missed OTC: Did not offer immediate topical/oral relief (-10 pts)", "Missed PWP: Did not pitch counter PWP special (-15 pts)", "Missed Senior Care Plus / 28th Screening: Did not introduce Senior Care Plus or highlight 28th monthly free blood glucose test for seniors (-10 pts)"). If nothing missed, return ["Mastered all consultation criteria! Full marks awarded."].
-2. "example_dialogue": Array of 2 to 3 verbatim sentences in the teammate's primary spoken language (${languages}) demonstrating how to smoothly deliver the missing red flags, House Brand pairing, and cashier PWP pitch.
+1. "missed_items": Array of itemized strings listing exact criteria missed with point deductions.
+2. "example_dialogue": Array of 2 to 3 verbatim sentences demonstrating missing red flags, House Brand pairing, and cashier PWP pitch.
 3. "coachingTip": Concise 1-sentence coaching summary.
 4. "clinical_audit": Object containing { "status": "passed" | "issues_found", "issues": [ { "title": "...", "stated": "...", "correction": "...", "deduction": 5 } ] }
+5. "pa_assessment": Object containing the 8 evaluated schemes and total score out of 20.
 
 Output strictly in JSON:
 {
@@ -2719,6 +3250,17 @@ Output strictly in JSON:
     "membership_general": 10,
     "senior_care_28th": 0,
     "membership": 10
+  },
+  "pa_assessment": {
+    "be_friendly": { "score": 2, "rating": "Remember customers name, address customer with good title", "rationale": "..." },
+    "assessment_offer_test": { "score": 2, "rating": "Comprehensive assessment (question, incorporate test available)", "rationale": "..." },
+    "responding_to_symptoms": { "score": 2, "rating": "Able to identify accurately", "rationale": "..." },
+    "treatment": { "score": 2, "rating": "Dispense medicines that address all symptoms, with correct dose", "rationale": "..." },
+    "add_on": { "score": 2, "rating": "Add on appropriate supplement", "rationale": "..." },
+    "customer_loyalty": { "score": 2, "rating": "Promote membership with good & fluent explanation", "rationale": "..." },
+    "promote_sales_campaign": { "score": 2, "rating": "Able to incorporate & promote sales campaign to the best of customer’s benefit", "rationale": "..." },
+    "customer_feedback": { "score": 6, "stars": 5, "face": "😃", "label": "5 Stars / Dark Green Happy Face", "rationale": "..." },
+    "total_score": 20
   },
   "missed_items": [
     "Missed PWP: Did not pitch counter PWP special (-15 pts)",
@@ -2856,12 +3398,22 @@ Output strictly in JSON:
         confidence: confRating
       };
 
+      // Compute & validate Pharmacist Assistant (PA) Assessment (8 Schemes / 20 Pts)
+      const paAssessment = computePaAssessment(
+        transcript,
+        userTurns,
+        parsed.pa_assessment || parsed.paAssessment,
+        cleanBreakdown,
+        isEmergency
+      );
+
       const breakdownJsonPayload = {
         breakdown: cleanBreakdown,
         missed_items: missedItems,
         example_dialogue: exampleDialogue,
         audio_metrics: audioMetrics,
-        clinical_integrity: clinicalAudit
+        clinical_integrity: clinicalAudit,
+        pa_assessment: paAssessment
       };
 
       const richCoachingTip = missedItems.slice(0, 2).join(' | ');
@@ -2874,6 +3426,7 @@ Output strictly in JSON:
         missedItems: missedItems,
         exampleDialogue: exampleDialogue,
         clinicalIntegrity: clinicalAudit,
+        paAssessment: paAssessment,
         coachingTip: richCoachingTip || parsed.coachingTip || "Sila pastikan triage simptom, terangkan suplemen House Brand, dan ingatkan program Senior Care Plus 28hb."
       };
 
