@@ -135,7 +135,7 @@
     {
       id: "assessment_offer_test",
       number: 2,
-      title: "ASSESSMENT / OFFER DO TEST (BP/ GLUCOSE)",
+      title: "ASSESSMENT / OFFER DO TEST (CASE-RELEVANT)",
       max: 2,
       rubric: {
         0: "No assessment perform/ Did not offer",
@@ -230,10 +230,11 @@
       beFriendlyScore = 0;
     }
 
-    // 2. ASSESSMENT / OFFER DO TEST (BP/ GLUCOSE) (0-2 pts)
+    // 2. ASSESSMENT / OFFER DO TEST (CASE-RELEVANT: BP, GLUCOSE, URIC ACID, SPO2, TEMP, RAPID TEST, AIRDOC ETC.) (0-2 pts)
     let assessScore = 0;
-    const hasQuestions = /(berapa\s*lama|bila\s*mula|sakit\s*macam\s*mana|demam|bengkak|alahan|pedih|gastrik|perut|buah\s*pinggang|kencing|ubat\s*apa|ada\s*makan|痛了多久|几天了|发烧|红肿|有什么不舒服|对什么药过敏|空腹|饭后)/i.test(userWords);
-    const hasTestOffer = /(tekanan\s*darah|blood\s*pressure|\bbp\b|gula\s*darah|blood\s*glucose|\bglucose\b|kencing\s*manis|ujian\s*saringan|saringan\s*gula|28\s*hb|28th|28\s*号|cek\s*gula|cek\s*bp|check\s*bp|验血糖|测血压|免费验血|量血压)/i.test(userWords);
+    const hasQuestions = /(berapa\s*(lama|hari|minggu|bulan|kali)|bila\s*(mula|start|kena)|sejak\s*bila|sakit\s*macam\s*mana|rasa\s*macam\s*mana|kenapa|ada\s*(rasa|tanda|gejala|alahan|demam|bengkak|pedih|gastrik|angin|sesak)|ubat\s*apa|ada\s*makan|perut|buah\s*pinggang|kencing|多久|几天|什么时候|怎么|哪里不舒服|有什么症状|发烧|红肿|过敏|空腹|饭后)/i.test(userWords);
+    // Any case-relevant test or vital screening: BP, Glucose, Uric acid/Gout, SpO2/Oximeter, Temperature, Cholesterol, Rapid test/RTK, Urine/Pregnancy, Airdoc/Eye, BMI/Weight, Vital signs, or general test/screening
+    const hasTestOffer = /(tekanan\s*darah|blood\s*pressure|\bbp\b|gula\s*darah|blood\s*glucose|\bglucose\b|kencing\s*manis|ujian\s*saringan|saringan|saringan\s*gula|28\s*hb|28th|28\s*号|asid\s*urik|uric\s*acid|\bgout\b|kolesterol|cholesterol|lipid|suhu|termometer|thermometer|temperature|spo2|oximeter|oksigen|oxygen|nadi|pulse|heart\s*rate|kadar\s*jantung|rapid\s*test|\brtk\b|swab|influenza|flu\s*test|dengue|air\s*kencing|ujian\s*kencing|urine|\bupt\b|pregnancy\s*test|airdoc|retina|mata|vision|timbang|berat\s*badan|\bbmi\b|tanda\s*vital|vital\s*signs|ujian\s*darah|blood\s*test|lab\s*test|check\s*bp|cek\s*bp|check\s*gula|cek\s*gula|cek\s*suhu|check\s*suhu|check\s*spo2|cek\s*spo2|check\s*mata|cek\s*mata|check\s*darah|buat\s*test|buat\s*ujian|验血糖|测血压|量血压|验尿酸|测体温|量体温|测血氧|快速检验|眼底|验眼|验血|做检查|测一下|验一下|筛查)/i.test(userWords);
     if (hasQuestions && hasTestOffer) {
       assessScore = 2;
     } else if (hasQuestions || hasTestOffer) {
@@ -380,9 +381,9 @@
       assessment_offer_test: {
         score: assessScore,
         max: 2,
-        title: "2. ASSESSMENT / OFFER DO TEST (BP/ GLUCOSE)",
+        title: "2. ASSESSMENT / OFFER DO TEST (CASE-RELEVANT)",
         rating: PA_ASSESSMENT_SCHEMES[1].rubric[assessScore] || "Satisfactory/ Offer",
-        rationale: (ai.assessment_offer_test && ai.assessment_offer_test.rationale) || (assessScore === 2 ? "Comprehensive assessment incorporating vital tests (BP/Glucose)." : (assessScore === 1 ? "Satisfactory questions asked or offered test." : "No assessment performed or offered."))
+        rationale: (ai.assessment_offer_test && ai.assessment_offer_test.rationale) || (assessScore === 2 ? "Comprehensive assessment incorporating case-relevant test/screening (e.g. BP, Glucose, Uric Acid, SpO2, Temperature, Rapid Test, etc.)." : (assessScore === 1 ? "Satisfactory questions asked or offered test." : "No assessment performed or offered."))
       },
       responding_to_symptoms: {
         score: symptomScore,
@@ -1760,7 +1761,7 @@
                         <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.be_friendly.rationale)}</td>
                       </tr>
                       <tr>
-                        <td><b>2. ASSESSMENT / OFFER TEST (BP/GLUCOSE)</b></td>
+                        <td><b>2. ASSESSMENT / OFFER TEST (CASE-RELEVANT)</b></td>
                         <td style="text-align:center;"><span class="pa-pill-score pa-pill-${pa.assessment_offer_test.score}">${pa.assessment_offer_test.score} / 2</span></td>
                         <td>${escapeHtml(pa.assessment_offer_test.rating)}</td>
                         <td style="color:#64748b; font-size:0.72rem;">${escapeHtml(pa.assessment_offer_test.rationale)}</td>
@@ -1940,7 +1941,7 @@
         </div>
         <div class="pa-guide-grid">
           <div class="pa-guide-item"><b>1. Be Friendly (0-2 pts):</b> Greet warmly & address with good title (Uncle / Auntie / Encik / Mr.)</div>
-          <div class="pa-guide-item"><b>2. Assessment / Offer Test (0-2 pts):</b> Check symptoms & offer BP / Blood Glucose test</div>
+          <div class="pa-guide-item"><b>2. Assessment / Offer Test (0-2 pts):</b> Check symptoms & offer case-relevant test (e.g. BP, Glucose, Uric Acid, SpO2, Temp, Rapid Test, etc.)</div>
           <div class="pa-guide-item"><b>3. Responding to Symptoms (0-2 pts):</b> Identify condition & triage red flags accurately</div>
           <div class="pa-guide-item"><b>4. Treatment (0-2 pts):</b> Safe OTC relief addressing all symptoms with correct dose</div>
           <div class="pa-guide-item"><b>5. Add-On (0-2 pts):</b> Relevant PMG House Brand supplement pairing (Jase Healthcare)</div>
@@ -2944,7 +2945,7 @@ STRICT INSTRUCTIONS:
    - PHARMACIST ASSISTANT (PA) TRAINING INTERACTION DIRECTIVE:
      You are testing a Pharmacist Assistant trainee. React naturally to their frontline competencies:
      * If they greet you with a respectful title (Uncle, Auntie, Encik, Puan, Mr, etc.), feel acknowledged and respected.
-     * If they offer a free health test (blood pressure BP or blood glucose screening), accept warmly (e.g. 'Boleh juga, alang-alang tolong check BP/gula saya...', '好啊，顺便帮我测一下血压/血糖...').
+     * If they offer any case-relevant health test or vital screening (BP, blood glucose, uric acid, temperature, SpO2 pulse oximeter, rapid test, Airdoc, etc.), accept warmly (e.g. 'Boleh juga, tolong check...', '好啊，顺便帮我测/检查一下...').
      * If they check your membership, confirm you have PMG membership and ask if you can redeem points ('Boleh tolak point ahli saya tak?', '我有PMG会员，这次可以扣分吗？').
      * If they pitch a cashier PWP deal or campaign promo, respond favorably before concluding.
      * Reflect your satisfaction level naturally in your replies so their Scheme 8 (Customer Feedback -6 to +6 pts) feels authentic.` : ''}
@@ -3197,10 +3198,11 @@ Evaluate the teammate according to the 8 compulsory PA training schemes:
    - 0: No greeting, rude
    - 1: Greeting, friendly
    - 2: Remember customers name, address customer with good title
-2. ASSESSMENT / OFFER DO TEST (BP/ GLUCOSE) (0-2 pts):
+2. ASSESSMENT / OFFER DO TEST (0-2 pts):
+   * CRITICAL NOTE: The test is NOT restricted to BP or glucose. It can be ANY diagnostic or screening test appropriate for the clinical case (e.g. BP for hypertension/headaches, blood glucose for diabetes/fatigue, uric acid for joint pain/gout, SpO2 pulse oximeter or thermometer for cough/fever/respiratory, rapid test kit for infection/flu, urine dipstick, Airdoc retinal scan, BMI, or vital signs assessment).
    - 0: No assessment perform/ Did not offer
    - 1: Satisfactory/ Offer
-   - 2: Comprehensive assessment (question, incorporate test available)
+   - 2: Comprehensive assessment (question, incorporate case-relevant test available)
 3. RESPONDING TO SYMPTOMS (0-2 pts):
    - 0: Unable to identify
    - 1: With doubt/ asked pharmacist
