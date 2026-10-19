@@ -1614,7 +1614,7 @@
     const canEvaluate = userTurnCount >= 3;
     const arch = (state.currentWeek && state.currentWeek.customerArchetype) || (state.weeklyTopic && state.weeklyTopic.customerArchetype) || null;
 
-    let chatHtml = turns.map(t => {
+    let chatHtml = turns.map((t, idx) => {
       const isUser = t.speaker === 'user';
       const langBadge = t.lang ? getLangBadgeLabel(t.lang) : '';
       return `
@@ -1626,7 +1626,7 @@
           <div class="bubble-text">${escapeHtml(t.text)}</div>
           ${!isUser ? `
             <div style="margin-top:6px; text-align:right;">
-              <button type="button" class="btn-replay" onclick="window.DPOS.replaySpeech('${escapeHtml(t.text.replace(/'/g, "\\'"))}', '${t.lang || 'ms'}')">
+              <button type="button" class="btn-replay" onclick="window.DPOS.replayTurn(${idx})">
                 🔊 Listen Again
               </button>
             </div>` : ''}
@@ -1890,16 +1890,38 @@
               </div>
             </div>` : '')}
 
-          <!-- PART A: WHAT YOU MISSED (POINT BREAKDOWN) -->
-          <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:10px; padding:12px; margin-top:14px;">
+          <!-- PART A: HIGHLIGHTS & STRENGTHS (IF PRESENT) -->
+          ${(ev.highlights && ev.highlights.length > 0) ? `
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px; margin-top:14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#15803d; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+              <span style="font-size:1rem;">🌟</span>
+              <span>Key Strengths & Clinical Highlights</span>
+            </div>
+            <ul style="margin:0; padding-left:20px; font-size:0.75rem; color:#166534; line-height:1.5;">
+              ${ev.highlights.map(item => `<li style="margin-bottom:4px;">${escapeHtml(item)}</li>`).join('')}
+            </ul>
+          </div>` : ''}
+
+          <!-- PART B: POINT BREAKDOWN / DEDUCTIONS -->
+          ${(ev.totalScore === 100 || ev.score === 100) ? `
+          <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:12px; margin-top:10px;">
+            <div style="font-size:0.78rem; font-weight:800; color:#15803d; display:flex; align-items:center; gap:6px;">
+              <span style="font-size:1.1rem;">🏆</span>
+              <span>Flawless Consultation (100/100) • Zero Points Deducted!</span>
+            </div>
+            <div style="font-size:0.75rem; color:#166534; margin-top:4px; line-height:1.45;">
+              Exceptional mastery across diagnostic triage, House Brand pairing, cashier add-ons, and Senior Care Plus loyalty.
+            </div>
+          </div>` : `
+          <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:10px; padding:12px; margin-top:10px;">
             <div style="font-size:0.75rem; font-weight:800; color:#be123c; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
               <span style="font-size:1rem;">❌</span>
-              <span>What You Missed (Point Breakdown)</span>
+              <span>Areas for Improvement (-${100 - (ev.totalScore !== undefined ? ev.totalScore : (ev.score || 0))} pts Deducted)</span>
             </div>
             <ul style="margin:0; padding-left:20px; font-size:0.75rem; color:#9f1239; line-height:1.5;">
-              ${(ev.missedItems && ev.missedItems.length > 0 ? ev.missedItems : [ev.coachingTip || "No criteria missed."]).map(item => `<li style="margin-bottom:4px;">${escapeHtml(item)}</li>`).join('')}
+              ${(ev.missedItems && ev.missedItems.length > 0 ? ev.missedItems : [ev.coachingTip || "Review the consultation points above."]).map(item => `<li style="margin-bottom:4px;">${escapeHtml(item)}</li>`).join('')}
             </ul>
-          </div>
+          </div>`}
 
           <!-- PART B: EXACTLY WHAT TO SAY NEXT TIME (EXAMPLE DIALOGUE) -->
           <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px; margin-top:10px;">
@@ -1992,7 +2014,7 @@
       <div style="margin:10px 0; text-align:center;">
         <canvas id="dposWaveform" width="300" height="36" style="background:#f1f5f9; border-radius:18px; max-width:100%; display:${state.isRecording ? 'inline-block' : 'none'};"></canvas>
         <div id="dposRecordingTimer" style="font-size:0.75rem; font-weight:800; color:#e11d48; margin-top:2px; display:${state.isRecording ? 'block' : 'none'};">
-          🔴 Recording: ${state.recordingSeconds}s / 45s (Release to Send)
+          🔴 Recording: ${state.recordingSeconds >= 60 ? `${Math.floor(state.recordingSeconds / 60)}m ${state.recordingSeconds % 60}s` : `${state.recordingSeconds}s`} / 1m 30s (Release to Send)
         </div>
       </div>
 
@@ -2218,11 +2240,24 @@
     let audioMetrics = null;
     let clinicalIntegrity = null;
 
+    let highlights = [];
+
     if (r.breakdown) {
       try {
         parsedBreakdown = typeof r.breakdown === 'string' ? JSON.parse(r.breakdown) : r.breakdown;
         if (parsedBreakdown) {
-          missedItems = parsedBreakdown.missed_items || parsedBreakdown.missedItems || [];
+          const rawMissed = parsedBreakdown.missed_items || parsedBreakdown.missedItems || [];
+          highlights = Array.isArray(parsedBreakdown.highlights) ? parsedBreakdown.highlights.slice() : [];
+          const cleanMissed = [];
+          rawMissed.forEach(m => {
+            const s = String(m || '').trim();
+            if (/^(✅|⭐|🏆|excellent|good job|well done|tahniah|hebat)/i.test(s)) {
+              if (!highlights.includes(s)) highlights.push(s);
+            } else if (s) {
+              cleanMissed.push(s);
+            }
+          });
+          missedItems = cleanMissed;
           exampleDialogue = parsedBreakdown.example_dialogue || parsedBreakdown.exampleDialogue || [];
           audioMetrics = parsedBreakdown.audio_metrics || null;
           clinicalIntegrity = parsedBreakdown.clinical_integrity || parsedBreakdown.clinicalIntegrity || null;
@@ -2357,6 +2392,18 @@
       `;
     }
 
+    let highlightsHtml = '';
+    if (highlights.length > 0) {
+      highlightsHtml = `
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+          <div style="font-size:0.72rem; font-weight:800; color:#15803d; margin-bottom:6px; text-transform:uppercase;">🌟 Key Strengths & Achievements</div>
+          <ul style="margin:0; padding-left:18px; font-size:0.75rem; color:#166534; line-height:1.45;">
+            ${highlights.map(h => `<li style="margin-bottom:3px;">${escapeHtml(h)}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
     let deductionsHtml = '';
     if (missedItems.length > 0) {
       deductionsHtml = `
@@ -2431,6 +2478,7 @@
             ${paAssessmentHtml}
             ${rubricGridHtml}
             ${clinicalAuditHtml}
+            ${highlightsHtml}
             ${deductionsHtml}
             ${scriptHtml}
 
@@ -2520,8 +2568,9 @@
       // Prime speechSynthesis on user gesture
       if (window.speechSynthesis) {
         try {
-          const u = new SpeechSynthesisUtterance('');
-          window.speechSynthesis.speak(u);
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
         } catch (err) {}
       }
 
@@ -2666,7 +2715,7 @@
       if (canvasEl) canvasEl.style.display = "inline-block";
       if (timerEl) {
         timerEl.style.display = "block";
-        timerEl.innerText = `🔴 Recording: 0s / 45s (Release to Send)`;
+        timerEl.innerText = `🔴 Recording: 0s / 1m 30s (Release to Send)`;
       }
       if (micBtn) {
         micBtn.classList.add("mic-recording");
@@ -2676,8 +2725,11 @@
       clearInterval(state.recordingTimerId);
       state.recordingTimerId = setInterval(() => {
         state.recordingSeconds++;
-        if (timerEl) timerEl.innerText = `🔴 Recording: ${state.recordingSeconds}s / 45s (Release to Send)`;
-        if (state.recordingSeconds >= 45) {
+        const mins = Math.floor(state.recordingSeconds / 60);
+        const secs = state.recordingSeconds % 60;
+        const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+        if (timerEl) timerEl.innerText = `🔴 Recording: ${timeStr} / 1m 30s (Release to Send)`;
+        if (state.recordingSeconds >= 90) {
           stopRecording();
         }
       }, 1000);
@@ -3051,12 +3103,30 @@ Output strictly in JSON format:
     }
   }
 
+  let activeSpeechUtterance = null;
+
   function speakCustomerReply(text, lang) {
     if (!window.speechSynthesis) return;
     try {
       window.speechSynthesis.cancel();
-      let code = normalizeLangCode(lang, text);
-      if (/[\u4e00-\u9fa5]/.test(text)) {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      // Clean text of markdown, parenthetical acting cues, and emojis
+      let cleanText = String(text || '')
+        .replace(/[*_#`~>]/g, '')
+        .replace(/\([^\)]*\)/g, '')
+        .replace(/\[[^\]]*\]/g, '')
+        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+        .trim();
+      if (!cleanText) return;
+
+      const u = new SpeechSynthesisUtterance(cleanText);
+      activeSpeechUtterance = u; // Keep reference to prevent GC premature stop
+
+      let code = normalizeLangCode(lang, cleanText);
+      if (/[\u4e00-\u9fa5]/.test(cleanText)) {
         code = 'zh';
       }
       const personaRaw = (state.currentWeek && (state.currentWeek.persona || state.currentWeek.topic)) || '';
@@ -3071,16 +3141,34 @@ Output strictly in JSON format:
 
       // Male / Female acoustic pitch and rate tuning
       if (gender === 'male') {
-        u.pitch = 0.72; // Lower vocal formant into mature senior male register
-        u.rate = 0.90;  // Measured, mature speaking pace
+        u.pitch = 0.85; // Natural male pitch
+        u.rate = 0.95;  // Measured, natural pace
       } else {
         u.pitch = 1.05; // Friendly female vocal pitch
-        u.rate = 0.95;
+        u.rate = 0.98;
       }
 
+      u.onend = () => {
+        if (activeSpeechUtterance === u) activeSpeechUtterance = null;
+      };
+      u.onerror = (e) => {
+        console.warn("SpeechSynthesis error:", e);
+        if (activeSpeechUtterance === u) activeSpeechUtterance = null;
+      };
+
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
       window.speechSynthesis.speak(u);
     } catch (e) {
       console.warn("Speech synthesis error:", e);
+    }
+  }
+
+  function replayTurn(idx) {
+    const turn = state.rolePlayTurns && state.rolePlayTurns[idx];
+    if (turn && turn.text) {
+      speakCustomerReply(turn.text, turn.lang);
     }
   }
 
@@ -3115,6 +3203,7 @@ Output strictly in JSON format:
 
     const transcript = turns.map(t => `${t.speaker === 'user' ? 'Teammate' : 'Customer'}: ${t.text}`).join('\n');
     const languages = [...new Set(userTurns.map(t => getLangBadgeLabel(t.lang || 'ms')))].join(' + ');
+    const isZhSession = (languages || '').toLowerCase().includes('chinese') || (languages || '').toLowerCase().includes('mandarin') || (languages || '').includes('中文') || state.rolePlayLang === 'zh' || userTurns.some(t => /[\u4e00-\u9fa5]/.test(t.text || ''));
 
     const w = state.currentWeek || {};
     const arch = (w && w.customerArchetype) || null;
@@ -3232,11 +3321,13 @@ Evaluate the teammate according to the 8 compulsory PA training schemes:
 
 MANDATORY STRUCTURED OUTPUT FORMAT:
 You MUST provide:
-1. "missed_items": Array of itemized strings listing exact criteria missed with point deductions.
-2. "example_dialogue": Array of 2 to 3 verbatim sentences demonstrating missing red flags, House Brand pairing, and cashier PWP pitch.
-3. "coachingTip": Concise 1-sentence coaching summary.
-4. "clinical_audit": Object containing { "status": "passed" | "issues_found", "issues": [ { "title": "...", "stated": "...", "correction": "...", "deduction": 5 } ] }
-5. "pa_assessment": Object containing the 8 evaluated schemes and total score out of 20.
+1. "highlights": Array of positive achievements and strengths (e.g. good diagnostic inquiry, accurate House Brand pairing, friendly greeting).
+2. "missed_items": Array of itemized strings listing exact criteria missed with point deductions. NEVER put praise here.
+3. "example_dialogue": Array of 2 to 3 verbatim sentences demonstrating missing red flags, House Brand pairing, and cashier PWP pitch.
+   CRITICAL LANGUAGE RULE: "example_dialogue" MUST match the consultation language (${languages}). For Mandarin (zh), write in Simplified Chinese characters (汉字)!
+4. "coachingTip": Concise 1-sentence coaching summary.
+5. "clinical_audit": Object containing { "status": "passed" | "issues_found", "issues": [ { "title": "...", "stated": "...", "correction": "...", "deduction": 5 } ] }
+6. "pa_assessment": Object containing the 8 evaluated schemes and total score out of 20.
 
 Output strictly in JSON:
 {
@@ -3264,14 +3355,22 @@ Output strictly in JSON:
     "customer_feedback": { "score": 6, "stars": 5, "face": "😃", "label": "5 Stars / Dark Green Happy Face", "rationale": "..." },
     "total_score": 20
   },
+  "highlights": [
+    "Accurately triaged patient symptoms and recommended relevant House Brand supplement",
+    "Polite customer address and friendly vocal tone"
+  ],
   "missed_items": [
     "Missed PWP: Did not pitch counter PWP special (-15 pts)",
     "Missed Senior Care Plus / 28th Screening: Did not introduce Senior Care Plus or highlight 28th monthly free blood glucose test for seniors (-10 pts)"
   ],
-  "example_dialogue": [
+  "example_dialogue": ${isZhSession ? `[
+    "叔叔/阿姨，除了止痛贴，建议每天补充我们PMG的关节软骨配方，从根本帮助修补软骨、减少摩擦。",
+    "今天消费满额，柜台有PWP特价加购优惠，只要加几块钱就能带走这盒药贴/营养品！",
+    "您是我们PMG会员吗？每逢28号，我们全线分行都有提供免费验血糖服务，记得带家人过来测一测哦！"
+  ]` : `[
     "Uncle, alang-alang berbelanja RM20 hari ini, boleh tebus pek plester ini dengan harga diskaun RM4 di kaunter!",
     "Alang-alang Uncle daftar ahli hari ini, kami ada program Senior Care Plus untuk warga emas, setiap 28hb ada ujian saringan gula darah percuma!"
-  ],
+  ]`},
   "coachingTip": "...",
   "clinical_audit": {
     "status": "passed",
@@ -3326,9 +3425,22 @@ Output strictly in JSON:
       // Run Universal Clinical Integrity Audit (Combining Deterministic Rules + Gemini Deep Audit)
       const clinicalAudit = auditClinicalIntegrity(transcript, userTurns, w, parsed.clinical_audit);
 
-      // Extract missed items & example dialogue
-      let missedItems = Array.isArray(parsed.missed_items) ? parsed.missed_items.filter(Boolean) : (Array.isArray(parsed.missedItems) ? parsed.missedItems : []);
+      // Extract missed items, highlights & example dialogue
+      let rawMissed = Array.isArray(parsed.missed_items) ? parsed.missed_items.filter(Boolean) : (Array.isArray(parsed.missedItems) ? parsed.missedItems : []);
       let exampleDialogue = Array.isArray(parsed.example_dialogue) ? parsed.example_dialogue.filter(Boolean) : (Array.isArray(parsed.exampleDialogue) ? parsed.exampleDialogue : []);
+      let highlights = Array.isArray(parsed.highlights) ? parsed.highlights.filter(Boolean) : [];
+      let missedItems = [];
+
+      // Separate praise/strengths from real point deductions
+      rawMissed.forEach(item => {
+        if (!item) return;
+        const s = String(item).trim();
+        if (/^(✅|⭐|🏆|excellent|good job|well done|tahniah|hebat)/i.test(s)) {
+          if (!highlights.includes(s)) highlights.push(s);
+        } else {
+          missedItems.push(s);
+        }
+      });
 
       // Apply clinical integrity audit deductions to DPOS
       let totalClinicalDeductions = 0;
@@ -3365,32 +3477,76 @@ Output strictly in JSON:
         }
       }
 
-      // Fallback generators if model omitted them
-      if (missedItems.length === 0) {
-        if (cleanBreakdown.dpos < 25) missedItems.push(`Missed Clinical DPOS: Did not complete thorough red-flag triage or House Brand explanation (-${35 - cleanBreakdown.dpos} pts)`);
-        if (cleanBreakdown.pwp < 12) missedItems.push(`Missed PWP / GWP: Did not pitch counter PWP special or GWP gift tier (-${15 - cleanBreakdown.pwp} pts)`);
-        if (cleanBreakdown.membership < 15) missedItems.push(`Missed Loyalty / SCP: Did not highlight free PMG membership or 28th monthly free blood glucose test (-${20 - cleanBreakdown.membership} pts)`);
-        if (cleanBreakdown.empathy < 7) missedItems.push(`Missed Empathy: Use more reassuring and caring addressing phrases (-${10 - cleanBreakdown.empathy} pts)`);
+      // Explicitly account for any points deducted across all 6 rubric categories
+      if (cleanBreakdown.membership < 20) {
+        const diff = 20 - cleanBreakdown.membership;
+        if (!missedItems.some(m => /membership|loyalty|senior\s*care|28|scp/i.test(m))) {
+          missedItems.push(`Missed Loyalty / Senior Care: Incomplete PMG membership pitch, points redemption, or Senior Care Plus 28th free screening (-${diff} pts)`);
+        }
       }
-      if (missedItems.length === 0 && totalScore >= 90) {
-        missedItems.push("✅ Excellent consultation! Complete triage, House Brand pairing, and cashier close mastered.");
+      if (cleanBreakdown.pwp < 15) {
+        const diff = 15 - cleanBreakdown.pwp;
+        if (!missedItems.some(m => /pwp|gwp|counter|promosi|tambah|gift/i.test(m))) {
+          missedItems.push(`Missed PWP / GWP: Did not pitch counter PWP special or GWP gift tier before completing payment (-${diff} pts)`);
+        }
+      }
+      if (cleanBreakdown.dpos < 35) {
+        const diff = 35 - cleanBreakdown.dpos;
+        if (!missedItems.some(m => /triage|red-flag|supplement|house\s*brand|clinical\s*dpos|indication|contraindication/i.test(m))) {
+          missedItems.push(`Missed Clinical DPOS: Incomplete symptom triage, red-flag check, or House Brand explanation (-${diff} pts)`);
+        }
+      }
+      if (cleanBreakdown.warmth < 10) {
+        const diff = 10 - cleanBreakdown.warmth;
+        if (!missedItems.some(m => /warmth|tone|friendly|mesra|intonation/i.test(m))) {
+          missedItems.push(`Vocal Warmth & Intonation: Smile in voice and use warmer, more inviting customer greeting (-${diff} pts)`);
+        }
+      }
+      if (cleanBreakdown.fluency < 10) {
+        const diff = 10 - cleanBreakdown.fluency;
+        if (!missedItems.some(m => /fluency|pacing|hesitat|lancar|filler/i.test(m))) {
+          missedItems.push(`Speech Fluency & Pacing: Reduce hesitation and filler sounds for a more confident delivery (-${diff} pts)`);
+        }
+      }
+      if (cleanBreakdown.empathy < 10) {
+        const diff = 10 - cleanBreakdown.empathy;
+        if (!missedItems.some(m => /empathy|addressing|reassur|prihatin|title/i.test(m))) {
+          missedItems.push(`Empathy & Reassurance: Use more comforting addressing titles (Uncle/Auntie) and reassure the patient (-${diff} pts)`);
+        }
       }
 
-      if (exampleDialogue.length === 0) {
-        const isZh = (languages || '').toLowerCase().includes('chinese') || (languages || '').toLowerCase().includes('mandarin') || (languages || '').includes('中文');
-        if (isZh) {
+      // If user performed well (totalScore >= 85), populate strengths highlights
+      if (totalScore >= 85 && highlights.length === 0) {
+        if (cleanBreakdown.dpos >= 30) {
+          highlights.push("✅ Strong Clinical Triage: Clear symptom inquiry and accurate House Brand recommendation.");
+        }
+        if (cleanBreakdown.pwp === 15) {
+          highlights.push("✅ Proactive Cashier Add-on: Enthusiastic counter PWP or GWP pitch before payment.");
+        }
+        if (cleanBreakdown.membership >= 15) {
+          highlights.push("✅ Customer Loyalty Awareness: Introduced PMG membership benefits and senior care services.");
+        }
+        if (highlights.length === 0) {
+          highlights.push("✅ High-standard consultation with clear clinical advice and customer rapport.");
+        }
+      }
+
+      // Ensure exampleDialogue matches consultation language
+      if (isZhSession) {
+        const hasChineseChars = exampleDialogue.some(d => /[\u4e00-\u9fa5]/.test(d));
+        if (!hasChineseChars || exampleDialogue.length === 0) {
           exampleDialogue = [
             "“叔叔/阿姨，除了止痛贴，建议每天补充我们PMG的关节软骨配方，从根本帮助修补软骨、减少摩擦。”",
             "“今天消费满额，柜台有PWP特价加购优惠，只要加几块钱就能带走这盒药贴/营养品！”",
             "“您是我们PMG会员吗？每逢28号，我们全线分行都有提供免费验血糖服务，记得过来测一测哦！”"
           ];
-        } else {
-          exampleDialogue = [
-            "“Uncle/Auntie, untuk kelegaan berpanjangan, saya cadangkan ambil suplemen House Brand PMG ini sekali untuk bantu rawat punca sakit dari dalam.”",
-            "“Alang-alang belanja hari ini, di kaunter ada promosi PWP istimewa, tambah beberapa ringgit sahaja untuk dapatkan item ini!”",
-            "“Uncle/Auntie sudah daftar ahli PMG percuma? Setiap 28hb kami ada saringan gula darah percuma di semua cawangan!”"
-          ];
         }
+      } else if (exampleDialogue.length === 0) {
+        exampleDialogue = [
+          "“Uncle/Auntie, untuk kelegaan berpanjangan, saya cadangkan ambil suplemen House Brand PMG ini sekali untuk bantu rawat punca sakit dari dalam.”",
+          "“Alang-alang belanja hari ini, di kaunter ada promosi PWP istimewa, tambah beberapa ringgit sahaja untuk dapatkan item ini!”",
+          "“Uncle/Auntie sudah daftar ahli PMG percuma? Setiap 28hb kami ada saringan gula darah percuma di semua cawangan!”"
+        ];
       }
 
       const audioMetrics = {
@@ -3412,6 +3568,7 @@ Output strictly in JSON:
       const breakdownJsonPayload = {
         breakdown: cleanBreakdown,
         missed_items: missedItems,
+        highlights: highlights,
         example_dialogue: exampleDialogue,
         audio_metrics: audioMetrics,
         clinical_integrity: clinicalAudit,
@@ -3426,6 +3583,7 @@ Output strictly in JSON:
         languageUsed: languages || 'Bahasa Melayu',
         breakdown: cleanBreakdown,
         missedItems: missedItems,
+        highlights: highlights,
         exampleDialogue: exampleDialogue,
         clinicalIntegrity: clinicalAudit,
         paAssessment: paAssessment,
@@ -3585,6 +3743,7 @@ Output strictly in JSON:
     nextQuestion: nextQuestion,
     retakeQuiz: retakeQuiz,
     replaySpeech: replaySpeech,
+    replayTurn: replayTurn,
     evaluateRolePlay: evaluateRolePlay,
     resetRolePlay: resetRolePlay,
     setRolePlayLang: setRolePlayLang,
