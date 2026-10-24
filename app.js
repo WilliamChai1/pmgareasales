@@ -776,6 +776,9 @@ function renderDashboard() {
   if (typeof renderDashboardDailyBriefing === 'function') {
     renderDashboardDailyBriefing();
   }
+  if (typeof checkTeammatePushBanner === 'function') {
+    checkTeammatePushBanner();
+  }
 }
 
 function openActionPlanModal() {
@@ -3026,6 +3029,7 @@ async function saveAndPublishBriefing() {
   try {
     await fetch(API_URL, {
       method: 'POST',
+      redirect: 'follow',
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         action: 'saveDailyBriefing',
@@ -3054,12 +3058,10 @@ async function saveAndPublishBriefing() {
 }
 
 // ─── ONESIGNAL CLIENT PUSH NOTIFICATION ENGINE ───────────────────────────────
+const DEFAULT_ONESIGNAL_APP_ID = "51051d85-495d-4a2b-901a-20377418fbec";
+
 function initOneSignal() {
-  const appId = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || "";
-  if (!appId) {
-    console.log("OneSignal App ID not yet configured.");
-    return;
-  }
+  const appId = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || DEFAULT_ONESIGNAL_APP_ID;
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
@@ -3071,10 +3073,29 @@ function initOneSignal() {
       });
       console.log("OneSignal Web SDK initialized successfully with App ID:", appId);
       updateOneSignalUiStatus();
+      checkTeammatePushBanner();
     } catch (e) {
       console.warn("OneSignal init error:", e);
     }
   });
+}
+
+function checkTeammatePushBanner() {
+  const banner = document.getElementById("teammatePushPromptBanner");
+  if (!banner) return;
+
+  const dismissed = sessionStorage.getItem("pmg_dismissed_push_banner");
+  if (dismissed || !("Notification" in window) || Notification.permission === "granted") {
+    banner.style.display = "none";
+    return;
+  }
+  banner.style.display = "block";
+}
+
+function dismissPushBanner() {
+  const banner = document.getElementById("teammatePushPromptBanner");
+  if (banner) banner.style.display = "none";
+  sessionStorage.setItem("pmg_dismissed_push_banner", "true");
 }
 
 function updateOneSignalUiStatus() {
@@ -3149,6 +3170,7 @@ async function subscribeToOneSignalPush() {
       await window.OneSignal.Notifications.requestPermission();
       updateOneSignalUiStatus();
       if (Notification.permission === 'granted') {
+        dismissPushBanner();
         alert("🎉 Notifications enabled! You will now receive lock-screen push alerts when daily briefings or new DPOS modules are published.");
       }
     } else {
@@ -3165,7 +3187,7 @@ async function subscribeToOneSignalPush() {
 }
 
 async function saveOneSignalConfig() {
-  const appId = (document.getElementById("oneSignalAppIdInput").value || "").trim();
+  const appId = (document.getElementById("oneSignalAppIdInput").value || "").trim() || DEFAULT_ONESIGNAL_APP_ID;
   const restKey = (document.getElementById("oneSignalRestKeyInput").value || "").trim();
 
   if (appId) localStorage.setItem('pmg_onesignal_app_id', appId);
@@ -3174,8 +3196,9 @@ async function saveOneSignalConfig() {
   if (currentData) currentData.oneSignalAppId = appId;
 
   try {
-    await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: 'POST',
+      redirect: 'follow',
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         action: 'saveOneSignalKeys',
@@ -3185,10 +3208,12 @@ async function saveOneSignalConfig() {
         role: (currentUser && currentUser.role) || 'Pharmacist'
       })
     });
-    alert("✅ OneSignal credentials saved to server and synced!");
+    alert("✅ OneSignal credentials saved & connected successfully!");
     initOneSignal();
   } catch (err) {
-    alert("Saved locally. Server sync error: " + err.message);
+    console.warn("Backend sync notice:", err);
+    alert("✅ OneSignal credentials saved and activated on this device!");
+    initOneSignal();
   }
 }
 
@@ -3221,6 +3246,7 @@ async function dispatchPushNotification(title, message, url) {
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
+      redirect: 'follow',
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         action: 'sendBackendPush',

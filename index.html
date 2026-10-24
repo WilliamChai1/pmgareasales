@@ -11,6 +11,16 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./styles.css?v=68.0">
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "51051d85-495d-4a2b-901a-20377418fbec",
+        allowLocalhostAsSecureOrigin: true,
+        notifyButton: { enable: false }
+      });
+    });
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
@@ -355,6 +365,27 @@
 
   <!-- Main Dashboard -->
   <div id="dashboardView">
+
+    <!-- Teammate 1-Tap Push Permission Banner -->
+    <div id="teammatePushPromptBanner" style="display:none; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 4px 6px -1px rgba(2,132,199,0.25);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.5rem;">🔔</span>
+          <div>
+            <div style="font-weight: 800; font-size: 0.9rem;">Never miss today's Daily Briefing!</div>
+            <div style="font-size: 0.75rem; opacity: 0.9;">Enable lock-screen push alerts for targets, daily priorities & DPOS updates.</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn" style="background: white; color: #0369a1; font-weight: 800; font-size: 0.8rem; padding: 8px 14px; margin: 0; border-radius: 6px;" onclick="subscribeToOneSignalPush()">
+            🔔 Enable Notifications
+          </button>
+          <button type="button" class="btn-logout" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 10px; font-size: 0.8rem; margin: 0; border: none;" onclick="dismissPushBanner()">
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- 5-POINT DAILY BRIEFING CARD (VISIBLE TO ALL TEAMMATES ON APP DASHBOARD) -->
     <div class="card briefing-dashboard-card" id="dashboardDailyBriefingSection" style="display:none; border-top: 4px solid #0f766e;">
