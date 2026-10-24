@@ -3059,8 +3059,12 @@ async function saveAndPublishBriefing() {
 
 // ─── ONESIGNAL CLIENT PUSH NOTIFICATION ENGINE ───────────────────────────────
 const DEFAULT_ONESIGNAL_APP_ID = "51051d85-495d-4a2b-901a-20377418fbec";
+let isOneSignalInitialized = false;
 
 function initOneSignal() {
+  if (isOneSignalInitialized) return;
+  isOneSignalInitialized = true;
+
   const appId = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || DEFAULT_ONESIGNAL_APP_ID;
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -3080,10 +3084,11 @@ function initOneSignal() {
         notifyButton: { enable: false }
       });
 
-      console.log("OneSignal Web SDK initialized with App ID:", appId);
+      console.log("OneSignal Web SDK successfully initialized with App ID:", appId);
 
       if (OneSignal.User && OneSignal.User.pushSubscription) {
-        OneSignal.User.pushSubscription.addEventListener("change", function() {
+        OneSignal.User.pushSubscription.addEventListener("change", function(e) {
+          console.log("Push subscription change event:", e);
           updateOneSignalUiStatus();
         });
       }
@@ -3105,31 +3110,41 @@ function updateOneSignalUiStatus() {
     badge.innerText = "Unsupported";
     badge.style.background = "#fee2e2";
     badge.style.color = "#991b1b";
+    if (btn) btn.innerText = "⚠️ Push Not Supported";
     return;
+  }
+
+  const perm = Notification.permission;
+  if (perm === "granted") {
+    badge.innerText = "Subscribed 🟢";
+    badge.style.background = "#dcfce7";
+    badge.style.color = "#15803d";
+    if (btn) btn.innerText = "✅ Push Alerts Enabled";
+    dismissPushBanner();
+  } else if (perm === "denied") {
+    badge.innerText = "Blocked 🔴";
+    badge.style.background = "#fee2e2";
+    badge.style.color = "#991b1b";
+    if (btn) btn.innerText = "⚠️ Notifications Blocked";
+  } else {
+    badge.innerText = "Not Subscribed 🟡";
+    badge.style.background = "#fef9c3";
+    badge.style.color = "#854d0e";
+    if (btn) btn.innerText = "🔔 Enable Push Notifications";
   }
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
-    const isOptedIn = OneSignal.User && OneSignal.User.pushSubscription && OneSignal.User.pushSubscription.optedIn;
-    const perm = Notification.permission;
-
-    if (isOptedIn || perm === "granted") {
-      badge.innerText = "Subscribed 🟢";
-      badge.style.background = "#dcfce7";
-      badge.style.color = "#15803d";
-      if (btn) btn.innerText = "✅ Push Alerts Enabled";
-      dismissPushBanner();
-    } else if (perm === "denied") {
-      badge.innerText = "Blocked 🔴";
-      badge.style.background = "#fee2e2";
-      badge.style.color = "#991b1b";
-      if (btn) btn.innerText = "⚠️ Notifications Blocked in Browser";
-    } else {
-      badge.innerText = "Not Subscribed 🟡";
-      badge.style.background = "#fef9c3";
-      badge.style.color = "#854d0e";
-      if (btn) btn.innerText = "🔔 Enable Push Notifications";
-    }
+    try {
+      const isOptedIn = OneSignal.User && OneSignal.User.pushSubscription && OneSignal.User.pushSubscription.optedIn;
+      if (isOptedIn && badge) {
+        badge.innerText = "Subscribed 🟢";
+        badge.style.background = "#dcfce7";
+        badge.style.color = "#15803d";
+        if (btn) btn.innerText = "✅ Push Alerts Enabled";
+        dismissPushBanner();
+      }
+    } catch (e) {}
   });
 }
 
@@ -3182,34 +3197,60 @@ function closePushModal(shouldPop = true) {
 }
 
 async function subscribeToOneSignalPush() {
+  const btn = document.getElementById("btnSubscribePush");
+  if (btn) btn.innerText = "⏳ Requesting...";
+
+  // 1. Check support
   if (!("Notification" in window)) {
-    alert("Push notifications are not supported on this browser or platform.");
+    if (btn) btn.innerText = "⚠️ Unsupported";
+    alert("Push notifications are not supported on this browser.");
     return;
   }
 
+  // 2. Check if already blocked in browser settings
+  if (Notification.permission === "denied") {
+    if (btn) btn.innerText = "⚠️ Notifications Blocked";
+    updateOneSignalUiStatus();
+    alert("⚠️ Notifications are currently BLOCKED in your phone browser settings.\n\nTo unblock:\n1. Look at the top browser address bar next to williamchai1.github.io\n2. Tap the 🔒 lock icon (or ℹ️ tune icon)\n3. Tap 'Permissions' -> 'Notifications' -> Choose 'Allow'\n4. Refresh this page.");
+    return;
+  }
+
+  // 3. User Gesture: Synchronously request browser permission
+  let permResult = Notification.permission;
+  try {
+    permResult = await Notification.requestPermission();
+  } catch (err) {
+    console.warn("Direct Notification.requestPermission warning:", err);
+  }
+
+  // 4. Trigger OneSignal registration and slidedown prompt
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try {
-      await OneSignal.Notifications.requestPermission();
-      updateOneSignalUiStatus();
-      if (Notification.permission === 'granted') {
-        dismissPushBanner();
-        alert("🎉 Notifications enabled! Your phone is now registered to receive lock-screen push alerts.");
+      if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
+        await OneSignal.Notifications.requestPermission();
       }
-    } catch (err) {
-      console.error("OneSignal subscription error:", err);
-      try {
-        const p = await Notification.requestPermission();
-        updateOneSignalUiStatus();
-        if (p === 'granted') {
-          dismissPushBanner();
-          alert("🎉 Notifications enabled!");
-        }
-      } catch (e) {
-        alert("Unable to complete push subscription: " + e.message);
+      if (OneSignal.Slidedown && OneSignal.Slidedown.promptPush) {
+        await OneSignal.Slidedown.promptPush({ force: true });
       }
+    } catch (e) {
+      console.warn("OneSignal internal prompt note:", e);
     }
+    updateOneSignalUiStatus();
   });
+
+  // 5. Provide instant feedback to user
+  setTimeout(() => {
+    updateOneSignalUiStatus();
+    if (Notification.permission === "granted") {
+      dismissPushBanner();
+      alert("🎉 Awesome! Push notifications are now ENABLED on your phone!\n\nYour device is registered. Tap '🚀 Send Test Alert' to test receiving a live notification.");
+    } else if (Notification.permission === "denied") {
+      alert("⚠️ Notification permission was blocked.\n\nPlease tap the 🔒 lock icon next to the address bar, allow Notifications, and reload.");
+    } else {
+      alert("⚠️ Permission was dismissed or not granted. Please tap 'Enable Push Notifications' again and tap 'Allow'.");
+    }
+  }, 300);
 }
 
 async function saveOneSignalConfig() {
