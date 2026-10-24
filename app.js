@@ -336,6 +336,9 @@ async function loadDashboardData() {
       }
     }
 
+    if (typeof initOneSignal === 'function') {
+      initOneSignal();
+    }
     renderDashboard();
     document.getElementById("lastUpdated").innerText = `🟢 Live Sync • ${new Date().toLocaleTimeString()}`;
   } catch (e) {
@@ -768,6 +771,11 @@ function renderDashboard() {
       </tr>
     `;
   });
+
+  // Render 5-Point Daily Briefing directly on App Dashboard
+  if (typeof renderDashboardDailyBriefing === 'function') {
+    renderDashboardDailyBriefing();
+  }
 }
 
 function openActionPlanModal() {
@@ -1813,11 +1821,11 @@ ${takeaway}`;
   const dposTopic = (window.dposState && window.dposState.activeWeekTopic) || "Hypertension & Chronic Care";
   const featuredModule = (window.getPmgHouseBrandRecommendation && window.getPmgHouseBrandRecommendation(salesDateObj, dposTopic)) || (window.PMG_CLINICAL_UPSELL_MODULES && window.PMG_CLINICAL_UPSELL_MODULES[0]);
 
-  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${hbPct}%—let's build on this momentum today!\n\n• [DPOS Clinical Pairing]: (Weekly Focus: ${featuredModule ? featuredModule.condition : 'Chronic Care'}) For relevant patient consultations, actively recommend ${featuredModule ? featuredModule.hbProduct : 'featured House Brand regimens'}.\n\n• [Cashier PWP]: Proactively offer weekly counter PWP promo (${profile ? profile.pwpFocus : 'Sanitizer / Effervescent Vit C / Medicated Plaster'}) to maximize basket size.`;
+  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${hbPct}%—let's build on this momentum today!`;
 
-  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!\n\n• [Compliance & Outreach]: Target at least 3 new PMG Medicare App registrations today; complete and post today's social media content on schedule.`;
+  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!`;
 
-  const sec4Default = `• [Stock & Expiry]: Conduct FEFO (First-Expired, First-Out) shelf checks, focusing on supplements and nutrition milk; complete stock receiving and shelving by end of shift.\n\n• [Counter SOP]: Ensure double-checking and signing for prescription dispensing; verify cash float and card terminal settlement slips during shift handover.`;
+  const sec4Default = `• Make sure follow FEFO\n• Clean gondola from front to back and snap photo to google chat.\n• Refill stock and snap photo to google chat.\n• Update price gondola and snap photo into google chat.`;
 
   const sortedStaff = [...staff].sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
   let rankingLines = [];
@@ -2666,3 +2674,592 @@ if (typeof document !== 'undefined') {
   });
 }
 
+
+
+// ─── 5-POINT DASHBOARD DAILY BRIEFING & AUTO-TRANSLATION ENGINE ─────────────
+let currentDashboardBriefingLang = 'en';
+
+function buildDefaultBriefingObject(branch) {
+  const branchKey = findBranchKey(currentData && currentData.summary, branch) || "KOTA SENTOSA";
+  const targetKey = findBranchKey(currentData && currentData.targets, branch) || "KOTA SENTOSA";
+  const summary = (currentData && currentData.summary && currentData.summary[branchKey]) || {};
+  const targets = (currentData && currentData.targets && currentData.targets[targetKey]) || {};
+  const staff = archiveAndGetOctoberMtd((currentData && currentData.staff) || [], summary, (currentData && currentData.currentDay) || 1);
+  const daysInMonth = (currentData && currentData.daysInMonth) || 31;
+  const historyData = (currentData && currentData.history) || [];
+
+  const salesDateObj = new Date();
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const dateDisplay = `${String(salesDateObj.getDate()).padStart(2, '0')}-${months[salesDateObj.getMonth()]}-${salesDateObj.getFullYear()}`;
+  const dateIsoKey = formatMytIsoDate(salesDateObj);
+
+  const targetDay = salesDateObj.getDate();
+  const matchedHist = historyData.find(h => {
+    const md = parseMytDate(h.date);
+    return md && md.day === targetDay;
+  });
+
+  const dailyTs = matchedHist ? Number(matchedHist.ts || 0) : staff.reduce((acc, s) => acc + Number(s.dailyTs || 0), 0);
+  const dailyHb = matchedHist ? Number(matchedHist.hb || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHb || 0), 0);
+  const dailyHm = matchedHist ? Number(matchedHist.hm || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHm || 0), 0);
+  const dailyCust = matchedHist ? Number(matchedHist.cust || 0) : staff.reduce((acc, s) => acc + Number(s.dailyCust || 0), 0);
+
+  const hbPct = dailyTs > 0 ? ((dailyHb / dailyTs) * 100).toFixed(1) : "0.0";
+  const hmPct = dailyTs > 0 ? ((dailyHm / dailyTs) * 100).toFixed(1) : "0.0";
+  const avgBasket = dailyCust > 0 ? (dailyTs / dailyCust).toFixed(2) : "0.00";
+  const hbBasket = dailyCust > 0 ? (dailyHb / dailyCust).toFixed(2) : "0.00";
+
+  const mtdTs = Number(summary.mtdTs || 0);
+  const mtdHb = Number(summary.mtdHb || 0);
+  const targetTs = Number(targets.ts || 0);
+  const targetHb = Number(targets.hb || 0);
+  const mtdTsPct = targetTs > 0 ? ((mtdTs / targetTs) * 100).toFixed(1) : "0.0";
+  const mtdHbPct = targetHb > 0 ? ((mtdHb / targetHb) * 100).toFixed(1) : "0.0";
+
+  const currentDay = Math.min(daysInMonth, Math.max(1, targetDay));
+  const expectedTs = (targetTs / daysInMonth) * currentDay;
+  const expectedHb = (targetHb / daysInMonth) * currentDay;
+  const tsPacingGap = mtdTs - expectedTs;
+  const hbPacingGap = mtdHb - expectedHb;
+  const tsGapStr = tsPacingGap >= 0 ? `+RM ${Math.round(tsPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(tsPacingGap)).toLocaleString()} (Behind 🔴)`;
+  const hbGapStr = hbPacingGap >= 0 ? `+RM ${Math.round(hbPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(hbPacingGap)).toLocaleString()} (Behind 🔴)`;
+
+  let takeaway = "";
+  if (Number(hbPct) >= 40) {
+    takeaway = `💡 *Operational Takeaway:*\nStore HB achieved ${hbPct}%, surpassing the 40% benchmark! Basket size RM ${avgBasket} (HB Basket: RM ${hbBasket}) across ${dailyCust} transactions. Strong clinical conversion yesterday—let's maintain this momentum today!`;
+  } else {
+    takeaway = `💡 *Operational Takeaway:*\nStore HB closed at ${hbPct}% with RM ${avgBasket} basket size and ${dailyCust} transactions. Strengthen 1+1 acute pairing at the counter today to push HB ratio beyond 40%!`;
+  }
+
+  const sec1Text = `• Total Sales (TS): RM ${dailyTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+• House Brand (HB): RM ${dailyHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hbPct}%)
+• High Margin (HM): RM ${dailyHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hmPct}%)
+• Customer Count: ${dailyCust} transactions
+• Average Basket Size: RM ${avgBasket} (HB Basket: RM ${hbBasket})
+• MTD Progress: TS ${formatRM(mtdTs)} / ${formatRM(targetTs)} (${mtdTsPct}% | ${tsGapStr}), HB ${formatRM(mtdHb)} / ${formatRM(targetHb)} (${mtdHbPct}% | ${hbGapStr})
+
+${takeaway}`;
+
+  const dailyTargetTs = Math.round(targetTs / daysInMonth);
+  const dailyTargetHb = Math.round(targetHb / daysInMonth);
+
+  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${hbPct}%—let's build on this momentum today!`;
+  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!`;
+  const sec4Default = `• Make sure follow FEFO\n• Clean gondola from front to back and snap photo to google chat.\n• Refill stock and snap photo to google chat.\n• Update price gondola and snap photo into google chat.`;
+
+  const sortedStaff = [...staff].sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
+  let rankingLines = [];
+  sortedStaff.forEach((s, idx) => {
+    const sHb = Number(s.dailyHb || 0);
+    const sHbFormatted = sHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (idx === 0 && sHb > 0) {
+      rankingLines.push(`🥇 1st Place: *${s.name}* (HB RM ${sHbFormatted}) 🌟`);
+    } else if (idx === 1 && sHb > 0) {
+      rankingLines.push(`🥈 2nd Place: *${s.name}* (HB RM ${sHbFormatted}) 👏`);
+    } else if (idx === 2 && sHb > 0) {
+      rankingLines.push(`🥉 3rd Place: *${s.name}* (HB RM ${sHbFormatted}) 👍`);
+    } else if (sHb > 0) {
+      rankingLines.push(`• *${s.name}*: HB RM ${sHbFormatted}`);
+    } else {
+      rankingLines.push(`• *${s.name}*: HB RM 0.00`);
+    }
+  });
+
+  const dposTopic = (window.dposState && window.dposState.activeWeekTopic) || "Hypertension & Chronic Care";
+  const featuredModule = (window.getPmgHouseBrandRecommendation && window.getPmgHouseBrandRecommendation(salesDateObj, dposTopic)) || (window.PMG_CLINICAL_UPSELL_MODULES && window.PMG_CLINICAL_UPSELL_MODULES[0]);
+
+  const hbRecBlock = featuredModule ? `\n\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${featuredModule.condition}】\n\n• Standard Relief (OTC): ${featuredModule.standardOtc}\n\n• Golden Pairing (HB): ${featuredModule.hbProduct}\n\n• Recommended Dialogue: "${featuredModule.script}"\n\n• Red Flags (Refer Pharmacist): ${featuredModule.redFlags}` : '';
+
+  const sec5Text = `🏆 *Yesterday's House Brand Top Performers:*\n${rankingLines.join('\n')}\n\nThank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness. Let's keep up the great effort today! 💪🔥${hbRecBlock}`;
+
+  return {
+    branch: branch,
+    dateDisplay: dateDisplay,
+    dateIsoKey: dateIsoKey,
+    sec1: sec1Text,
+    sec2: sec2Default,
+    sec3: sec3Default,
+    sec4: sec4Default,
+    sec5: sec5Text,
+    featuredModule: featuredModule,
+    translations: {}
+  };
+}
+
+function renderDashboardDailyBriefing() {
+  const container = document.getElementById("dashboardDailyBriefingSection");
+  if (!container) return;
+
+  selectedBranch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
+  if (String(selectedBranch).toUpperCase() === 'ALL') selectedBranch = DEFAULT_BRANCH;
+  const branchUpper = selectedBranch.toUpperCase();
+
+  let briefing = (currentData && currentData.dailyBriefing) || null;
+  if (!briefing) {
+    try {
+      const local = localStorage.getItem("pmg_saved_briefing_" + branchUpper);
+      if (local) briefing = JSON.parse(local);
+    } catch (e) {}
+  }
+
+  if (!briefing) {
+    briefing = buildDefaultBriefingObject(selectedBranch);
+  }
+
+  window.activeDailyBriefing = briefing;
+
+  const dateDisplay = briefing.dateDisplay || formatDisplayDate(new Date());
+  const dateEl = document.getElementById("dashBriefingDate");
+  const branchEl = document.getElementById("dashBriefingBranch");
+  if (dateEl) dateEl.innerText = dateDisplay;
+  if (branchEl) branchEl.innerText = selectedBranch;
+
+  updateDashboardBriefingText(currentDashboardBriefingLang);
+
+  const editBtn = document.getElementById("dashEditBriefingBtn");
+  if (editBtn) {
+    editBtn.style.display = isManagementOrPharmacist(currentUser) ? "inline-block" : "none";
+  }
+
+  container.style.display = "block";
+}
+
+function updateDashboardBriefingText(lang) {
+  const briefing = window.activeDailyBriefing;
+  if (!briefing) return;
+
+  let textSec1 = briefing.sec1 || "";
+  let textSec2 = briefing.sec2 || "";
+  let textSec3 = briefing.sec3 || "";
+  let textSec4 = briefing.sec4 || "";
+  let textSec5 = briefing.sec5 || "";
+
+  if (lang !== 'en' && briefing.translations && briefing.translations[lang]) {
+    const t = briefing.translations[lang];
+    textSec1 = t.sec1 || textSec1;
+    textSec2 = t.sec2 || textSec2;
+    textSec3 = t.sec3 || textSec3;
+    textSec4 = t.sec4 || textSec4;
+    textSec5 = t.sec5 || textSec5;
+  }
+
+  const s1 = document.getElementById("dashBriefingSec1");
+  const s2 = document.getElementById("dashBriefingSec2");
+  const s3 = document.getElementById("dashBriefingSec3");
+  const s4 = document.getElementById("dashBriefingSec4");
+  const s5 = document.getElementById("dashBriefingSec5");
+
+  if (s1) s1.innerText = textSec1;
+  if (s2) s2.innerText = textSec2;
+  if (s3) s3.innerText = textSec3;
+  if (s4) s4.innerText = textSec4;
+  if (s5) s5.innerText = textSec5;
+
+  ['en', 'zh', 'ms'].forEach(l => {
+    const btn = document.getElementById("briefLang" + l.charAt(0).toUpperCase() + l.slice(1));
+    if (btn) {
+      if (l === lang) {
+        btn.classList.add("active");
+        btn.style.background = "#0f766e";
+        btn.style.color = "white";
+        btn.style.fontWeight = "bold";
+      } else {
+        btn.classList.remove("active");
+        btn.style.background = "transparent";
+        btn.style.color = "#475569";
+        btn.style.fontWeight = "normal";
+      }
+    }
+  });
+}
+
+async function switchDashboardBriefingLang(lang) {
+  currentDashboardBriefingLang = lang;
+  const briefing = window.activeDailyBriefing;
+  if (!briefing) return;
+
+  if (lang === 'en') {
+    updateDashboardBriefingText('en');
+    return;
+  }
+
+  if (briefing.translations && briefing.translations[lang]) {
+    updateDashboardBriefingText(lang);
+    return;
+  }
+
+  const btn = document.getElementById("briefLang" + lang.charAt(0).toUpperCase() + lang.slice(1));
+  const origText = btn ? btn.innerText : "";
+  if (btn) btn.innerText = "⏳ Translating...";
+
+  try {
+    await translateDailyBriefing(lang);
+    updateDashboardBriefingText(lang);
+  } catch (err) {
+    alert("Translation failed: " + err.message);
+  } finally {
+    if (btn) btn.innerText = origText;
+  }
+}
+
+async function triggerBriefingAiTranslation() {
+  const currentLang = currentDashboardBriefingLang;
+  const targetLang = currentLang === 'en' ? 'zh' : (currentLang === 'zh' ? 'ms' : 'en');
+  await switchDashboardBriefingLang(targetLang);
+}
+
+async function translateDailyBriefing(targetLang) {
+  const briefing = window.activeDailyBriefing;
+  if (!briefing) throw new Error("No briefing loaded to translate.");
+
+  const langLabel = targetLang === 'zh' ? 'Simplified Chinese (华语/中文)' : 'Bahasa Melayu (BM)';
+  const prompt = `You are an expert bilingual pharmaceutical retail operations director for PMG Pharmacy in Malaysia.
+Translate the following 5-point Daily Sales Briefing into ${langLabel}.
+
+STRICT RULES:
+1. Preserve all numerical figures, currency tags (e.g. RM 12,010.11), percentages, transaction counts, dates, and emojis.
+2. Preserve exact product names unchanged (e.g. "JH Nutrition Sleepright Capsule", "systoright", "vk gentle cleanser", "Nutribridge menz", "Valerian + Passionflower").
+3. Preserve staff names in English (e.g. Chai Yee Sian, Jong Pei Choo).
+4. For Section 4 Operational Precautions, translate "Make sure follow FEFO" appropriately (e.g. "确保严格遵守 FEFO（先过期先出）" in Chinese, or "Pastikan patuhi prinsip FEFO" in BM) and emphasize taking photos and sending to Google Chat.
+5. Return ONLY a valid JSON object with keys: "sec1", "sec2", "sec3", "sec4", "sec5". Do not include Markdown fences or extra commentary.
+
+Input Briefing to translate:
+Section 1:
+${briefing.sec1}
+
+Section 2:
+${briefing.sec2}
+
+Section 3:
+${briefing.sec3}
+
+Section 4:
+${briefing.sec4}
+
+Section 5:
+${briefing.sec5}`;
+
+  let jsonResult = null;
+  try {
+    const rawRes = await callGeminiApiWithRetry(prompt, "You are a professional retail pharmacy operations translator.");
+    if (rawRes) {
+      const fence = String.fromCharCode(96, 96, 96);
+      const cleanJson = rawRes.split(fence + "json").join("").split(fence).join("").trim();
+      jsonResult = JSON.parse(cleanJson);
+    }
+  } catch (e) {
+    console.warn("Direct Gemini translation fallback:", e);
+  }
+
+  if (!jsonResult || !jsonResult.sec1) {
+    if (targetLang === 'zh') {
+      jsonResult = {
+        sec1: briefing.sec1,
+        sec2: briefing.sec2.replace('• [Sales Focus]:', '• [今日销售重点]:'),
+        sec3: briefing.sec3.replace('• [HQ Incentive Tracking]:', '• [总部奖励指标追踪]:'),
+        sec4: `• 确保严格遵守 FEFO（先过期先出）原则\n• 从前往后彻底清洁排面展架，并拍照发送至 Google Chat。\n• 补足缺货商品，并拍照发送至 Google Chat。\n• 更新排面价钱牌，并拍照发送至 Google Chat。`,
+        sec5: briefing.sec5.replace("🏆 *Yesterday's House Brand Top Performers:*", "🏆 *昨日门市 House Brand 榜样先锋:*")
+      };
+    } else {
+      jsonResult = {
+        sec1: briefing.sec1,
+        sec2: briefing.sec2.replace('• [Sales Focus]:', '• [Fokus Jualan Hari Ini]:'),
+        sec3: briefing.sec3.replace('• [HQ Incentive Tracking]:', '• [Penjejakan Insentif HQ]:'),
+        sec4: `• Pastikan patuhi prinsip FEFO (First-Expired, First-Out)\n• Bersihkan gondola dari depan ke belakang dan hantar gambar ke Google Chat.\n• Tambah stok barang dan hantar gambar ke Google Chat.\n• Kemas kini tanda harga gondola dan hantar gambar ke Google Chat.`,
+        sec5: briefing.sec5.replace("🏆 *Yesterday's House Brand Top Performers:*", "🏆 *Pencapaian Terbaik House Brand Semalam:*")
+      };
+    }
+  }
+
+  if (!briefing.translations) briefing.translations = {};
+  briefing.translations[targetLang] = jsonResult;
+
+  const branchUpper = (briefing.branch || selectedBranch || "KOTA SENTOSA").toUpperCase();
+  try {
+    localStorage.setItem("pmg_saved_briefing_" + branchUpper, JSON.stringify(briefing));
+  } catch (e) {}
+
+  return jsonResult;
+}
+
+async function saveAndPublishBriefing() {
+  if (!currentBriefingState) return;
+
+  const btn = document.getElementById("btnSaveBriefingPublish");
+  if (btn) btn.innerText = "⏳ Publishing & Broadcasting...";
+
+  const sec1 = (document.getElementById("briefingSec1Text").innerText || currentBriefingState.sec1).trim();
+  const rawSec2 = document.getElementById("briefingSec2Input").value || currentBriefingState.sec2 || "";
+  const rawSec3 = document.getElementById("briefingSec3Input").value || currentBriefingState.sec3 || "";
+  const rawSec4 = document.getElementById("briefingSec4Input").value || currentBriefingState.sec4 || "";
+  const sec5 = (document.getElementById("briefingSec5Text").innerText || currentBriefingState.sec5).trim();
+
+  const sec2 = formatSectionText(rawSec2);
+  const sec3 = formatSectionText(rawSec3);
+  const sec4 = formatSectionText(rawSec4);
+
+  const branch = currentBriefingState.branch || selectedBranch || "Kota Sentosa";
+  const branchUpper = branch.toUpperCase();
+  const dateDisplay = currentBriefingState.dateDisplay || formatDisplayDate(new Date());
+  const dateIsoKey = currentBriefingState.dateIsoKey || formatMytIsoDate(new Date());
+
+  const briefingPayload = {
+    branch: branch,
+    dateDisplay: dateDisplay,
+    dateIsoKey: dateIsoKey,
+    sec1: sec1,
+    sec2: sec2,
+    sec3: sec3,
+    sec4: sec4,
+    sec5: sec5,
+    featuredModule: currentBriefingState.featuredModule || null,
+    updatedBy: (currentUser && currentUser.name) || "PIC",
+    updatedAt: new Date().toISOString(),
+    translations: (window.activeDailyBriefing && window.activeDailyBriefing.translations) || {}
+  };
+
+  window.activeDailyBriefing = briefingPayload;
+  try {
+    localStorage.setItem("pmg_saved_briefing_" + branchUpper, JSON.stringify(briefingPayload));
+  } catch (e) {}
+
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'saveDailyBriefing',
+        branch: branch,
+        date: dateIsoKey,
+        briefing: briefingPayload,
+        username: (currentUser && currentUser.username) || 'manager',
+        sendPush: true
+      })
+    });
+  } catch (err) {
+    console.warn("Backend briefing save error:", err);
+  }
+
+  dispatchPushNotification(
+    `📊 PMG ${branch} Daily Briefing Ready!`,
+    `Today's sales targets, priorities, and clinical pairings have been published. Tap to view!`,
+    `https://williamchai1.github.io/pmgareasales/`
+  );
+
+  renderDashboardDailyBriefing();
+  closeDailyBriefingModal();
+
+  if (btn) btn.innerText = "💾 Save & Publish (+ Push Alert)";
+  alert(`🎉 5-Point Daily Briefing published!\n• Live on App Dashboard for all teammates\n• Push notification dispatched to teammates' phones\n• Click "Copy to Google Chat" anytime to broadcast.`);
+}
+
+// ─── ONESIGNAL CLIENT PUSH NOTIFICATION ENGINE ───────────────────────────────
+function initOneSignal() {
+  const appId = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || "";
+  if (!appId) {
+    console.log("OneSignal App ID not yet configured.");
+    return;
+  }
+
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    try {
+      await OneSignal.init({
+        appId: appId,
+        allowLocalhostAsSecureOrigin: true,
+        notifyButton: { enable: false }
+      });
+      console.log("OneSignal Web SDK initialized successfully with App ID:", appId);
+      updateOneSignalUiStatus();
+    } catch (e) {
+      console.warn("OneSignal init error:", e);
+    }
+  });
+}
+
+function updateOneSignalUiStatus() {
+  const badge = document.getElementById("pushPermBadge");
+  const btn = document.getElementById("btnSubscribePush");
+  if (!badge) return;
+
+  if (!("Notification" in window)) {
+    badge.innerText = "Unsupported";
+    badge.style.background = "#fee2e2";
+    badge.style.color = "#991b1b";
+    return;
+  }
+
+  const perm = Notification.permission;
+  if (perm === "granted") {
+    badge.innerText = "Subscribed 🟢";
+    badge.style.background = "#dcfce7";
+    badge.style.color = "#15803d";
+    if (btn) btn.innerText = "✅ Push Alerts Enabled";
+  } else if (perm === "denied") {
+    badge.innerText = "Blocked 🔴";
+    badge.style.background = "#fee2e2";
+    badge.style.color = "#991b1b";
+    if (btn) btn.innerText = "⚠️ Notifications Blocked in Browser";
+  } else {
+    badge.innerText = "Not Subscribed 🟡";
+    badge.style.background = "#fef9c3";
+    badge.style.color = "#854d0e";
+    if (btn) btn.innerText = "🔔 Enable Push Notifications";
+  }
+}
+
+function openPushModal() {
+  const modal = document.getElementById("pushNotificationModal");
+  if (!modal) return;
+
+  const isMgr = isManagementOrPharmacist(currentUser);
+  const adminSec = document.getElementById("pushAdminSection");
+  if (adminSec) adminSec.style.display = isMgr ? "block" : "none";
+
+  const appIdInput = document.getElementById("oneSignalAppIdInput");
+  const restKeyInput = document.getElementById("oneSignalRestKeyInput");
+  if (appIdInput) {
+    appIdInput.value = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || "";
+  }
+  if (restKeyInput) {
+    restKeyInput.value = localStorage.getItem('pmg_onesignal_rest_key') || "";
+  }
+
+  updateOneSignalUiStatus();
+  modal.style.display = "flex";
+  history.pushState({ modal: 'pushNotificationModal' }, '');
+}
+
+function closePushModal(shouldPop = true) {
+  const modal = document.getElementById("pushNotificationModal");
+  if (modal) modal.style.display = "none";
+  if (shouldPop && history.state && history.state.modal === 'pushNotificationModal') {
+    history.back();
+  }
+}
+
+async function subscribeToOneSignalPush() {
+  if (!("Notification" in window)) {
+    alert("Push notifications are not supported on this browser or platform.");
+    return;
+  }
+
+  try {
+    if (window.OneSignal) {
+      await window.OneSignal.Notifications.requestPermission();
+      updateOneSignalUiStatus();
+      if (Notification.permission === 'granted') {
+        alert("🎉 Notifications enabled! You will now receive lock-screen push alerts when daily briefings or new DPOS modules are published.");
+      }
+    } else {
+      const p = await Notification.requestPermission();
+      updateOneSignalUiStatus();
+      if (p === 'granted') {
+        alert("🎉 Notifications enabled!");
+      }
+    }
+  } catch (err) {
+    console.error("Subscription error:", err);
+    alert("Unable to complete push subscription: " + err.message);
+  }
+}
+
+async function saveOneSignalConfig() {
+  const appId = (document.getElementById("oneSignalAppIdInput").value || "").trim();
+  const restKey = (document.getElementById("oneSignalRestKeyInput").value || "").trim();
+
+  if (appId) localStorage.setItem('pmg_onesignal_app_id', appId);
+  if (restKey) localStorage.setItem('pmg_onesignal_rest_key', restKey);
+
+  if (currentData) currentData.oneSignalAppId = appId;
+
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'saveOneSignalKeys',
+        appId: appId,
+        restKey: restKey,
+        username: (currentUser && currentUser.username) || 'manager',
+        role: (currentUser && currentUser.role) || 'Pharmacist'
+      })
+    });
+    alert("✅ OneSignal credentials saved to server and synced!");
+    initOneSignal();
+  } catch (err) {
+    alert("Saved locally. Server sync error: " + err.message);
+  }
+}
+
+async function sendTestPushAlert() {
+  const appId = (document.getElementById("oneSignalAppIdInput").value || "").trim();
+  const restKey = (document.getElementById("oneSignalRestKeyInput").value || "").trim();
+
+  if (!appId || !restKey) {
+    alert("Please enter both OneSignal App ID and REST API Key first.");
+    return;
+  }
+
+  const success = await dispatchPushNotification(
+    "⚡ PMG Performance Hub Test Alert",
+    "Great news! Push notifications are successfully connected to your phone.",
+    "https://williamchai1.github.io/pmgareasales/"
+  );
+
+  if (success) {
+    alert("🚀 Test alert dispatched! Check your phone lock screen or notification tray in a few seconds.");
+  } else {
+    alert("Failed to send test push alert. Please verify your App ID and REST Key.");
+  }
+}
+
+async function dispatchPushNotification(title, message, url) {
+  const appId = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || "";
+  const restKey = localStorage.getItem('pmg_onesignal_rest_key') || "";
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'sendBackendPush',
+        title: title,
+        message: message,
+        url: url,
+        appId: appId,
+        restKey: restKey
+      })
+    });
+    const result = await res.json();
+    if (result && result.success) return true;
+  } catch (e) {
+    console.warn("Backend push dispatch error, trying direct OneSignal REST API:", e);
+  }
+
+  if (appId && restKey) {
+    try {
+      const resp = await fetch("https://onesignal.com/api/v1/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Basic " + restKey
+        },
+        body: JSON.stringify({
+          app_id: appId,
+          included_segments: ["Total Subscriptions"],
+          headings: { "en": title },
+          contents: { "en": message },
+          url: url,
+          web_url: url
+        })
+      });
+      return resp.ok;
+    } catch (e) {
+      console.error("Direct OneSignal dispatch failed:", e);
+    }
+  }
+
+  return false;
+}
+window.dispatchPushNotification = dispatchPushNotification;

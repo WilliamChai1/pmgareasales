@@ -63,6 +63,26 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(uploadDailySales(request)))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (request.action === "saveDailyBriefing") {
+      return ContentService.createTextOutput(JSON.stringify(saveDailyBriefing(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "getDailyBriefing") {
+      return ContentService.createTextOutput(JSON.stringify(getDailyBriefing(request.branch)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "saveOneSignalKeys") {
+      return ContentService.createTextOutput(JSON.stringify(saveOneSignalKeys(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "sendBackendPush") {
+      return ContentService.createTextOutput(JSON.stringify(sendBackendOneSignalPush(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: true, message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -593,7 +613,9 @@ function getDashboardData(requestedBranch, role, username) {
     actionPlan: actionPlan, amNote: amNote, branches: originalBranchNames, currentDay: currentDayOfMonth,
     daysInMonth: daysInMonth, pendingUsers: pendingUsers,
     pmgApps: pmgAppsMap,
-    geminiKey: scriptKey
+    geminiKey: scriptKey,
+    oneSignalAppId: PropertiesService.getScriptProperties().getProperty("ONESIGNAL_APP_ID") || "",
+    dailyBriefing: getDailyBriefing(reqBranchUpper)
   };
 }
 
@@ -1366,3 +1388,170 @@ function uploadDailySales(req) {
   }
 }
 
+
+
+// ─── DAILY BRIEFING STORAGE & SYNC ──────────────────────────────────────────
+function saveDailyBriefing(req) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName("PMG_Daily_Briefing");
+    if (!sheet) {
+      sheet = ss.insertSheet("PMG_Daily_Briefing");
+      sheet.appendRow(["DateKey", "Branch", "BriefingJSON", "UpdatedBy", "UpdatedAt"]);
+    }
+
+    const branch = String(req.branch || "Kota Sentosa").trim();
+    const branchUpper = branch.toUpperCase();
+    const dateKey = normalizeDateKey(req.date || new Date());
+    const briefingData = req.briefing || {};
+    const updatedBy = String(req.username || req.author || "PIC").trim();
+    const nowIso = new Date().toISOString();
+    const briefingJson = JSON.stringify(briefingData);
+
+    const values = sheet.getDataRange().getValues();
+    let foundRow = -1;
+    for (let i = 1; i < values.length; i++) {
+      const rDateKey = normalizeDateKey(values[i][0]);
+      const rBranchUpper = String(values[i][1]).trim().toUpperCase();
+      if (rDateKey === dateKey && (rBranchUpper === branchUpper || branchUpper === "ALL")) {
+        foundRow = i + 1;
+        break;
+      }
+    }
+
+    if (foundRow > 0) {
+      sheet.getRange(foundRow, 1, 1, 5).setValues([[dateKey, branch, briefingJson, updatedBy, nowIso]]);
+    } else {
+      sheet.appendRow([dateKey, branch, briefingJson, updatedBy, nowIso]);
+    }
+
+    try {
+      PropertiesService.getScriptProperties().setProperty("BRIEFING_" + branchUpper, briefingJson);
+    } catch (e) {}
+
+    if (req.sendPush) {
+      const pushTitle = "📊 PMG " + branch + " Daily Briefing Ready!";
+      const pushMsg = "Today's priorities and targets are published. Tap to view & align!";
+      const pushUrl = "https://williamchai1.github.io/pmgareasales/";
+      sendBackendOneSignalPush({
+        title: pushTitle,
+        message: pushMsg,
+        url: pushUrl
+      });
+    }
+
+    return { success: true, message: "Daily briefing saved & broadcasted successfully!", date: dateKey, branch: branch };
+  } catch (err) {
+    return { success: false, message: "Save briefing error: " + err.toString() };
+  }
+}
+
+function getDailyBriefing(branch) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName("PMG_Daily_Briefing");
+    const branchUpper = String(branch || "").trim().toUpperCase();
+
+    if (!sheet) {
+      const cached = PropertiesService.getScriptProperties().getProperty("BRIEFING_" + branchUpper);
+      return cached ? JSON.parse(cached) : null;
+    }
+
+    const values = sheet.getDataRange().getValues();
+    if (values.length <= 1) {
+      const cached = PropertiesService.getScriptProperties().getProperty("BRIEFING_" + branchUpper);
+      return cached ? JSON.parse(cached) : null;
+    }
+
+    for (let i = values.length - 1; i >= 1; i--) {
+      const rBranchUpper = String(values[i][1]).trim().toUpperCase();
+      if (rBranchUpper === branchUpper || branchUpper === "ALL" || !branchUpper) {
+        try {
+          const parsed = JSON.parse(values[i][2]);
+          parsed.updatedBy = values[i][3];
+          parsed.updatedAt = values[i][4];
+          return parsed;
+        } catch (e) {}
+      }
+    }
+
+    if (values.length > 1) {
+      try {
+        const lastRow = values[values.length - 1];
+        const parsed = JSON.parse(lastRow[2]);
+        parsed.updatedBy = lastRow[3];
+        parsed.updatedAt = lastRow[4];
+        return parsed;
+      } catch (e) {}
+    }
+
+    return null;
+  } catch (err) {
+    return null;
+  }
+}
+
+// ─── ONESIGNAL PUSH NOTIFICATION BACKEND ──────────────────────────────────────
+function saveOneSignalKeys(req) {
+  const username = String(req.adminUsername || req.username || "").trim().toLowerCase().replace(/\s+/g, "");
+  const role = String(req.role || "Pharmacist").trim();
+  if (isDposReviewer(username, role) || username === "williamchai" || username === "william") {
+    const appId = String(req.appId || "").trim();
+    const restKey = String(req.restKey || "").trim();
+    if (appId) {
+      PropertiesService.getScriptProperties().setProperty("ONESIGNAL_APP_ID", appId);
+    }
+    if (restKey) {
+      PropertiesService.getScriptProperties().setProperty("ONESIGNAL_REST_KEY", restKey);
+    }
+    return { success: true, message: "OneSignal credentials successfully saved to server." };
+  }
+  return { success: false, message: "Unauthorized to update OneSignal credentials." };
+}
+
+function sendBackendOneSignalPush(req) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const appId = String(req.appId || props.getProperty("ONESIGNAL_APP_ID") || "").trim();
+    const restKey = String(req.restKey || props.getProperty("ONESIGNAL_REST_KEY") || "").trim();
+
+    if (!appId || !restKey) {
+      return { success: false, message: "Missing OneSignal App ID or REST API Key on server." };
+    }
+
+    const title = String(req.title || "⚡ PMG Performance Hub Notification").trim();
+    const message = String(req.message || "New update available in PMG Performance Hub.").trim();
+    const url = String(req.url || "https://williamchai1.github.io/pmgareasales/").trim();
+
+    const payload = {
+      app_id: appId,
+      included_segments: ["Total Subscriptions"],
+      headings: { "en": title },
+      contents: { "en": message },
+      url: url,
+      web_url: url
+    };
+
+    const options = {
+      method: "post",
+      contentType: "application/json",
+      headers: {
+        "Authorization": "Basic " + restKey
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch("https://onesignal.com/api/v1/notifications", options);
+    const resCode = response.getResponseCode();
+    const resText = response.getContentText();
+
+    if (resCode >= 200 && resCode < 300) {
+      return { success: true, message: "Push notification successfully sent to all subscribers!", data: JSON.parse(resText) };
+    } else {
+      return { success: false, message: "OneSignal error HTTP " + resCode + ": " + resText };
+    }
+  } catch (err) {
+    return { success: false, message: "Push dispatch failed: " + err.toString() };
+  }
+}

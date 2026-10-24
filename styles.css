@@ -824,3 +824,39 @@ th { background: #ffebee; color: var(--primary-dark); }
   background: #fee2e2;
   color: #991b1b;
 }
+
+
+/* ─── DASHBOARD DAILY SALES BRIEFING & NOTIFICATION STYLES ───────────────── */
+.briefing-dashboard-card {
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.08);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+}
+.briefing-sec-box {
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.briefing-sec-title {
+  font-weight: 800;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+.briefing-sec-content {
+  font-size: 0.78rem;
+  white-space: pre-line;
+}
+.badge-briefing-live {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

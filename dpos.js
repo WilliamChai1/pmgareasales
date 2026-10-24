@@ -1193,6 +1193,22 @@
         state.userScore = res.mine || null;
         state.demoMode = false;
 
+        // Check if a new DPOS week has been introduced and dispatch push notification
+        const weekTopicTitle = (res.week && (res.week.topicTitle || res.week.weekTitle || res.week.topic)) || '';
+        const prevSeenTopic = localStorage.getItem('pmg_last_seen_dpos_week');
+        if (weekTopicTitle && prevSeenTopic && prevSeenTopic !== weekTopicTitle) {
+          if (typeof window.dispatchPushNotification === 'function') {
+            window.dispatchPushNotification(
+              `🎓 New DPOS Training Week: ${weekTopicTitle}`,
+              `A new clinical roleplay training module is now live in DPOS Academy. Tap to practice!`,
+              `https://williamchai1.github.io/pmgareasales/?tab=academy`
+            );
+          }
+        }
+        if (weekTopicTitle) {
+          localStorage.setItem('pmg_last_seen_dpos_week', weekTopicTitle);
+        }
+
         // Auto-seed Gemini API key from backend so teammates don't need to manually configure it
         if (res.geminiKey && String(res.geminiKey).trim().length >= 10) {
           const serverKey = String(res.geminiKey).trim();
