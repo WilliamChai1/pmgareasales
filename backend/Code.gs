@@ -1536,12 +1536,17 @@ function sendBackendOneSignalPush(req) {
 
     const payload = {
       app_id: appId,
-      included_segments: ["Total Subscriptions"],
       headings: { "en": title },
       contents: { "en": message },
       url: url,
       web_url: url
     };
+
+    if (req.subscriptionId && String(req.subscriptionId).trim().length > 5) {
+      payload.include_subscription_ids = [String(req.subscriptionId).trim()];
+    } else {
+      payload.included_segments = ["Subscribed Users"];
+    }
 
     const endpoints = [
       "https://api.onesignal.com/notifications",

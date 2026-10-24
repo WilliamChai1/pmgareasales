@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pmg-hub-v70';
+const CACHE_NAME = 'pmg-hub-v71';
 
 // OneSignal Service Worker Import
 try {
