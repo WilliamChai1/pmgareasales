@@ -3065,53 +3065,45 @@ function initOneSignal() {
   if (isOneSignalInitialized) return;
   isOneSignalInitialized = true;
 
-  const appId = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || DEFAULT_ONESIGNAL_APP_ID;
+  // 1. Cleanup any stale root service worker registrations on GitHub Pages
+  if ("serviceWorker" in navigator && window.location.hostname.includes("github.io")) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => {
+        if (r.active && r.active.scriptURL && r.active.scriptURL.endsWith("/OneSignalSDKWorker.js") && !r.active.scriptURL.includes("/pmgareasales/")) {
+          console.warn("Unregistering stale root domain OneSignal service worker:", r.active.scriptURL);
+          r.unregister();
+        }
+      });
+    }).catch(e => console.warn("SW cleanup note:", e));
+  }
 
+  // 2. Attach push subscription listeners via OneSignalDeferred
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try {
-      const isGhPages = window.location.hostname.includes("github.io");
-      const pathPrefix = isGhPages ? "pmgareasales/" : "";
-      const scopePrefix = isGhPages ? "/pmgareasales/" : "/";
-
-      await OneSignal.init({
-        appId: appId,
-        serviceWorkerPath: "OneSignalSDKWorker.js",
-        serviceWorkerParam: {
-          scope: scopePrefix
-        },
-        allowLocalhostAsSecureOrigin: true,
-        notifyButton: { enable: false }
-      });
-
-      console.log("OneSignal Web SDK successfully initialized with App ID:", appId);
-
+      console.log("OneSignal SDK ready. Monitoring push subscription state...");
       const sub = OneSignal.User && (OneSignal.User.PushSubscription || OneSignal.User.pushSubscription);
       if (sub) {
         sub.addEventListener("change", function(e) {
-          console.log("Push subscription change event:", e);
+          console.log("Push subscription change event received:", e);
           if (e && e.current && e.current.id) {
-            localStorage.setItem('pmg_onesignal_sub_id', e.current.id);
+            localStorage.setItem("pmg_onesignal_sub_id", e.current.id);
           }
           updateOneSignalUiStatus();
         });
 
-        if (Notification.permission === 'granted') {
-          if (!sub.optedIn && sub.optIn) {
-            sub.optIn().then(() => {
-              if (sub.id) localStorage.setItem('pmg_onesignal_sub_id', sub.id);
-              updateOneSignalUiStatus();
-            }).catch(() => {});
-          } else if (sub.id) {
-            localStorage.setItem('pmg_onesignal_sub_id', sub.id);
-          }
+        if (sub.id) {
+          localStorage.setItem("pmg_onesignal_sub_id", sub.id);
+        } else if (Notification.permission === "granted" && sub.optIn) {
+          try {
+            await sub.optIn();
+          } catch (e) {}
         }
       }
-
       updateOneSignalUiStatus();
       checkTeammatePushBanner();
     } catch (e) {
-      console.warn("OneSignal init error:", e);
+      console.warn("OneSignal listener init warning:", e);
     }
   });
 }
@@ -3119,6 +3111,7 @@ function initOneSignal() {
 function updateOneSignalUiStatus() {
   const badge = document.getElementById("pushPermBadge");
   const btn = document.getElementById("btnSubscribePush");
+  const subIdSpan = document.getElementById("valPushSubId");
   if (!badge) return;
 
   if (!("Notification" in window)) {
@@ -3126,48 +3119,100 @@ function updateOneSignalUiStatus() {
     badge.style.background = "#fee2e2";
     badge.style.color = "#991b1b";
     if (btn) btn.innerText = "⚠️ Push Not Supported";
+    if (subIdSpan) subIdSpan.innerText = "Unsupported Browser";
     return;
   }
 
   const perm = Notification.permission;
+  if (perm === "denied") {
+    badge.innerText = "Blocked 🔴";
+    badge.style.background = "#fee2e2";
+    badge.style.color = "#991b1b";
+    if (btn) btn.innerText = "⚠️ Notifications Blocked";
+    if (subIdSpan) subIdSpan.innerText = "Blocked in Phone Settings";
+    return;
+  }
+
+  // Check stored ID
+  const storedId = localStorage.getItem("pmg_onesignal_sub_id");
+
   if (perm === "granted") {
     badge.innerText = "Subscribed 🟢";
     badge.style.background = "#dcfce7";
     badge.style.color = "#15803d";
     if (btn) btn.innerText = "✅ Push Alerts Enabled";
     dismissPushBanner();
-  } else if (perm === "denied") {
-    badge.innerText = "Blocked 🔴";
-    badge.style.background = "#fee2e2";
-    badge.style.color = "#991b1b";
-    if (btn) btn.innerText = "⚠️ Notifications Blocked";
+    if (subIdSpan) subIdSpan.innerText = storedId || "Connecting...";
   } else {
     badge.innerText = "Not Subscribed 🟡";
     badge.style.background = "#fef9c3";
     badge.style.color = "#854d0e";
     if (btn) btn.innerText = "🔔 Enable Push Notifications";
+    if (subIdSpan) subIdSpan.innerText = "Not Subscribed";
   }
 
-  const subIdSpan = document.getElementById("valPushSubId");
+  // Asynchronously query live OneSignal object
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try {
       const sub = OneSignal.User && (OneSignal.User.PushSubscription || OneSignal.User.pushSubscription);
-      if (sub && sub.id) {
-        localStorage.setItem('pmg_onesignal_sub_id', sub.id);
-        if (subIdSpan) subIdSpan.innerText = sub.id;
+      const activeId = sub && sub.id;
+      if (activeId) {
+        localStorage.setItem("pmg_onesignal_sub_id", activeId);
+        if (subIdSpan) subIdSpan.innerText = activeId;
         badge.innerText = "Subscribed 🟢";
         badge.style.background = "#dcfce7";
         badge.style.color = "#15803d";
         if (btn) btn.innerText = "✅ Push Alerts Enabled";
         dismissPushBanner();
-      } else {
-        const stored = localStorage.getItem('pmg_onesignal_sub_id');
-        if (subIdSpan) subIdSpan.innerText = stored || "Connecting...";
+      } else if (storedId && subIdSpan) {
+        subIdSpan.innerText = storedId;
       }
     } catch (e) {}
   });
 }
+
+async function refreshOneSignalSubscriptionId() {
+  const subIdSpan = document.getElementById("valPushSubId");
+  if (subIdSpan) subIdSpan.innerText = "Checking...";
+
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    try {
+      const sub = OneSignal.User && (OneSignal.User.PushSubscription || OneSignal.User.pushSubscription);
+      if (sub && sub.optIn && !sub.optedIn && Notification.permission === "granted") {
+        await sub.optIn();
+      }
+
+      let activeId = sub && sub.id;
+      if (!activeId) {
+        // Wait 1 second and re-check
+        await new Promise(r => setTimeout(r, 1000));
+        activeId = sub && sub.id;
+      }
+
+      if (activeId) {
+        localStorage.setItem("pmg_onesignal_sub_id", activeId);
+        if (subIdSpan) subIdSpan.innerText = activeId;
+        updateOneSignalUiStatus();
+        alert("✅ Device ID Connected:\n\n" + activeId);
+      } else {
+        const stored = localStorage.getItem("pmg_onesignal_sub_id");
+        if (stored) {
+          if (subIdSpan) subIdSpan.innerText = stored;
+          alert("Active Stored Device ID:\n\n" + stored);
+        } else {
+          if (subIdSpan) subIdSpan.innerText = "Connecting...";
+          alert("Device ID is still generating with push servers.\n\nMake sure notification permission is Allowed on your browser and reload the page.");
+        }
+      }
+    } catch (err) {
+      if (subIdSpan) subIdSpan.innerText = "Error checking ID";
+      alert("Notice while checking subscription: " + (err.message || err));
+    }
+  });
+}
+window.refreshOneSignalSubscriptionId = refreshOneSignalSubscriptionId;
 
 function checkTeammatePushBanner() {
   const banner = document.getElementById("teammatePushPromptBanner");
@@ -3198,21 +3243,21 @@ function openPushModal() {
   const appIdInput = document.getElementById("oneSignalAppIdInput");
   const restKeyInput = document.getElementById("oneSignalRestKeyInput");
   if (appIdInput) {
-    appIdInput.value = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || DEFAULT_ONESIGNAL_APP_ID;
+    appIdInput.value = (currentData && currentData.oneSignalAppId) || localStorage.getItem("pmg_onesignal_app_id") || DEFAULT_ONESIGNAL_APP_ID;
   }
   if (restKeyInput) {
-    restKeyInput.value = localStorage.getItem('pmg_onesignal_rest_key') || "";
+    restKeyInput.value = localStorage.getItem("pmg_onesignal_rest_key") || "";
   }
 
   updateOneSignalUiStatus();
   modal.style.display = "flex";
-  history.pushState({ modal: 'pushNotificationModal' }, '');
+  history.pushState({ modal: "pushNotificationModal" }, "");
 }
 
 function closePushModal(shouldPop = true) {
   const modal = document.getElementById("pushNotificationModal");
   if (modal) modal.style.display = "none";
-  if (shouldPop && history.state && history.state.modal === 'pushNotificationModal') {
+  if (shouldPop && history.state && history.state.modal === "pushNotificationModal") {
     history.back();
   }
 }
@@ -3237,9 +3282,8 @@ async function subscribeToOneSignalPush() {
   }
 
   // 3. User Gesture: Synchronously request browser permission
-  let permResult = Notification.permission;
   try {
-    permResult = await Notification.requestPermission();
+    await Notification.requestPermission();
   } catch (err) {
     console.warn("Direct Notification.requestPermission warning:", err);
   }
@@ -3259,63 +3303,67 @@ async function subscribeToOneSignalPush() {
         await OneSignal.Slidedown.promptPush({ force: true });
       }
 
-      if (sub && sub.id) {
-        localStorage.setItem('pmg_onesignal_sub_id', sub.id);
-        const subIdSpan = document.getElementById("valPushSubId");
-        if (subIdSpan) subIdSpan.innerText = sub.id;
-        console.log("Device registered with OneSignal ID:", sub.id);
-      }
+      // Resilient Polling: Poll up to 6 seconds (12 x 500ms) for sub.id to resolve
+      let attempts = 0;
+      const pollTimer = setInterval(() => {
+        attempts++;
+        const currentSub = OneSignal.User && (OneSignal.User.PushSubscription || OneSignal.User.pushSubscription);
+        const resolvedId = (currentSub && currentSub.id);
+
+        if (resolvedId) {
+          clearInterval(pollTimer);
+          localStorage.setItem("pmg_onesignal_sub_id", resolvedId);
+          updateOneSignalUiStatus();
+          dismissPushBanner();
+          alert("🎉 Awesome! Push notifications are now ENABLED on your phone!\n\nDevice ID: " + resolvedId + "\n\nTap '🚀 Send Test Alert' to test receiving a live notification.");
+        } else if (attempts >= 12) {
+          clearInterval(pollTimer);
+          updateOneSignalUiStatus();
+          if (Notification.permission === "granted") {
+            dismissPushBanner();
+            alert("✅ Notification permission granted!\n\nYour phone is registering with the push server. If Device ID still shows 'Connecting...', tap the '🔄 Refresh ID' button.");
+          }
+        }
+      }, 500);
+
     } catch (e) {
       console.warn("OneSignal optIn note:", e);
+      updateOneSignalUiStatus();
     }
-    updateOneSignalUiStatus();
   });
-
-  // 5. Provide instant feedback to user
-  setTimeout(() => {
-    updateOneSignalUiStatus();
-    if (Notification.permission === "granted") {
-      dismissPushBanner();
-      alert("🎉 Awesome! Push notifications are now ENABLED on your phone!\n\nYour device is registered. Tap '🚀 Send Test Alert' to test receiving a live notification.");
-    } else if (Notification.permission === "denied") {
-      alert("⚠️ Notification permission was blocked.\n\nPlease tap the 🔒 lock icon next to the address bar, allow Notifications, and reload.");
-    } else {
-      alert("⚠️ Permission was dismissed or not granted. Please tap 'Enable Push Notifications' again and tap 'Allow'.");
-    }
-  }, 300);
 }
 
 async function saveOneSignalConfig() {
   const appId = (document.getElementById("oneSignalAppIdInput").value || "").trim() || DEFAULT_ONESIGNAL_APP_ID;
   const restKey = (document.getElementById("oneSignalRestKeyInput").value || "").trim();
 
-  if (appId) localStorage.setItem('pmg_onesignal_app_id', appId);
-  if (restKey) localStorage.setItem('pmg_onesignal_rest_key', restKey);
+  if (appId) localStorage.setItem("pmg_onesignal_app_id", appId);
+  if (restKey) localStorage.setItem("pmg_onesignal_rest_key", restKey);
 
   if (currentData) currentData.oneSignalAppId = appId;
 
   try {
     fetch(API_URL, {
-      method: 'POST',
-      redirect: 'follow',
+      method: "POST",
+      redirect: "follow",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
-        action: 'saveOneSignalKeys',
+        action: "saveOneSignalKeys",
         appId: appId,
         restKey: restKey,
-        username: (currentUser && currentUser.username) || 'manager',
-        role: (currentUser && currentUser.role) || 'Pharmacist'
+        username: (currentUser && currentUser.username) || "manager",
+        role: (currentUser && currentUser.role) || "Pharmacist"
       })
     }).catch(e => console.warn("Background GAS sync notice:", e));
   } catch (e) {}
 
   alert("✅ OneSignal App ID & REST Key saved and active on this device!");
-  initOneSignal();
+  updateOneSignalUiStatus();
 }
 
 async function sendTestPushAlert() {
   const appId = (document.getElementById("oneSignalAppIdInput").value || "").trim() || DEFAULT_ONESIGNAL_APP_ID;
-  const restKey = (document.getElementById("oneSignalRestKeyInput").value || "").trim() || localStorage.getItem('pmg_onesignal_rest_key') || "";
+  const restKey = (document.getElementById("oneSignalRestKeyInput").value || "").trim() || localStorage.getItem("pmg_onesignal_rest_key") || "";
 
   if (!restKey) {
     alert("Please paste your OneSignal REST API Key first.");
@@ -3327,13 +3375,26 @@ async function sendTestPushAlert() {
     return;
   }
 
-  const btn = (typeof event !== 'undefined' && event && event.target) ? event.target : null;
+  // Capture active subscription ID
+  let activeSubId = localStorage.getItem("pmg_onesignal_sub_id") || "";
+  try {
+    if (window.OneSignal && window.OneSignal.User) {
+      const sub = window.OneSignal.User.PushSubscription || window.OneSignal.User.pushSubscription;
+      if (sub && sub.id) {
+        activeSubId = sub.id;
+        localStorage.setItem("pmg_onesignal_sub_id", activeSubId);
+      }
+    }
+  } catch (e) {}
+
+  const btn = (typeof event !== "undefined" && event && event.target) ? event.target : null;
   if (btn) btn.innerText = "⏳ Dispatching test alert...";
 
   const res = await dispatchPushNotification(
     "⚡ PMG Performance Hub Test Alert",
     "Great news! Push notifications are successfully connected to your phone.",
-    "https://williamchai1.github.io/pmgareasales/"
+    "https://williamchai1.github.io/pmgareasales/",
+    activeSubId
   );
 
   if (btn) btn.innerText = "🚀 Send Test Alert";
@@ -3345,18 +3406,18 @@ async function sendTestPushAlert() {
   }
 }
 
-async function dispatchPushNotification(title, message, url) {
-  const appId = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || DEFAULT_ONESIGNAL_APP_ID;
-  const restKey = localStorage.getItem('pmg_onesignal_rest_key') || "";
-  const subId = localStorage.getItem('pmg_onesignal_sub_id') || "";
+async function dispatchPushNotification(title, message, url, explicitSubId) {
+  const appId = (currentData && currentData.oneSignalAppId) || localStorage.getItem("pmg_onesignal_app_id") || DEFAULT_ONESIGNAL_APP_ID;
+  const restKey = localStorage.getItem("pmg_onesignal_rest_key") || "";
+  const subId = explicitSubId || localStorage.getItem("pmg_onesignal_sub_id") || "";
 
   try {
     const res = await fetch(API_URL, {
-      method: 'POST',
-      redirect: 'follow',
+      method: "POST",
+      redirect: "follow",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
-        action: 'sendBackendPush',
+        action: "sendBackendPush",
         title: title,
         message: message,
         url: url,

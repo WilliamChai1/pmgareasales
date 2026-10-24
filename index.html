@@ -9,17 +9,19 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=72.0">
+  <link rel="stylesheet" href="./styles.css?v=73.0">
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
       const isGhPages = window.location.hostname.includes("github.io");
+      const swPath = isGhPages ? "pmgareasales/OneSignalSDKWorker.js" : "OneSignalSDKWorker.js";
+      const swScope = isGhPages ? "/pmgareasales/" : "/";
       await OneSignal.init({
         appId: "51051d85-495d-4a2b-901a-20377418fbec",
-        serviceWorkerPath: "OneSignalSDKWorker.js",
+        serviceWorkerPath: swPath,
         serviceWorkerParam: {
-          scope: isGhPages ? "/pmgareasales/" : "/"
+          scope: swScope
         },
         allowLocalhostAsSecureOrigin: true,
         notifyButton: { enable: false }
@@ -624,7 +626,8 @@
           <span id="pushPermBadge" style="font-size: 0.72rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; background: #e2e8f0; color: #475569;">Checking...</span>
         </div>
         <div style="font-size: 0.72rem; color: #0369a1; margin-top: 8px; word-break: break-all;">
-          <b>Device ID:</b> <span id="valPushSubId" style="font-family: monospace; font-weight: bold; color: #0284c7;">Connecting...</span>
+          <div><b>Device ID:</b> <span id="valPushSubId" style="font-family: monospace; font-weight: bold; color: #0284c7;">Connecting...</span></div>
+          <button type="button" onclick="refreshOneSignalSubscriptionId()" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; cursor: pointer;">🔄 Refresh ID</button>
         </div>
       </div>
 
@@ -660,7 +663,7 @@
   <script src="./data/clinical_upsell_modules.js?v=68.0"></script>
   <script src="./data/dpos_week1.js"></script>
   <script src="./data/dpos_catalog.js"></script>
-  <script src="./dpos.js?v=72.0"></script>
-  <script src="./app.js?v=72.0"></script>
+  <script src="./dpos.js?v=73.0"></script>
+  <script src="./app.js?v=73.0"></script>
 </body>
 </html>
