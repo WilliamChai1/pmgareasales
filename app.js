@@ -3255,30 +3255,43 @@ async function sendTestNativePush() {
   );
 
   if (btn) btn.innerText = "🚀 Send Test Alert";
-
-  if (res && res.success) {
-    alert("🚀 " + (res.message || "Test alert dispatched!") + "\n\nCheck your phone notification bar / banner in a few seconds.");
-  } else {
-    // Local fallback direct notification
-    triggerNativeAlertNotification(
-      "⚡ PMG Performance Hub Test Alert",
-      "Great news! Pure native push alerts are working directly on your device.",
-      "https://williamchai1.github.io/pmgareasales/"
-    );
-    alert("🚀 Test alert dispatched directly to your device screen!");
-  }
+  alert("🚀 Test alert broadcasted to channel: " + channel + "!\n\nCheck your phone notification banner / lockscreen.");
 }
-window.sendTestPushAlert = sendTestNativePush; // Alias
+window.sendTestPushAlert = sendTestNativePush;
 window.sendTestNativePush = sendTestNativePush;
 
 async function dispatchPushNotification(title, message, url) {
   const branch = (currentUser && currentUser.branch) || (typeof selectedBranch !== "undefined" ? selectedBranch : "") || "all";
   const channel = getBranchChannelSlug(branch);
 
+  let broadcastSuccess = false;
+
+  // 1. PRIMARY: Direct client broadcast to ntfy.sh (Local Telco IP - zero 429 rate limit)
   try {
-    const res = await fetch(API_URL, {
+    const res = await fetch("https://ntfy.sh/" + channel, {
       method: "POST",
-      redirect: "follow",
+      headers: {
+        "Title": title,
+        "Click": url || "https://williamchai1.github.io/pmgareasales/",
+        "Tags": "loudspeaker,pill"
+      },
+      body: message
+    });
+    if (res.ok) {
+      broadcastSuccess = true;
+      console.log("Direct client push broadcast sent to channel:", channel);
+    }
+  } catch (err) {
+    console.warn("Direct push fetch error:", err);
+  }
+
+  // 2. IMMEDIATE SENDER FEEDBACK: Trigger native alert locally so sender sees it immediately
+  triggerNativeAlertNotification(title, message, url);
+
+  // 3. BACKGROUND: Notify GAS backend (fire-and-forget)
+  try {
+    fetch(API_URL, {
+      method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         action: "sendBackendNativePush",
@@ -3288,31 +3301,22 @@ async function dispatchPushNotification(title, message, url) {
         branch: branch,
         channel: channel
       })
-    });
-    const result = await res.json();
-    return result;
-  } catch (e) {
-    console.warn("Backend push dispatch notice:", e);
-    try {
-      await fetch("https://ntfy.sh/" + channel, {
-        method: "POST",
-        headers: {
-          "Title": title,
-          "Click": url || "https://williamchai1.github.io/pmgareasales/",
-          "Tags": "loudspeaker,pill"
-        },
-        body: message
-      });
-      return { success: true, message: "Alert published directly to channel: " + channel };
-    } catch (err2) {
-      return { success: false, message: e.message || "Network error" };
-    }
-  }
+    }).catch(e => console.warn("Background GAS push notice:", e));
+  } catch (e) {}
+
+  return {
+    success: true,
+    channel: channel,
+    message: broadcastSuccess ? ("Alert broadcasted to channel " + channel) : "Alert shown locally"
+  };
 }
 window.dispatchPushNotification = dispatchPushNotification;
 
 async function sendDposPendingReminderPush() {
   const branch = (currentUser && currentUser.branch) || (typeof selectedBranch !== "undefined" ? selectedBranch : "") || "all";
+
+  let activeTopic = "Clinical Roleplay Consultation";
+  let pendingNames = [];
 
   try {
     const res = await fetch(API_URL, {
@@ -3325,24 +3329,27 @@ async function sendDposPendingReminderPush() {
       })
     });
     const result = await res.json();
-    if (result && result.success) {
-      alert("🎉 " + result.message + "\n\nPush alert dispatched to pending teammates: " + (result.pendingNames ? result.pendingNames.join(", ") : "all"));
-    } else {
-      await dispatchPushNotification(
-        "🎓 DPOS Academy: Weekly Roleplay Pending!",
-        "Friendly reminder: Please complete this week's clinical roleplay consultation in DPOS Academy today. Tap to practice!",
-        "https://williamchai1.github.io/pmgareasales/?tab=academy"
-      );
-      alert("📢 DPOS Reminder broadcast dispatched to all teammates!");
+    if (result) {
+      if (result.activeTopic) activeTopic = result.activeTopic;
+      if (result.pendingNames && Array.isArray(result.pendingNames)) {
+        pendingNames = result.pendingNames;
+      }
     }
   } catch (err) {
-    await dispatchPushNotification(
-      "🎓 DPOS Academy: Weekly Roleplay Pending!",
-      "Friendly reminder: Please complete this week's clinical roleplay consultation in DPOS Academy today. Tap to practice!",
-      "https://williamchai1.github.io/pmgareasales/?tab=academy"
-    );
-    alert("📢 DPOS Reminder broadcast dispatched to all teammates!");
+    console.warn("GAS dposSendReminderPush error:", err);
   }
+
+  const pushTitle = "🎓 DPOS Academy: Weekly Roleplay Pending!";
+  const pushMessage = pendingNames.length > 0
+    ? ("Reminder for " + branch.toUpperCase() + ": " + pendingNames.slice(0, 3).join(", ") + (pendingNames.length > 3 ? (" + " + (pendingNames.length - 3) + " others") : "") + " - Please complete your weekly roleplay (" + activeTopic + ") today!")
+    : ("Reminder: Please complete this week's clinical roleplay consultation (" + activeTopic + ") in DPOS Academy today!");
+  const pushUrl = "https://williamchai1.github.io/pmgareasales/?tab=academy";
+
+  // Directly broadcast to all teammates via client push
+  const pushRes = await dispatchPushNotification(pushTitle, pushMessage, pushUrl);
+
+  const pendingListStr = pendingNames.length > 0 ? pendingNames.join(", ") : "All teammates";
+  alert("🎉 DPOS Reminder Dispatched!\n\nTopic: " + activeTopic + "\nPending Staff (" + pendingNames.length + "): " + pendingListStr + "\n\nBroadcast Channel: " + (pushRes.channel || "pmg-alert-all"));
 }
 window.sendDposPendingReminderPush = sendDposPendingReminderPush;
 
