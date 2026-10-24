@@ -3094,6 +3094,14 @@ function initOneSignal() {
 
         if (sub.id) {
           localStorage.setItem("pmg_onesignal_sub_id", sub.id);
+        } else if (Notification.permission === "granted" && sub.optIn) {
+          console.log("Permission granted on startup: triggering OneSignal background registration...");
+          sub.optIn().then(() => {
+            if (sub.id) {
+              localStorage.setItem("pmg_onesignal_sub_id", sub.id);
+              updateOneSignalUiStatus();
+            }
+          }).catch(e => console.warn("Startup background optIn note:", e));
         }
       }
       updateOneSignalUiStatus();
@@ -3197,6 +3205,7 @@ async function runPushDiagnostics() {
     oneSignalUser: !!(window.OneSignal && window.OneSignal.User),
     subId: null,
     optedIn: null,
+    token: null,
     storedSubId: localStorage.getItem("pmg_onesignal_sub_id") || "None"
   };
 
@@ -3214,21 +3223,33 @@ async function runPushDiagnostics() {
     }
   }
 
-  // 2. Inspect OneSignal live object
+  // 2. Inspect OneSignal live object & perform active handshake if needed
   try {
     if (window.OneSignal && window.OneSignal.User) {
       const sub = window.OneSignal.User.PushSubscription || window.OneSignal.User.pushSubscription;
       if (sub) {
         diag.subId = sub.id || null;
         diag.optedIn = sub.optedIn;
-        if (!diag.subId && sub.optIn && Notification.permission === "granted") {
+        diag.token = sub.token ? (sub.token.substring(0, 15) + "...") : null;
+
+        // If sub.id not present yet and permission is granted, actively handshake with up to 8s
+        if (!diag.subId && Notification.permission === "granted" && sub.optIn) {
+          if (subIdSpan) subIdSpan.innerText = "Syncing with push servers...";
           try {
-            await Promise.race([
-              sub.optIn(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error("optIn timeout")), 2000))
-            ]);
-            diag.subId = sub.id || null;
-          } catch (e) {}
+            await sub.optIn();
+          } catch (e) {
+            diag.optInError = e.message || String(e);
+          }
+
+          // Resilient poll: wait up to 8s (16 x 500ms) for sub.id to populate
+          for (let i = 0; i < 16; i++) {
+            if (sub.id) {
+              diag.subId = sub.id;
+              break;
+            }
+            await new Promise(r => setTimeout(r, 500));
+          }
+          diag.token = sub.token ? (sub.token.substring(0, 15) + "...") : null;
         }
       }
     }
@@ -3258,12 +3279,13 @@ async function runPushDiagnostics() {
     "• Browser Permission: " + (diag.permission === "granted" ? "Granted ✅" : diag.permission.toUpperCase() + " ⚠️"),
     "• Service Worker: " + (diag.swRegistrations.length > 0 ? "Active ✅" : "Pending ⏳") + " [" + swInfo + "]",
     "• OneSignal Engine: " + (diag.oneSignalLoaded ? "Loaded ✅" : "Initializing ⏳"),
-    "• Device ID: " + (resolvedId ? resolvedId : "Pending Registration ⏳"),
+    "• Push Token (FCM): " + (diag.token ? "Acquired ✅" : "Syncing ⏳"),
+    "• Device ID: " + (resolvedId ? (resolvedId.substring(0, 18) + "... ✅") : "Pending Registration ⏳"),
     "──────────────────────────",
     resolvedId
-      ? "🎉 Your device is connected! You can tap '🚀 Send Test Alert' to test delivery."
+      ? "🎉 Device connected successfully!\n\nTap '🚀 Send Test Alert' to test receiving a live notification."
       : (diag.permission === "granted"
-          ? "Permission is Granted. If Device ID hasn't appeared yet, wait 3 seconds and tap Check Status again."
+          ? "Background handshake initiated. If Device ID still shows Pending, wait 3-5 seconds and tap Check Status again."
           : "Please tap 'Enable Push Notifications' and select Allow.")
   ].join("\n");
 
@@ -3373,7 +3395,7 @@ async function subscribeToOneSignalPush() {
         });
       }
 
-      // Quick poll up to 3 seconds for ID
+      // Quick poll up to 5 seconds for ID
       let checks = 0;
       const poll = setInterval(() => {
         checks++;
@@ -3385,7 +3407,7 @@ async function subscribeToOneSignalPush() {
           const subIdSpan = document.getElementById("valPushSubId");
           if (subIdSpan) subIdSpan.innerText = id;
           updateOneSignalUiStatus();
-        } else if (checks >= 6) {
+        } else if (checks >= 10) {
           clearInterval(poll);
           updateOneSignalUiStatus();
         }
