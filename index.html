@@ -14,8 +14,16 @@
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
+      const isGhPages = window.location.hostname.includes("github.io");
+      const pathPrefix = isGhPages ? "pmgareasales/" : "";
+      const scopePrefix = isGhPages ? "/pmgareasales/" : "/";
+
       await OneSignal.init({
         appId: "51051d85-495d-4a2b-901a-20377418fbec",
+        serviceWorkerPath: pathPrefix + "OneSignalSDKWorker.js",
+        serviceWorkerParam: {
+          scope: scopePrefix
+        },
         allowLocalhostAsSecureOrigin: true,
         notifyButton: { enable: false }
       });
