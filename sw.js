@@ -1,11 +1,4 @@
-const CACHE_NAME = 'pmg-hub-v72';
-
-// OneSignal Service Worker Import
-try {
-  importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
-} catch (e) {
-  // Offline or local fallback
-}
+const CACHE_NAME = 'pmg-hub-v77';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -31,28 +24,46 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Native Web Push Notification Support (Fallback & PWA)
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  try {
-    const data = event.data.json();
-    const title = data.title || "⚡ PMG Performance Hub";
+// Client postMessage notification handler
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'showNotification') {
+    const title = event.data.title || "⚡ PMG Performance Hub";
     const options = {
-      body: data.message || data.body || "New update in PMG Sales Hub.",
+      body: event.data.body || "New update in PMG Sales Hub.",
       icon: "./favicon.ico",
       badge: "./favicon.ico",
-      data: { url: data.url || "./index.html" }
+      vibrate: [200, 100, 200],
+      data: { url: event.data.url || "./index.html" }
     };
-    event.waitUntil(self.registration.showNotification(title, options));
-  } catch (err) {
-    const text = event.data.text();
-    event.waitUntil(
-      self.registration.showNotification("⚡ PMG Performance Hub", {
-        body: text,
-        icon: "./favicon.ico"
-      })
-    );
+    self.registration.showNotification(title, options);
   }
+});
+
+// Native Web Push Event Handler
+self.addEventListener('push', (event) => {
+  let title = "⚡ PMG Performance Hub";
+  let body = "New update in PMG Sales Hub.";
+  let url = "./index.html";
+
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      title = data.title || title;
+      body = data.message || data.body || body;
+      url = data.url || data.click || url;
+    } catch (e) {
+      body = event.data.text() || body;
+    }
+  }
+
+  const options = {
+    body: body,
+    icon: "./favicon.ico",
+    badge: "./favicon.ico",
+    vibrate: [200, 100, 200],
+    data: { url: url }
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {

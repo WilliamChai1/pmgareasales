@@ -79,8 +79,8 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    if (request.action === "sendBackendPush") {
-      return ContentService.createTextOutput(JSON.stringify(sendBackendOneSignalPush(request)))
+    if (request.action === "sendBackendPush" || request.action === "sendBackendNativePush") {
+      return ContentService.createTextOutput(JSON.stringify(sendBackendNativePush(request)))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -1443,10 +1443,11 @@ function saveDailyBriefing(req) {
       const pushTitle = "📊 PMG " + branch + " Daily Briefing Ready!";
       const pushMsg = "Today's priorities and targets are published. Tap to view & align!";
       const pushUrl = "https://williamchai1.github.io/pmgareasales/";
-      sendBackendOneSignalPush({
+      sendBackendNativePush({
         title: pushTitle,
         message: pushMsg,
-        url: pushUrl
+        url: pushUrl,
+        branch: branch
       });
     }
 
@@ -1519,83 +1520,41 @@ function saveOneSignalKeys(req) {
   return { success: false, message: "Unauthorized to update OneSignal credentials." };
 }
 
-function sendBackendOneSignalPush(req) {
+function sendBackendNativePush(req) {
   try {
-    const props = PropertiesService.getScriptProperties();
-    const appId = String(req.appId || props.getProperty("ONESIGNAL_APP_ID") || "51051d85-495d-4a2b-901a-20377418fbec").trim();
-    const rawRestKey = String(req.restKey || props.getProperty("ONESIGNAL_REST_KEY") || "").trim();
-
-    if (!appId || !rawRestKey) {
-      return { success: false, message: "Missing OneSignal App ID or REST API Key." };
-    }
-
-    const cleanKey = rawRestKey.replace(/^(Key|Basic|Bearer)\s+/i, "").trim();
-    const title = String(req.title || "⚡ PMG Performance Hub Notification").trim();
-    const message = String(req.message || "New update available in PMG Performance Hub.").trim();
+    const title = String(req.title || "⚡ PMG Performance Hub").trim();
+    const message = String(req.message || "New update in PMG Performance Hub.").trim();
     const url = String(req.url || "https://williamchai1.github.io/pmgareasales/").trim();
+    const branch = String(req.branch || "").trim();
+    const channel = "pmg-alert-" + (branch ? branch.toLowerCase().replace(/[^a-z0-9]/g, "") : "all");
 
-    const payload = {
-      app_id: appId,
-      headings: { "en": title },
-      contents: { "en": message },
-      url: url,
-      web_url: url
-    };
+    const ntfyUrl = "https://ntfy.sh/" + channel;
+    const response = UrlFetchApp.fetch(ntfyUrl, {
+      method: "post",
+      headers: {
+        "Title": title,
+        "Click": url,
+        "Tags": "loudspeaker,pill"
+      },
+      payload: message,
+      muteHttpExceptions: true
+    });
 
-    if (req.subscriptionId && String(req.subscriptionId).trim().length > 5) {
-      payload.include_subscription_ids = [String(req.subscriptionId).trim()];
+    const resCode = response.getResponseCode();
+    if (resCode >= 200 && resCode < 300) {
+      return {
+        success: true,
+        message: "Native push alert broadcasted successfully to " + channel + "!",
+        channel: channel
+      };
     } else {
-      payload.included_segments = ["Subscribed Users"];
+      return {
+        success: false,
+        message: "Push gateway returned status " + resCode
+      };
     }
-
-    const endpoints = [
-      "https://api.onesignal.com/notifications",
-      "https://onesignal.com/api/v1/notifications"
-    ];
-    const authHeaders = [
-      "Key " + cleanKey,
-      "Basic " + cleanKey
-    ];
-
-    let lastError = "";
-    for (let e = 0; e < endpoints.length; e++) {
-      for (let a = 0; a < authHeaders.length; a++) {
-        const options = {
-          method: "post",
-          contentType: "application/json",
-          headers: {
-            "Authorization": authHeaders[a]
-          },
-          payload: JSON.stringify(payload),
-          muteHttpExceptions: true
-        };
-
-        try {
-          const response = UrlFetchApp.fetch(endpoints[e], options);
-          const resCode = response.getResponseCode();
-          const resText = response.getContentText();
-
-          if (resCode >= 200 && resCode < 300) {
-            let resJson = {};
-            try { resJson = JSON.parse(resText); } catch (err) {}
-            return {
-              success: true,
-              message: "Push alert successfully dispatched! Delivered to " + (resJson.recipients || 0) + " device(s).",
-              data: resJson
-            };
-          } else {
-            lastError = "HTTP " + resCode + ": " + resText;
-            if (resCode !== 401) break;
-          }
-        } catch (fetchErr) {
-          lastError = "Fetch error: " + fetchErr.toString();
-        }
-      }
-    }
-
-    return { success: false, message: "OneSignal delivery failed: " + lastError };
   } catch (err) {
-    return { success: false, message: "Push dispatch failed: " + err.toString() };
+    return { success: false, message: "Native push failed: " + err.toString() };
   }
 }
 
@@ -1648,12 +1607,11 @@ function dposSendReminderPush(req) {
     const pushMessage = "Friendly reminder: Please complete this week's clinical roleplay (" + activeTopic + ") in DPOS Academy today. Tap to practice!";
     const pushUrl = "https://williamchai1.github.io/pmgareasales/?tab=academy";
 
-    const pushResult = sendBackendOneSignalPush({
+    const pushResult = sendBackendNativePush({
       title: pushTitle,
       message: pushMessage,
       url: pushUrl,
-      appId: req.appId,
-      restKey: req.restKey
+      branch: req.branch || ""
     });
 
     return {

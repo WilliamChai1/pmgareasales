@@ -9,38 +9,22 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=76.0">
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=77.0">
   <script>
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
-      const isGhPages = window.location.hostname.includes("github.io");
-      const basePath = isGhPages ? "/pmgareasales/" : "/";
-      const swScope = isGhPages ? "/pmgareasales/" : "/";
-
-      // Direct Service Worker Pre-Registration for GitHub Pages
-      if ('serviceWorker' in navigator && isGhPages) {
-        navigator.serviceWorker.register("/pmgareasales/OneSignalSDKWorker.js", { scope: "/pmgareasales/" })
+    // Register Native PMG Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        const isGhPages = window.location.hostname.includes("github.io");
+        const swScope = isGhPages ? "/pmgareasales/" : "/";
+        navigator.serviceWorker.register('./sw.js', { scope: swScope })
           .then(function(reg) {
-            console.log("Direct PMG worker pre-registered:", reg.scope);
+            console.log("Native PMG Service Worker active on scope:", reg.scope);
           })
           .catch(function(err) {
-            console.warn("Direct worker pre-registration note:", err);
+            console.warn("Service Worker registration notice:", err);
           });
-      }
-
-      await OneSignal.init({
-        appId: "51051d85-495d-4a2b-901a-20377418fbec",
-        serviceWorkerOverrideForTypical: true,
-        path: basePath,
-        serviceWorkerPath: "OneSignalSDKWorker.js",
-        serviceWorkerParam: {
-          scope: swScope
-        },
-        allowLocalhostAsSecureOrigin: true,
-        notifyButton: { enable: false }
       });
-    });
+    }
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -398,7 +382,7 @@
           </div>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button type="button" class="btn" style="background: white; color: #0369a1; font-weight: 800; font-size: 0.8rem; padding: 8px 14px; margin: 0; border-radius: 6px;" onclick="subscribeToOneSignalPush()">
+          <button type="button" class="btn" style="background: white; color: #0369a1; font-weight: 800; font-size: 0.8rem; padding: 8px 14px; margin: 0; border-radius: 6px;" onclick="subscribeToNativePush()">
             🔔 Enable Notifications
           </button>
           <button type="button" class="btn-logout" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 10px; font-size: 0.8rem; margin: 0; border: none;" onclick="dismissPushBanner()">
@@ -628,37 +612,29 @@
         <button type="button" class="btn-logout" style="padding: 4px 10px; margin: 0; font-size: 0.85rem;" onclick="closePushModal()">✕</button>
       </div>
 
-      <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 10px; padding: 12px; margin-bottom: 15px;">
-        <div style="font-weight: 800; color: #0369a1; font-size: 0.9rem; margin-bottom: 4px;">📱 Device Push Status</div>
+      <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 10px; padding: 14px; margin-bottom: 15px;">
+        <div style="font-weight: 800; color: #0369a1; font-size: 0.92rem; margin-bottom: 4px;">📱 Device Push Status</div>
         <div style="font-size: 0.78rem; color: #0c4a6e; line-height: 1.4;" id="pushStatusDescription">
           Get real-time push alerts whenever your Area Manager or PIC publishes today's 5-Point Daily Briefing or when a new DPOS Academy roleplay module is live.
         </div>
-        <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
-          <button class="btn" id="btnSubscribePush" style="background: #0284c7; color: white; padding: 10px 16px; margin: 0; font-size: 0.85rem; font-weight: 800;" onclick="subscribeToOneSignalPush()">
+        <div style="margin-top: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <button class="btn" id="btnSubscribePush" style="background: #0284c7; color: white; padding: 10px 16px; margin: 0; font-size: 0.85rem; font-weight: 800;" onclick="subscribeToNativePush()">
             🔔 Enable Push Notifications
           </button>
-          <span id="pushPermBadge" style="font-size: 0.72rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; background: #e2e8f0; color: #475569;">Checking...</span>
+          <span id="pushPermBadge" style="font-size: 0.74rem; padding: 5px 10px; border-radius: 6px; font-weight: bold; background: #e2e8f0; color: #475569;">Checking...</span>
         </div>
-        <div style="font-size: 0.72rem; color: #0369a1; margin-top: 8px; word-break: break-all;">
-          <div><b>Device ID:</b> <span id="valPushSubId" style="font-family: monospace; font-weight: bold; color: #0284c7;">Connecting...</span></div>
-          <button type="button" onclick="runPushDiagnostics()" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; cursor: pointer;">🔍 Check Status</button>
+        <div style="font-size: 0.75rem; color: #0369a1; margin-top: 12px; background: #e0f2fe; padding: 8px 12px; border-radius: 6px; line-height: 1.4;">
+          <b>📢 Active Branch Channel:</b> <span id="valBranchPushChannel" style="font-family: monospace; font-weight: bold; color: #075985;">pmg-alert-all</span>
         </div>
       </div>
 
-      <!-- Admin / Manager Settings Section -->
-      <div id="pushAdminSection" style="display: none; background: #fafaf9; border: 1.5px solid #e7e5e4; border-radius: 10px; padding: 14px;">
-        <div style="font-weight: 800; color: #44403c; font-size: 0.85rem; margin-bottom: 6px;">⚙️ OneSignal API Credentials (Manager)</div>
-        <p style="font-size: 0.72rem; color: #78716c; margin: 0 0 10px 0;">Enter your free OneSignal App ID and REST API Key to enable instant broadcast alerts across all teammates.</p>
-
-        <label style="font-size: 0.72rem; font-weight: bold; color: #57534e; display: block; margin-bottom: 2px;">OneSignal App ID:</label>
-        <input type="text" id="oneSignalAppIdInput" class="input-field" placeholder="e.g. 12345678-abcd-1234-abcd-123456789abc" style="margin: 0 0 8px 0; font-size: 0.78rem; padding: 8px;">
-
-        <label style="font-size: 0.72rem; font-weight: bold; color: #57534e; display: block; margin-bottom: 2px;">OneSignal REST API Key:</label>
-        <input type="password" id="oneSignalRestKeyInput" class="input-field" placeholder="e.g. os_v2_app_..." style="margin: 0 0 12px 0; font-size: 0.78rem; padding: 8px;">
+      <div style="background: #fafaf9; border: 1.5px solid #e7e5e4; border-radius: 10px; padding: 14px;">
+        <div style="font-weight: 800; color: #44403c; font-size: 0.85rem; margin-bottom: 6px;">⚡ Native Push Dispatcher</div>
+        <p style="font-size: 0.72rem; color: #78716c; margin: 0 0 12px 0;">Pure native push runs directly via browser standards and Google Apps Script without third-party vendor accounts or API keys.</p>
 
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn" style="background: #059669; color: white; padding: 8px 14px; font-size: 0.8rem; font-weight: bold; margin: 0;" onclick="saveOneSignalConfig()">💾 Save Keys to Server</button>
-          <button class="btn" style="background: #d97706; color: white; padding: 8px 14px; font-size: 0.8rem; font-weight: bold; margin: 0;" onclick="sendTestPushAlert()">🚀 Send Test Alert</button>
+          <button class="btn" style="background: #d97706; color: white; padding: 9px 16px; font-size: 0.82rem; font-weight: bold; margin: 0;" onclick="sendTestNativePush()">🚀 Send Test Alert</button>
+          <button class="btn" id="btnNtfyLockscreen" style="background: #4f46e5; color: white; padding: 9px 16px; font-size: 0.82rem; font-weight: bold; margin: 0;" onclick="openLockscreenAlertSubscribe()">📱 Lockscreen Push Link</button>
         </div>
       </div>
 
@@ -677,7 +653,7 @@
   <script src="./data/clinical_upsell_modules.js?v=68.0"></script>
   <script src="./data/dpos_week1.js"></script>
   <script src="./data/dpos_catalog.js"></script>
-  <script src="./dpos.js?v=76.0"></script>
-  <script src="./app.js?v=76.0"></script>
+  <script src="./dpos.js?v=77.0"></script>
+  <script src="./app.js?v=77.0"></script>
 </body>
 </html>
