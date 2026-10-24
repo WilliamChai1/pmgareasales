@@ -1985,48 +1985,65 @@ function formatSectionText(raw) {
 }
 
 function copyBriefingMessage() {
-  if (!currentBriefingState) return;
+  const briefing = window.activeDailyBriefing || currentBriefingState;
+  if (!briefing) {
+    alert("No daily briefing loaded yet.");
+    return;
+  }
 
-  const sec1 = (document.getElementById("briefingSec1Text").innerText || currentBriefingState.sec1).trim();
-  const rawSec2 = document.getElementById("briefingSec2Input").value || currentBriefingState.sec2 || "";
-  const rawSec3 = document.getElementById("briefingSec3Input").value || currentBriefingState.sec3 || "";
-  const rawSec4 = document.getElementById("briefingSec4Input").value || currentBriefingState.sec4 || "";
-  const sec5 = (document.getElementById("briefingSec5Text").innerText || currentBriefingState.sec5).trim();
+  const lang = currentDashboardBriefingLang || 'en';
+  const t = (typeof getOrGenerateBriefingTranslation === 'function')
+    ? getOrGenerateBriefingTranslation(briefing, lang)
+    : { sec1: briefing.sec1, sec2: briefing.sec2, sec3: briefing.sec3, sec4: briefing.sec4, sec5: briefing.sec5 };
 
-  const sec2 = formatSectionText(rawSec2);
-  const sec3 = formatSectionText(rawSec3);
-  const sec4 = formatSectionText(rawSec4);
+  const titles = (typeof BRIEFING_TITLES !== 'undefined' && BRIEFING_TITLES[lang]) ? BRIEFING_TITLES[lang] : [
+    "1. Yesterday's Operational & Financial Review",
+    "2. Today's Key Priorities",
+    "3. HQ Directives & Target Alignment",
+    "4. Operational Precautions & Compliance",
+    "5. Recognition & Team Encouragement"
+  ];
+  const branch = (briefing.branch || selectedBranch || "Kota Sentosa").toUpperCase();
+  const dateDisplay = briefing.dateDisplay || formatDisplayDate(new Date());
 
   const divider = "━━━━━━━━━━━━━━━━━━━━━";
 
-  let text = `*📊 PMG ${currentBriefingState.branch.toUpperCase()} - DAILY BRIEFING*\n`;
-  text += `📅 Date: ${currentBriefingState.dateDisplay}\n\n`;
+  let headerText = `*📊 PMG ${branch} - DAILY BRIEFING*`;
+  if (lang === 'zh') headerText = `*📊 PMG ${branch} 门市晨会简报*`;
+  if (lang === 'ms') headerText = `*📊 PMG ${branch} - TAKLIMAT HARIAN JUALAN*`;
+
+  let dateLabel = "📅 Date:";
+  if (lang === 'zh') dateLabel = "📅 日期:";
+  if (lang === 'ms') dateLabel = "📅 Tarikh:";
+
+  let text = `${headerText}\n`;
+  text += `${dateLabel} ${dateDisplay}\n\n`;
   text += `${divider}\n\n`;
 
-  text += `*1. Yesterday's Operational & Financial Review*\n\n`;
-  text += `${sec1}\n\n`;
+  text += `*${titles[0]}*\n\n`;
+  text += `${t.sec1}\n\n`;
   text += `${divider}\n\n`;
 
-  text += `*2. Today's Key Priorities*\n\n`;
-  text += `${sec2}\n\n`;
+  text += `*${titles[1]}*\n\n`;
+  text += `${t.sec2}\n\n`;
   text += `${divider}\n\n`;
 
-  text += `*3. HQ Directives & Target Alignment*\n\n`;
-  text += `${sec3}\n\n`;
+  text += `*${titles[2]}*\n\n`;
+  text += `${t.sec3}\n\n`;
   text += `${divider}\n\n`;
 
-  text += `*4. Operational Precautions & Compliance*\n\n`;
-  text += `${sec4}\n\n`;
+  text += `*${titles[3]}*\n\n`;
+  text += `${t.sec4}\n\n`;
   text += `${divider}\n\n`;
 
-  text += `*5. Recognition & Team Encouragement*\n\n`;
-  text += `${sec5}\n\n`;
+  text += `*${titles[4]}*\n\n`;
+  text += `${t.sec5}\n\n`;
   text += `${divider}\n\n`;
 
   text += `🔗 *View Live Performance Hub:* ${WEBAPP_LINK}`;
 
   navigator.clipboard.writeText(text).then(() => {
-    alert(`📋 Daily Briefing copied to clipboard!\nReady to paste directly into your team chat.`);
+    alert(`📋 Daily Briefing copied to clipboard (${lang.toUpperCase()})!\nReady to paste directly into your team chat.`);
   }).catch(e => {
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -2034,7 +2051,7 @@ function copyBriefingMessage() {
     ta.select();
     document.execCommand("copy");
     document.body.removeChild(ta);
-    alert(`📋 Daily Briefing copied to clipboard!\nReady to paste directly into your team chat.`);
+    alert(`📋 Daily Briefing copied to clipboard (${lang.toUpperCase()})!\nReady to paste directly into your team chat.`);
   });
 }
 
@@ -2827,41 +2844,104 @@ function renderDashboardDailyBriefing() {
   container.style.display = "block";
 }
 
+const BRIEFING_TITLES = {
+  en: [
+    "1. Yesterday's Operational & Financial Review",
+    "2. Today's Key Priorities",
+    "3. HQ Directives & Target Alignment",
+    "4. Operational Precautions & Compliance",
+    "5. Recognition & Team Encouragement"
+  ],
+  zh: [
+    "1. 昨日营运与财务复盘",
+    "2. 今日重点优先任务",
+    "3. 总部战略与指标对齐",
+    "4. 门市营运规范与合规检查",
+    "5. 榜样表彰与团队激励"
+  ],
+  ms: [
+    "1. Tinjauan Operasi & Kewangan Semalam",
+    "2. Keutamaan Utama Hari Ini",
+    "3. Penjajaran Sasaran & Arahan HQ",
+    "4. Pematuhan SOP & Operasi Gondola",
+    "5. Pengiktirafan & Semangat Pasukan"
+  ]
+};
+
+function getOrGenerateBriefingTranslation(briefing, lang) {
+  if (!briefing) return null;
+  if (lang === 'en') {
+    return {
+      sec1: briefing.sec1 || "",
+      sec2: briefing.sec2 || "",
+      sec3: briefing.sec3 || "",
+      sec4: briefing.sec4 || "",
+      sec5: briefing.sec5 || ""
+    };
+  }
+
+  // Purge/override stale cache if sec5 still contains English podium ranks
+  if (briefing.translations && briefing.translations[lang]) {
+    const t = briefing.translations[lang];
+    const isStale = !t.sec5 || t.sec5.includes("1st Place:") || t.sec5.includes("Featured House Brand") || t.sec5.includes("Thank you all for your hard work");
+    if (!isStale) {
+      return t;
+    }
+  }
+
+  // Compute clean, complete deterministic translation (instant 0ms)
+  const fresh = {
+    sec1: translateBriefingSec1Deterministic(briefing.sec1, lang),
+    sec2: translateBriefingSec2Deterministic(briefing.sec2, lang),
+    sec3: translateBriefingSec3Deterministic(briefing.sec3, lang),
+    sec4: translateBriefingSec4Deterministic(briefing.sec4, lang),
+    sec5: translateBriefingSec5Deterministic(briefing.sec5, lang)
+  };
+
+  if (!briefing.translations) briefing.translations = {};
+  briefing.translations[lang] = fresh;
+
+  const branchUpper = (briefing.branch || selectedBranch || "KOTA SENTOSA").toUpperCase();
+  try {
+    localStorage.setItem("pmg_saved_briefing_" + branchUpper, JSON.stringify(briefing));
+  } catch (e) {}
+
+  return fresh;
+}
+
 function updateDashboardBriefingText(lang) {
   const briefing = window.activeDailyBriefing;
   if (!briefing) return;
 
-  let textSec1 = briefing.sec1 || "";
-  let textSec2 = briefing.sec2 || "";
-  let textSec3 = briefing.sec3 || "";
-  let textSec4 = briefing.sec4 || "";
-  let textSec5 = briefing.sec5 || "";
+  const activeLang = lang || currentDashboardBriefingLang || 'en';
+  const t = getOrGenerateBriefingTranslation(briefing, activeLang);
+  if (!t) return;
 
-  if (lang !== 'en' && briefing.translations && briefing.translations[lang]) {
-    const t = briefing.translations[lang];
-    textSec1 = t.sec1 || textSec1;
-    textSec2 = t.sec2 || textSec2;
-    textSec3 = t.sec3 || textSec3;
-    textSec4 = t.sec4 || textSec4;
-    textSec5 = t.sec5 || textSec5;
+  // 1. Update Section Titles
+  const titles = BRIEFING_TITLES[activeLang] || BRIEFING_TITLES.en;
+  for (let i = 1; i <= 5; i++) {
+    const titleEl = document.getElementById("dashBriefingTitle" + i);
+    if (titleEl) titleEl.innerText = titles[i - 1];
   }
 
+  // 2. Update Section Body Contents
   const s1 = document.getElementById("dashBriefingSec1");
   const s2 = document.getElementById("dashBriefingSec2");
   const s3 = document.getElementById("dashBriefingSec3");
   const s4 = document.getElementById("dashBriefingSec4");
   const s5 = document.getElementById("dashBriefingSec5");
 
-  if (s1) s1.innerText = textSec1;
-  if (s2) s2.innerText = textSec2;
-  if (s3) s3.innerText = textSec3;
-  if (s4) s4.innerText = textSec4;
-  if (s5) s5.innerText = textSec5;
+  if (s1) s1.innerText = t.sec1;
+  if (s2) s2.innerText = t.sec2;
+  if (s3) s3.innerText = t.sec3;
+  if (s4) s4.innerText = t.sec4;
+  if (s5) s5.innerText = t.sec5;
 
+  // 3. Highlight Active Language Tab
   ['en', 'zh', 'ms'].forEach(l => {
     const btn = document.getElementById("briefLang" + l.charAt(0).toUpperCase() + l.slice(1));
     if (btn) {
-      if (l === lang) {
+      if (l === activeLang) {
         btn.classList.add("active");
         btn.style.background = "#0f766e";
         btn.style.color = "white";
@@ -2876,39 +2956,15 @@ function updateDashboardBriefingText(lang) {
   });
 }
 
-async function switchDashboardBriefingLang(lang) {
+function switchDashboardBriefingLang(lang) {
   currentDashboardBriefingLang = lang;
-  const briefing = window.activeDailyBriefing;
-  if (!briefing) return;
-
-  if (lang === 'en') {
-    updateDashboardBriefingText('en');
-    return;
-  }
-
-  if (briefing.translations && briefing.translations[lang]) {
-    updateDashboardBriefingText(lang);
-    return;
-  }
-
-  const btn = document.getElementById("briefLang" + lang.charAt(0).toUpperCase() + lang.slice(1));
-  const origText = btn ? btn.innerText : "";
-  if (btn) btn.innerText = "⏳ Translating...";
-
-  try {
-    await translateDailyBriefing(lang);
-    updateDashboardBriefingText(lang);
-  } catch (err) {
-    alert("Translation failed: " + err.message);
-  } finally {
-    if (btn) btn.innerText = origText;
-  }
+  updateDashboardBriefingText(lang);
 }
 
-async function triggerBriefingAiTranslation() {
-  const currentLang = currentDashboardBriefingLang;
+function triggerBriefingAiTranslation() {
+  const currentLang = currentDashboardBriefingLang || 'en';
   const targetLang = currentLang === 'en' ? 'zh' : (currentLang === 'zh' ? 'ms' : 'en');
-  await switchDashboardBriefingLang(targetLang);
+  switchDashboardBriefingLang(targetLang);
 }
 
 // ─── MULTILINGUAL BRIEFING TRANSLATION ENGINE ───────────────────────

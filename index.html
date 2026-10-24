@@ -9,7 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=77.2">
+  <link rel="stylesheet" href="./styles.css?v=77.3">
   <script>
     // Register Native PMG Service Worker
     if ('serviceWorker' in navigator) {
@@ -417,31 +417,31 @@
 
       <!-- Section 1: Financial & Operational Review -->
       <div class="briefing-sec-box">
-        <div class="briefing-sec-title">1. Yesterday's Operational & Financial Review</div>
+        <div class="briefing-sec-title" id="dashBriefingTitle1">1. Yesterday's Operational & Financial Review</div>
         <div class="briefing-sec-content" id="dashBriefingSec1">Loading summary...</div>
       </div>
 
       <!-- Section 2: Today's Key Priorities -->
       <div class="briefing-sec-box" style="background: #f0fdf4; border-color: #bbf7d0;">
-        <div class="briefing-sec-title" style="color: #166534;">2. Today's Key Priorities</div>
+        <div class="briefing-sec-title" id="dashBriefingTitle2" style="color: #166534;">2. Today's Key Priorities</div>
         <div class="briefing-sec-content" id="dashBriefingSec2" style="color: #14532d;">-</div>
       </div>
 
       <!-- Section 3: HQ Directives & Target Alignment -->
       <div class="briefing-sec-box" style="background: #eff6ff; border-color: #bfdbfe;">
-        <div class="briefing-sec-title" style="color: #1e40af;">3. HQ Directives & Target Alignment</div>
+        <div class="briefing-sec-title" id="dashBriefingTitle3" style="color: #1e40af;">3. HQ Directives & Target Alignment</div>
         <div class="briefing-sec-content" id="dashBriefingSec3" style="color: #1e3a8a;">-</div>
       </div>
 
       <!-- Section 4: Operational Precautions & Compliance -->
       <div class="briefing-sec-box" style="background: #fffbeb; border-color: #fde68a;">
-        <div class="briefing-sec-title" style="color: #92400e;">4. Operational Precautions & Compliance</div>
+        <div class="briefing-sec-title" id="dashBriefingTitle4" style="color: #92400e;">4. Operational Precautions & Compliance</div>
         <div class="briefing-sec-content" id="dashBriefingSec4" style="color: #78350f;">-</div>
       </div>
 
       <!-- Section 5: Recognition & Encouragement + Clinical Upsell -->
       <div class="briefing-sec-box" style="background: #faf5ff; border-color: #e9d5ff;">
-        <div class="briefing-sec-title" style="color: #6b21a8;">5. Recognition & Team Encouragement</div>
+        <div class="briefing-sec-title" id="dashBriefingTitle5" style="color: #6b21a8;">5. Recognition & Team Encouragement</div>
         <div class="briefing-sec-content" id="dashBriefingSec5" style="color: #4a044e;">-</div>
       </div>
 
@@ -449,9 +449,6 @@
       <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px;">
         <button class="btn btn-copy" style="flex: 1; padding: 12px; margin: 0; font-size: 0.85rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="copyBriefingMessage()">
           📋 Copy to Google Chat
-        </button>
-        <button class="btn" id="dashTranslateBtn" style="background: #0284c7; color: white; padding: 12px 16px; margin: 0; font-size: 0.85rem; font-weight: bold;" onclick="triggerBriefingAiTranslation()">
-          🌐 Auto-Translate (华语 / BM)
         </button>
         <button class="btn" id="dashEditBriefingBtn" style="background: #0f766e; color: white; padding: 12px 16px; margin: 0; font-size: 0.85rem; font-weight: bold; display: none;" onclick="openDailyBriefingModal()">
           ✏️ Edit & Publish
@@ -650,10 +647,10 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=77.2"></script>
+  <script src="./data/clinical_upsell_modules.js?v=77.3"></script>
   <script src="./data/dpos_week1.js"></script>
   <script src="./data/dpos_catalog.js"></script>
-  <script src="./dpos.js?v=77.2"></script>
-  <script src="./app.js?v=77.2"></script>
+  <script src="./dpos.js?v=77.3"></script>
+  <script src="./app.js?v=77.3"></script>
 </body>
 </html>
