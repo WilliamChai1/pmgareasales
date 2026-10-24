@@ -2189,6 +2189,26 @@
           </select>
         </div>
 
+        <!-- DPOS WEEKLY ROLEPLAY COMPLETION & PENDING REMINDER CARD -->
+        <div style="background:#fdf2f8; border:1.5px solid #fbcfe8; border-radius:10px; padding:12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="font-weight:800; color:#9d174d; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+              <span>📢 Roleplay Completion:</span>
+              <span style="background:#fce7f3; color:#be185d; padding:2px 8px; border-radius:10px; font-size:0.72rem; font-weight:800;">
+                ${completedCount} Completed / ${roster.filter(r => r.status !== 'Completed').length} Pending
+              </span>
+            </div>
+            <div style="font-size:0.72rem; color:#831843; margin-top:4px;">
+              ${roster.filter(r => r.status !== 'Completed').length > 0 ? ('⏳ Pending: ' + roster.filter(r => r.status !== 'Completed').map(p => '<b>' + escapeHtml(p.name) + '</b>').join(', ')) : '🎉 All teammates have completed this week!'}
+            </div>
+          </div>
+          ${roster.filter(r => r.status !== 'Completed').length > 0 ? `
+            <button type="button" class="btn" style="background:#be185d; color:white; padding:8px 14px; font-size:0.78rem; font-weight:800; margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;" onclick="window.sendDposPendingReminderPush()">
+              🔔 Send Push Alert to Pending (${roster.filter(r => r.status !== 'Completed').length})
+            </button>
+          ` : ''}
+        </div>
+
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; gap:8px;">
           <div>
             <div style="font-size:0.7rem; font-weight:800; color:#0d9488; text-transform:uppercase;">Pharmacist-in-Charge Review Dashboard</div>

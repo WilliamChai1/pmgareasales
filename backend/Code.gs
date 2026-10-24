@@ -83,6 +83,16 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(sendBackendOneSignalPush(request)))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (request.action === "dposSendReminderPush") {
+      return ContentService.createTextOutput(JSON.stringify(dposSendReminderPush(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "dposSendReminderPush") {
+      return ContentService.createTextOutput(JSON.stringify(dposSendReminderPush(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: true, message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -1512,13 +1522,14 @@ function saveOneSignalKeys(req) {
 function sendBackendOneSignalPush(req) {
   try {
     const props = PropertiesService.getScriptProperties();
-    const appId = String(req.appId || props.getProperty("ONESIGNAL_APP_ID") || "").trim();
-    const restKey = String(req.restKey || props.getProperty("ONESIGNAL_REST_KEY") || "").trim();
+    const appId = String(req.appId || props.getProperty("ONESIGNAL_APP_ID") || "51051d85-495d-4a2b-901a-20377418fbec").trim();
+    const rawRestKey = String(req.restKey || props.getProperty("ONESIGNAL_REST_KEY") || "").trim();
 
-    if (!appId || !restKey) {
-      return { success: false, message: "Missing OneSignal App ID or REST API Key on server." };
+    if (!appId || !rawRestKey) {
+      return { success: false, message: "Missing OneSignal App ID or REST API Key." };
     }
 
+    const cleanKey = rawRestKey.replace(/^(Key|Basic|Bearer)\s+/i, "").trim();
     const title = String(req.title || "⚡ PMG Performance Hub Notification").trim();
     const message = String(req.message || "New update available in PMG Performance Hub.").trim();
     const url = String(req.url || "https://williamchai1.github.io/pmgareasales/").trim();
@@ -1532,26 +1543,123 @@ function sendBackendOneSignalPush(req) {
       web_url: url
     };
 
-    const options = {
-      method: "post",
-      contentType: "application/json",
-      headers: {
-        "Authorization": "Basic " + restKey
-      },
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
+    const endpoints = [
+      "https://api.onesignal.com/notifications",
+      "https://onesignal.com/api/v1/notifications"
+    ];
+    const authHeaders = [
+      "Key " + cleanKey,
+      "Basic " + cleanKey
+    ];
 
-    const response = UrlFetchApp.fetch("https://onesignal.com/api/v1/notifications", options);
-    const resCode = response.getResponseCode();
-    const resText = response.getContentText();
+    let lastError = "";
+    for (let e = 0; e < endpoints.length; e++) {
+      for (let a = 0; a < authHeaders.length; a++) {
+        const options = {
+          method: "post",
+          contentType: "application/json",
+          headers: {
+            "Authorization": authHeaders[a]
+          },
+          payload: JSON.stringify(payload),
+          muteHttpExceptions: true
+        };
 
-    if (resCode >= 200 && resCode < 300) {
-      return { success: true, message: "Push notification successfully sent to all subscribers!", data: JSON.parse(resText) };
-    } else {
-      return { success: false, message: "OneSignal error HTTP " + resCode + ": " + resText };
+        try {
+          const response = UrlFetchApp.fetch(endpoints[e], options);
+          const resCode = response.getResponseCode();
+          const resText = response.getContentText();
+
+          if (resCode >= 200 && resCode < 300) {
+            let resJson = {};
+            try { resJson = JSON.parse(resText); } catch (err) {}
+            return {
+              success: true,
+              message: "Push alert successfully dispatched! Delivered to " + (resJson.recipients || 0) + " device(s).",
+              data: resJson
+            };
+          } else {
+            lastError = "HTTP " + resCode + ": " + resText;
+            if (resCode !== 401) break;
+          }
+        } catch (fetchErr) {
+          lastError = "Fetch error: " + fetchErr.toString();
+        }
+      }
     }
+
+    return { success: false, message: "OneSignal delivery failed: " + lastError };
   } catch (err) {
     return { success: false, message: "Push dispatch failed: " + err.toString() };
+  }
+}
+
+function dposSendReminderPush(req) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const weekSheet = ss.getSheetByName("DPOS_Active_Week");
+    let activeTopic = "Joint Health & Osteoarthritis Care";
+
+    if (weekSheet) {
+      const wVals = weekSheet.getDataRange().getValues();
+      for (let i = 1; i < wVals.length; i++) {
+        if (wVals[i][0] && String(wVals[i][0]).trim()) {
+          activeTopic = String(wVals[i][0]).trim();
+        }
+      }
+    }
+
+    // Discover completed staff names
+    const scoreSheet = ss.getSheetByName("DPOS_Weekly_Scores");
+    const completedStaff = {};
+    if (scoreSheet) {
+      const sData = scoreSheet.getDataRange().getValues();
+      for (let i = 1; i < sData.length; i++) {
+        const rowTopic = String(sData[i][3] || '').trim().toLowerCase();
+        if (rowTopic.includes(activeTopic.toLowerCase()) || activeTopic.toLowerCase().includes(rowTopic)) {
+          const sName = String(sData[i][1] || '').trim().toLowerCase();
+          completedStaff[sName] = true;
+        }
+      }
+    }
+
+    // Discover all active staff from PMG_Master_Staff
+    const staffSheet = getStaffSheet(ss);
+    const pendingNames = [];
+    if (staffSheet) {
+      const stData = staffSheet.getDataRange().getValues();
+      for (let j = 1; j < stData.length; j++) {
+        const name = String(stData[j][2] || '').trim();
+        const role = String(stData[j][3] || '').trim().toLowerCase();
+        if (name && !role.includes('hq') && !role.includes('resign') && !name.toLowerCase().includes('public medicare')) {
+          if (!completedStaff[name.toLowerCase()]) {
+            pendingNames.push(name);
+          }
+        }
+      }
+    }
+
+    const pushTitle = "🎓 DPOS Academy: Weekly Roleplay Pending!";
+    const pushMessage = "Friendly reminder: Please complete this week's clinical roleplay (" + activeTopic + ") in DPOS Academy today. Tap to practice!";
+    const pushUrl = "https://williamchai1.github.io/pmgareasales/?tab=academy";
+
+    const pushResult = sendBackendOneSignalPush({
+      title: pushTitle,
+      message: pushMessage,
+      url: pushUrl,
+      appId: req.appId,
+      restKey: req.restKey
+    });
+
+    return {
+      success: true,
+      activeTopic: activeTopic,
+      pendingCount: pendingNames.length,
+      pendingNames: pendingNames,
+      pushResult: pushResult,
+      message: "DPOS Reminder dispatched! " + pendingNames.length + " teammate(s) currently pending."
+    };
+  } catch (err) {
+    return { success: false, message: "Reminder failed: " + err.toString() };
   }
 }

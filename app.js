@@ -3295,16 +3295,21 @@ async function sendTestPushAlert() {
     return;
   }
 
-  const success = await dispatchPushNotification(
+  const btn = (typeof event !== 'undefined' && event && event.target) ? event.target : null;
+  if (btn) btn.innerText = "⏳ Dispatching test alert...";
+
+  const res = await dispatchPushNotification(
     "⚡ PMG Performance Hub Test Alert",
     "Great news! Push notifications are successfully connected to your phone.",
     "https://williamchai1.github.io/pmgareasales/"
   );
 
-  if (success) {
-    alert("🚀 Test alert dispatched! Check your phone lock screen or notification tray in a few seconds.");
+  if (btn) btn.innerText = "🚀 Send Test Alert";
+
+  if (res && res.success) {
+    alert("🚀 " + (res.message || "Test alert dispatched! Check your phone lock screen in a few seconds."));
   } else {
-    alert("⚠️ Push dispatch failed.\n\nThis means Google Apps Script needs to be updated with the latest Code.gs to handle the dispatch (browsers block direct OneSignal calls due to CORS).\n\nPlease follow the 2-minute Google Apps Script update instructions.");
+    alert("⚠️ Push dispatch error:\n" + ((res && res.message) || "Unknown error") + "\n\nPlease make sure your REST API Key is correct.");
   }
 }
 
@@ -3327,11 +3332,48 @@ async function dispatchPushNotification(title, message, url) {
       })
     });
     const result = await res.json();
-    if (result && result.success) return true;
+    return result;
   } catch (e) {
     console.warn("Backend push dispatch error:", e);
+    return { success: false, message: e.message || "Network error" };
   }
-
-  return false;
 }
 window.dispatchPushNotification = dispatchPushNotification;
+
+async function sendDposPendingReminderPush() {
+  const appId = (currentData && currentData.oneSignalAppId) || localStorage.getItem('pmg_onesignal_app_id') || DEFAULT_ONESIGNAL_APP_ID;
+  const restKey = localStorage.getItem('pmg_onesignal_rest_key') || "";
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'dposSendReminderPush',
+        appId: appId,
+        restKey: restKey
+      })
+    });
+    const result = await res.json();
+    if (result && result.success) {
+      alert("🎉 " + result.message + "\n\nPush alert dispatched to teammates: " + (result.pendingNames ? result.pendingNames.join(", ") : ""));
+    } else {
+      // Fallback: direct broadcast
+      await dispatchPushNotification(
+        "🎓 DPOS Academy: Weekly Roleplay Pending!",
+        "Friendly reminder: Please complete this week's clinical roleplay consultation in DPOS Academy today. Tap to practice!",
+        "https://williamchai1.github.io/pmgareasales/?tab=academy"
+      );
+      alert("📢 DPOS Reminder broadcast dispatched to all teammates!");
+    }
+  } catch (err) {
+    await dispatchPushNotification(
+      "🎓 DPOS Academy: Weekly Roleplay Pending!",
+      "Friendly reminder: Please complete this week's clinical roleplay consultation in DPOS Academy today. Tap to practice!",
+      "https://williamchai1.github.io/pmgareasales/?tab=academy"
+    );
+    alert("📢 DPOS Reminder broadcast dispatched to all teammates!");
+  }
+}
+window.sendDposPendingReminderPush = sendDposPendingReminderPush;
