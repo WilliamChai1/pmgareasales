@@ -3065,7 +3065,7 @@ function initOneSignal() {
   if (isOneSignalInitialized) return;
   isOneSignalInitialized = true;
 
-  // 1. Cleanup any stale root service worker registrations on GitHub Pages
+  // 1. Cleanup any stale root domain service worker registrations
   if ("serviceWorker" in navigator && window.location.hostname.includes("github.io")) {
     navigator.serviceWorker.getRegistrations().then(regs => {
       regs.forEach(r => {
@@ -3094,10 +3094,6 @@ function initOneSignal() {
 
         if (sub.id) {
           localStorage.setItem("pmg_onesignal_sub_id", sub.id);
-        } else if (Notification.permission === "granted" && sub.optIn) {
-          try {
-            await sub.optIn();
-          } catch (e) {}
         }
       }
       updateOneSignalUiStatus();
@@ -3151,7 +3147,24 @@ function updateOneSignalUiStatus() {
     if (subIdSpan) subIdSpan.innerText = "Not Subscribed";
   }
 
-  // Asynchronously query live OneSignal object
+  // Immediate synchronous inspection if window.OneSignal already exists
+  try {
+    if (window.OneSignal && window.OneSignal.User) {
+      const liveSub = window.OneSignal.User.PushSubscription || window.OneSignal.User.pushSubscription;
+      if (liveSub && liveSub.id) {
+        localStorage.setItem("pmg_onesignal_sub_id", liveSub.id);
+        if (subIdSpan) subIdSpan.innerText = liveSub.id;
+        badge.innerText = "Subscribed 🟢";
+        badge.style.background = "#dcfce7";
+        badge.style.color = "#15803d";
+        if (btn) btn.innerText = "✅ Push Alerts Enabled";
+        dismissPushBanner();
+        return;
+      }
+    }
+  } catch (e) {}
+
+  // Asynchronously query live OneSignal object via queue
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try {
@@ -3176,39 +3189,68 @@ async function refreshOneSignalSubscriptionId() {
   const subIdSpan = document.getElementById("valPushSubId");
   if (subIdSpan) subIdSpan.innerText = "Checking...";
 
+  // 1. Immediate direct check
+  try {
+    if (window.OneSignal && window.OneSignal.User) {
+      const directSub = window.OneSignal.User.PushSubscription || window.OneSignal.User.pushSubscription;
+      if (directSub && directSub.id) {
+        localStorage.setItem("pmg_onesignal_sub_id", directSub.id);
+        if (subIdSpan) subIdSpan.innerText = directSub.id;
+        updateOneSignalUiStatus();
+        alert("✅ Device ID Connected:\n\n" + directSub.id);
+        return;
+      }
+    }
+  } catch (e) {}
+
+  // 2. Anti-hang timeout: guarantees response within 4 seconds
+  let isResolved = false;
+  const timeoutId = setTimeout(() => {
+    if (isResolved) return;
+    isResolved = true;
+    const stored = localStorage.getItem("pmg_onesignal_sub_id");
+    if (stored) {
+      if (subIdSpan) subIdSpan.innerText = stored;
+      alert("✅ Connected with Stored Device ID:\n\n" + stored);
+    } else {
+      if (subIdSpan) subIdSpan.innerText = "Registering...";
+      alert("Device registration is processing with push servers.\n\nIf you just granted permission, wait 5 seconds and tap 'Refresh ID' again.");
+    }
+    updateOneSignalUiStatus();
+  }, 4000);
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try {
       const sub = OneSignal.User && (OneSignal.User.PushSubscription || OneSignal.User.pushSubscription);
-      if (sub && sub.optIn && !sub.optedIn && Notification.permission === "granted") {
-        await sub.optIn();
-      }
+      if (sub) {
+        if (Notification.permission === "granted" && !sub.optedIn && sub.optIn) {
+          try {
+            await Promise.race([
+              sub.optIn(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("optIn timeout")), 2500))
+            ]);
+          } catch (e) {}
+        }
 
-      let activeId = sub && sub.id;
-      if (!activeId) {
-        // Wait 1 second and re-check
-        await new Promise(r => setTimeout(r, 1000));
-        activeId = sub && sub.id;
-      }
+        let activeId = sub.id;
+        if (!activeId) {
+          await new Promise(r => setTimeout(r, 800));
+          activeId = sub.id;
+        }
 
-      if (activeId) {
-        localStorage.setItem("pmg_onesignal_sub_id", activeId);
-        if (subIdSpan) subIdSpan.innerText = activeId;
-        updateOneSignalUiStatus();
-        alert("✅ Device ID Connected:\n\n" + activeId);
-      } else {
-        const stored = localStorage.getItem("pmg_onesignal_sub_id");
-        if (stored) {
-          if (subIdSpan) subIdSpan.innerText = stored;
-          alert("Active Stored Device ID:\n\n" + stored);
-        } else {
-          if (subIdSpan) subIdSpan.innerText = "Connecting...";
-          alert("Device ID is still generating with push servers.\n\nMake sure notification permission is Allowed on your browser and reload the page.");
+        if (activeId && !isResolved) {
+          isResolved = true;
+          clearTimeout(timeoutId);
+          localStorage.setItem("pmg_onesignal_sub_id", activeId);
+          if (subIdSpan) subIdSpan.innerText = activeId;
+          updateOneSignalUiStatus();
+          alert("✅ Device ID Connected:\n\n" + activeId);
+          return;
         }
       }
     } catch (err) {
-      if (subIdSpan) subIdSpan.innerText = "Error checking ID";
-      alert("Notice while checking subscription: " + (err.message || err));
+      console.warn("Refresh ID error:", err);
     }
   });
 }
@@ -3288,19 +3330,21 @@ async function subscribeToOneSignalPush() {
     console.warn("Direct Notification.requestPermission warning:", err);
   }
 
-  // 4. Trigger OneSignal optIn and registration
+  // 4. Trigger OneSignal optIn and registration with safety timeout
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
     try {
       const sub = OneSignal.User && (OneSignal.User.PushSubscription || OneSignal.User.pushSubscription);
       if (sub && sub.optIn) {
-        await sub.optIn();
+        try {
+          await Promise.race([
+            sub.optIn(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("optIn timeout")), 2500))
+          ]);
+        } catch (e) {}
       }
       if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
-        await OneSignal.Notifications.requestPermission();
-      }
-      if (OneSignal.Slidedown && OneSignal.Slidedown.promptPush) {
-        await OneSignal.Slidedown.promptPush({ force: true });
+        await OneSignal.Notifications.requestPermission().catch(() => {});
       }
 
       // Resilient Polling: Poll up to 6 seconds (12 x 500ms) for sub.id to resolve
@@ -3316,12 +3360,12 @@ async function subscribeToOneSignalPush() {
           updateOneSignalUiStatus();
           dismissPushBanner();
           alert("🎉 Awesome! Push notifications are now ENABLED on your phone!\n\nDevice ID: " + resolvedId + "\n\nTap '🚀 Send Test Alert' to test receiving a live notification.");
-        } else if (attempts >= 12) {
+        } else if (attempts >= 10) {
           clearInterval(pollTimer);
           updateOneSignalUiStatus();
           if (Notification.permission === "granted") {
             dismissPushBanner();
-            alert("✅ Notification permission granted!\n\nYour phone is registering with the push server. If Device ID still shows 'Connecting...', tap the '🔄 Refresh ID' button.");
+            alert("✅ Notification permission granted!\n\nYour device is registered. If Device ID still shows 'Connecting...', tap the '🔄 Refresh ID' button.");
           }
         }
       }, 500);

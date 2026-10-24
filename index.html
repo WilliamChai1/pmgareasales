@@ -9,17 +9,31 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=73.0">
+  <link rel="stylesheet" href="./styles.css?v=74.0">
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
       const isGhPages = window.location.hostname.includes("github.io");
-      const swPath = isGhPages ? "pmgareasales/OneSignalSDKWorker.js" : "OneSignalSDKWorker.js";
+      const basePath = isGhPages ? "/pmgareasales/" : "/";
       const swScope = isGhPages ? "/pmgareasales/" : "/";
+
+      // Direct Service Worker Pre-Registration for GitHub Pages
+      if ('serviceWorker' in navigator && isGhPages) {
+        navigator.serviceWorker.register("/pmgareasales/OneSignalSDKWorker.js", { scope: "/pmgareasales/" })
+          .then(function(reg) {
+            console.log("Direct PMG worker pre-registered:", reg.scope);
+          })
+          .catch(function(err) {
+            console.warn("Direct worker pre-registration note:", err);
+          });
+      }
+
       await OneSignal.init({
         appId: "51051d85-495d-4a2b-901a-20377418fbec",
-        serviceWorkerPath: swPath,
+        serviceWorkerOverrideForTypical: true,
+        path: basePath,
+        serviceWorkerPath: "OneSignalSDKWorker.js",
         serviceWorkerParam: {
           scope: swScope
         },
@@ -663,7 +677,7 @@
   <script src="./data/clinical_upsell_modules.js?v=68.0"></script>
   <script src="./data/dpos_week1.js"></script>
   <script src="./data/dpos_catalog.js"></script>
-  <script src="./dpos.js?v=73.0"></script>
-  <script src="./app.js?v=73.0"></script>
+  <script src="./dpos.js?v=74.0"></script>
+  <script src="./app.js?v=74.0"></script>
 </body>
 </html>
