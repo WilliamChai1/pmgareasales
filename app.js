@@ -2911,20 +2911,240 @@ async function triggerBriefingAiTranslation() {
   await switchDashboardBriefingLang(targetLang);
 }
 
+// ─── MULTILINGUAL BRIEFING TRANSLATION ENGINE ───────────────────────
+
+function escapeBriefingRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function translateBriefingSec1Deterministic(sec1, lang) {
+  if (!sec1) return "";
+  let t = sec1;
+  if (lang === "zh") {
+    t = t
+      .replace(/• Total Sales \(TS\):/g, "• 总营业额 (TS):")
+      .replace(/• House Brand \(HB\):/g, "• 自家品牌 (HB):")
+      .replace(/• High Margin \(HM\):/g, "• 高利润商品 (HM):")
+      .replace(/• Customer Count:/g, "• 顾客交易次数:")
+      .replace(/transactions/g, "笔交易")
+      .replace(/• Average Basket Size:/g, "• 平均客单价 (Basket Size):")
+      .replace(/\(HB Basket:/g, "(HB 客单价:")
+      .replace(/• MTD Progress:/g, "• 本月累计进度 (MTD):")
+      .replace(/\(Ahead 🟢\)/g, "(超前 🟢)")
+      .replace(/\(Behind 🔴\)/g, "(落后 🔴)")
+      .replace(/💡 \*Operational Takeaway:\*/g, "💡 *昨日营运复盘与洞察:*")
+      .replace(/Store HB achieved ([0-9.]+)%, surpassing the 40% benchmark! Basket size RM ([0-9.]+) \(HB Basket: RM ([0-9.]+)\) across (\d+) transactions\. Strong clinical conversion yesterday—let's maintain this momentum today!/g,
+        "昨日门市 HB 占比达 $1%，成功突破 40% 基准线！总客单价 RM $2（HB 客单价 RM $3），共完成 $4 笔交易。昨日临床搭配转化成效亮眼，今天请全员保持势头，继续精进！")
+      .replace(/Store HB closed at ([0-9.]+)% with RM ([0-9.]+) basket size and (\d+) transactions\. Strengthen 1\+1 acute pairing at the counter today to push HB ratio beyond 40%!/g,
+        "昨日门市 HB 占比为 $1%，客单价 RM $2，共计 $3 笔交易。今天请在柜台加把劲推进“1+1 急症黄金搭配”，全力冲刺 40%+ HB 占比！");
+  } else if (lang === "ms") {
+    t = t
+      .replace(/• Total Sales \(TS\):/g, "• Jumlah Jualan (TS):")
+      .replace(/• House Brand \(HB\):/g, "• Jenama Sendiri (HB):")
+      .replace(/• High Margin \(HM\):/g, "• Margin Tinggi (HM):")
+      .replace(/• Customer Count:/g, "• Bilangan Pelanggan:")
+      .replace(/transactions/g, "transaksi")
+      .replace(/• Average Basket Size:/g, "• Purata Saiz Bakul:")
+      .replace(/\(HB Basket:/g, "(Bakul HB:")
+      .replace(/• MTD Progress:/g, "• Kemajuan Terkumpul MTD:")
+      .replace(/\(Ahead 🟢\)/g, "(Mendahului 🟢)")
+      .replace(/\(Behind 🔴\)/g, "(Ketinggalan 🔴)")
+      .replace(/💡 \*Operational Takeaway:\*/g, "💡 *Sorotan Operasi Semalam:*")
+      .replace(/Store HB achieved ([0-9.]+)%, surpassing the 40% benchmark! Basket size RM ([0-9.]+) \(HB Basket: RM ([0-9.]+)\) across (\d+) transactions\. Strong clinical conversion yesterday—let's maintain this momentum today!/g,
+        "HB cawangan semalam mencapai $1%, melepasi tanda aras 40%! Purata saiz bakul RM $2 (Bakul HB RM $3) merentasi $4 transaksi. Penukaran klinikal yang sangat baik semalam—mari kita kekalkan momentum ini hari ini!")
+      .replace(/Store HB closed at ([0-9.]+)% with RM ([0-9.]+) basket size and (\d+) transactions\. Strengthen 1\+1 acute pairing at the counter today to push HB ratio beyond 40%!/g,
+        "HB cawangan semalam ditutup pada $1% dengan saiz bakul RM $2 merentasi $3 transaksi. Perkukuhkan padanan 1+1 di kaunter hari ini untuk melonjakkan nisbah HB melebihi 40%!");
+  }
+  return t;
+}
+
+function translateBriefingSec2Deterministic(sec2, lang) {
+  if (!sec2) return "";
+  let t = sec2;
+  if (lang === "zh") {
+    t = t
+      .replace(/• \[Sales Focus\]:/g, "• [今日销售重点]:")
+      .replace(/Daily store target TS RM ([0-9,.]+), HB target RM ([0-9,.]+) \(pushing for 40%\+ HB ratio\)\. Yesterday achieved ([0-9.]+)%—let's build on this momentum today!/g,
+        "今日门市总销售目标 TS RM $1，HB 目标 RM $2（冲刺 40%+ HB 占比）。昨日达成 $3%——让我们乘胜追击，今天再创佳绩！");
+  } else if (lang === "ms") {
+    t = t
+      .replace(/• \[Sales Focus\]:/g, "• [Fokus Jualan Hari Ini]:")
+      .replace(/Daily store target TS RM ([0-9,.]+), HB target RM ([0-9,.]+) \(pushing for 40%\+ HB ratio\)\. Yesterday achieved ([0-9.]+)%—let's build on this momentum today!/g,
+        "Sasaran harian cawangan TS RM $1, sasaran HB RM $2 (sasaran 40%+ nisbah HB). Semalam capai $3%—mari kita bina kejayaan ini hari ini!");
+  }
+  return t;
+}
+
+function translateBriefingSec3Deterministic(sec3, lang) {
+  if (!sec3) return "";
+  let t = sec3;
+  if (lang === "zh") {
+    t = t
+      .replace(/• \[HQ Incentive Tracking\]:/g, "• [总部奖励指标追踪]:")
+      .replace(/Outlet MTD HB is RM ([0-9,.]+) \/ RM ([0-9,.]+) \(([0-9.]+)%\), steadily pacing toward the FY2027 Tier 3 incentive \(RM 500\/pax reward\)!/g,
+        "门市本月 MTD HB 达 RM $1 / RM $2 ($3%)，正稳步迈向 FY2027 第3阶梯奖励（每人 RM 500 激励奖金）！");
+  } else if (lang === "ms") {
+    t = t
+      .replace(/• \[HQ Incentive Tracking\]:/g, "• [Penjejakan Insentif HQ]:")
+      .replace(/Outlet MTD HB is RM ([0-9,.]+) \/ RM ([0-9,.]+) \(([0-9.]+)%\), steadily pacing toward the FY2027 Tier 3 incentive \(RM 500\/pax reward\)!/g,
+        "MTD HB cawangan kini RM $1 / RM $2 ($3%), bergerak mantap menuju insentif Tahap 3 FY2027 (ganjaran RM 500/orang)!");
+  }
+  return t;
+}
+
+function translateBriefingSec4Deterministic(sec4, lang) {
+  if (lang === "zh") {
+    return "• 确保严格遵守 FEFO（先过期先出）原则\n• 从前往后彻底清洁排面展架，并拍照发送至 Google Chat。\n• 补足缺货商品，并拍照发送至 Google Chat。\n• 更新排面价钱牌，并拍照发送至 Google Chat。";
+  } else if (lang === "ms") {
+    return "• Pastikan patuhi prinsip FEFO (First-Expired, First-Out)\n• Bersihkan gondola dari depan ke belakang dan hantar gambar ke Google Chat.\n• Tambah stok barang dan hantar gambar ke Google Chat.\n• Kemas kini tanda harga gondola dan hantar gambar ke Google Chat.";
+  }
+  return sec4;
+}
+
+function translateBriefingSec5Deterministic(sec5, lang) {
+  if (!sec5) return "";
+  let t = sec5;
+  if (lang === "zh") {
+    t = t
+      .replace(/🏆 \*Yesterday's House Brand Top Performers:\*/g, "🏆 *昨日门市 House Brand 榜样先锋:*")
+      .replace(/🥇 1st Place:/g, "🥇 冠军 (第1名):")
+      .replace(/🥈 2nd Place:/g, "🥈 亚军 (第2名):")
+      .replace(/🥉 3rd Place:/g, "🥉 季军 (第3名):")
+      .replace(
+        /Thank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness\. Let's keep up the great effort today! 💪🔥/g,
+        "感谢大家昨天的辛勤付出与默契配合！每一次专业的临床搭配推荐，都能切实守护顾客的健康与福祉。今天让我们齐心协力，再创佳绩！💪🔥"
+      )
+      .replace(
+        /💡 \*Featured House Brand Clinical Pairing \(Clinical Upsell\):\*/g,
+        "💡 *今日精选 House Brand 临床搭配推荐 (专业增售):*"
+      )
+      .replace(/• Standard Relief \(OTC\):/g, "• 基础对症舒缓 (OTC):")
+      .replace(/• Golden Pairing \(HB\):/g, "• 黄金临床搭配 (HB):")
+      .replace(/• Recommended Dialogue:/g, "• 专业沟通话术推荐:")
+      .replace(/• Red Flags \(Refer Pharmacist\):/g, "• 警示指征 (转介药剂师):");
+
+    if (window.PMG_CLINICAL_UPSELL_MODULES) {
+      window.PMG_CLINICAL_UPSELL_MODULES.forEach(m => {
+        if (m.condition && m.chineseTitle) {
+          t = t.replace(new RegExp("【" + escapeBriefingRegex(m.condition) + "】", "g"), "【" + m.chineseTitle + "】");
+        }
+        if (m.script && m.scriptZh) {
+          t = t.replace(m.script, m.scriptZh);
+        }
+        if (m.redFlags && m.redFlagsZh) {
+          t = t.replace(m.redFlags, m.redFlagsZh);
+        }
+      });
+    }
+  } else if (lang === "ms") {
+    t = t
+      .replace(/🏆 \*Yesterday's House Brand Top Performers:\*/g, "🏆 *Pencapaian Terbaik House Brand Semalam:*")
+      .replace(/🥇 1st Place:/g, "🥇 Tempat Pertama:")
+      .replace(/🥈 2nd Place:/g, "🥈 Tempat Kedua:")
+      .replace(/🥉 3rd Place:/g, "🥉 Tempat Ketiga:")
+      .replace(
+        /Thank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness\. Let's keep up the great effort today! 💪🔥/g,
+        "Terima kasih atas kerja keras dan kerjasama pasukan yang hebat semalam! Setiap padanan klinikal profesional benar-benar meningkatkan kesihatan pelanggan. Mari kita kekalkan momentum cemerlang ini hari ini! 💪🔥"
+      )
+      .replace(
+        /💡 \*Featured House Brand Clinical Pairing \(Clinical Upsell\):\*/g,
+        "💡 *Padanan Klinikal House Brand Pilihan Hari Ini (Upsell Klinikal):*"
+      )
+      .replace(/• Standard Relief \(OTC\):/g, "• Melegakan Simptom Asas (OTC):")
+      .replace(/• Golden Pairing \(HB\):/g, "• Padanan Emas (House Brand):")
+      .replace(/• Recommended Dialogue:/g, "• Cadangan Dialog Komunikasi:")
+      .replace(/• Red Flags \(Refer Pharmacist\):/g, "• Tanda Amaran (Rujuk Ahli Farmasi):");
+
+    if (window.PMG_CLINICAL_UPSELL_MODULES) {
+      window.PMG_CLINICAL_UPSELL_MODULES.forEach(m => {
+        if (m.condition && m.msTitle) {
+          t = t.replace(new RegExp("【" + escapeBriefingRegex(m.condition) + "】", "g"), "【" + m.msTitle + "】");
+        }
+        if (m.script && m.scriptMs) {
+          t = t.replace(m.script, m.scriptMs);
+        }
+        if (m.redFlags && m.redFlagsMs) {
+          t = t.replace(m.redFlags, m.redFlagsMs);
+        }
+      });
+    }
+  }
+  return t;
+}
+
+async function callGeminiBriefingTranslator(prompt) {
+  const keys = getGeminiApiKeys();
+  if (!keys || keys.length === 0) return null;
+
+  const candidateModels = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-1.5-flash"
+  ];
+
+  for (let kIdx = 0; kIdx < keys.length; kIdx++) {
+    const curKey = keys[kIdx];
+    for (const model of candidateModels) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${curKey}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": curKey
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              responseMimeType: "application/json"
+            }
+          })
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          const candidate = data.candidates && data.candidates[0];
+          const rawText = candidate && candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text;
+          if (rawText) {
+            const fence = String.fromCharCode(96, 96, 96);
+            const cleanJson = rawText.split(fence + "json").join("").split(fence).join("").trim();
+            const parsed = JSON.parse(cleanJson);
+            if (parsed && parsed.sec1 && parsed.sec5) {
+              return parsed;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`Translation Gemini key #${kIdx + 1} model ${model} error:`, err.message);
+      }
+    }
+  }
+  return null;
+}
+
 async function translateDailyBriefing(targetLang) {
   const briefing = window.activeDailyBriefing;
   if (!briefing) throw new Error("No briefing loaded to translate.");
 
-  const langLabel = targetLang === 'zh' ? 'Simplified Chinese (华语/中文)' : 'Bahasa Melayu (BM)';
+  const langLabel = targetLang === "zh" ? "Simplified Chinese (华语/中文)" : "Bahasa Melayu (BM)";
   const prompt = `You are an expert bilingual pharmaceutical retail operations director for PMG Pharmacy in Malaysia.
 Translate the following 5-point Daily Sales Briefing into ${langLabel}.
 
 STRICT RULES:
 1. Preserve all numerical figures, currency tags (e.g. RM 12,010.11), percentages, transaction counts, dates, and emojis.
-2. Preserve exact product names unchanged (e.g. "JH Nutrition Sleepright Capsule", "systoright", "vk gentle cleanser", "Nutribridge menz", "Valerian + Passionflower").
+2. Preserve exact product names unchanged (e.g. "JH Nutrition Sleepright Capsule", "systoright", "vk gentle cleanser", "Nutribridge menz", "Valerian + Passionflower", "Nutribridge Sheep Placenta 600mg").
 3. Preserve staff names in English (e.g. Chai Yee Sian, Jong Pei Choo).
-4. For Section 4 Operational Precautions, translate "Make sure follow FEFO" appropriately (e.g. "确保严格遵守 FEFO（先过期先出）" in Chinese, or "Pastikan patuhi prinsip FEFO" in BM) and emphasize taking photos and sending to Google Chat.
-5. Return ONLY a valid JSON object with keys: "sec1", "sec2", "sec3", "sec4", "sec5". Do not include Markdown fences or extra commentary.
+4. For Section 4 Operational Precautions, translate "Make sure follow FEFO" appropriately and emphasize taking photos and sending to Google Chat.
+5. Translate the entire Section 5, including podium ranks ("1st Place" -> 冠军/Tempat Pertama, etc.), the team encouragement message, and the entire "Featured House Brand Clinical Pairing (Clinical Upsell)" block (condition name, standard relief, golden pairing, recommended dialogue, and red flags).
+6. Return ONLY a valid JSON object with keys: "sec1", "sec2", "sec3", "sec4", "sec5". Do not include Markdown fences or extra commentary.
 
 Input Briefing to translate:
 Section 1:
@@ -2944,34 +3164,20 @@ ${briefing.sec5}`;
 
   let jsonResult = null;
   try {
-    const rawRes = await callGeminiApiWithRetry(prompt, "You are a professional retail pharmacy operations translator.");
-    if (rawRes) {
-      const fence = String.fromCharCode(96, 96, 96);
-      const cleanJson = rawRes.split(fence + "json").join("").split(fence).join("").trim();
-      jsonResult = JSON.parse(cleanJson);
-    }
+    jsonResult = await callGeminiBriefingTranslator(prompt);
   } catch (e) {
-    console.warn("Direct Gemini translation fallback:", e);
+    console.warn("Direct Gemini translation notice:", e);
   }
 
-  if (!jsonResult || !jsonResult.sec1) {
-    if (targetLang === 'zh') {
-      jsonResult = {
-        sec1: briefing.sec1,
-        sec2: briefing.sec2.replace('• [Sales Focus]:', '• [今日销售重点]:'),
-        sec3: briefing.sec3.replace('• [HQ Incentive Tracking]:', '• [总部奖励指标追踪]:'),
-        sec4: `• 确保严格遵守 FEFO（先过期先出）原则\n• 从前往后彻底清洁排面展架，并拍照发送至 Google Chat。\n• 补足缺货商品，并拍照发送至 Google Chat。\n• 更新排面价钱牌，并拍照发送至 Google Chat。`,
-        sec5: briefing.sec5.replace("🏆 *Yesterday's House Brand Top Performers:*", "🏆 *昨日门市 House Brand 榜样先锋:*")
-      };
-    } else {
-      jsonResult = {
-        sec1: briefing.sec1,
-        sec2: briefing.sec2.replace('• [Sales Focus]:', '• [Fokus Jualan Hari Ini]:'),
-        sec3: briefing.sec3.replace('• [HQ Incentive Tracking]:', '• [Penjejakan Insentif HQ]:'),
-        sec4: `• Pastikan patuhi prinsip FEFO (First-Expired, First-Out)\n• Bersihkan gondola dari depan ke belakang dan hantar gambar ke Google Chat.\n• Tambah stok barang dan hantar gambar ke Google Chat.\n• Kemas kini tanda harga gondola dan hantar gambar ke Google Chat.`,
-        sec5: briefing.sec5.replace("🏆 *Yesterday's House Brand Top Performers:*", "🏆 *Pencapaian Terbaik House Brand Semalam:*")
-      };
-    }
+  // Robust, complete deterministic fallback if Gemini is offline or unkeyed
+  if (!jsonResult || !jsonResult.sec1 || !jsonResult.sec5) {
+    jsonResult = {
+      sec1: translateBriefingSec1Deterministic(briefing.sec1, targetLang),
+      sec2: translateBriefingSec2Deterministic(briefing.sec2, targetLang),
+      sec3: translateBriefingSec3Deterministic(briefing.sec3, targetLang),
+      sec4: translateBriefingSec4Deterministic(briefing.sec4, targetLang),
+      sec5: translateBriefingSec5Deterministic(briefing.sec5, targetLang)
+    };
   }
 
   if (!briefing.translations) briefing.translations = {};
