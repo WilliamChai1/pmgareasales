@@ -19,6 +19,9 @@
     quizAnswered: false,
     quizUserAnswers: [], // { questionIdx, selectedOption, isCorrect }
     quizScore: null,
+    quizLang: (typeof localStorage !== 'undefined' && localStorage.getItem('pmg_dpos_quiz_lang')) || 'en',
+    isTranslatingQuiz: false,
+    quizTranslations: {},
     rolePlayTurns: [], // { speaker: 'user'|'customer', text, audioScore, lang }
     isRecording: false,
     isSpeaking: false,
@@ -1489,23 +1492,127 @@
     `;
   }
 
-  // ─── TAB 2: ACTIVE-RECALL QUIZ ─────────────────────────────────────────────
+  // ─── TAB 2: ACTIVE-RECALL QUIZ (MULTILINGUAL: EN | ZH | MS) ─────────────────
+  function getActiveQuizList() {
+    const raw = state.quizQuestions;
+    if (!raw || raw.length === 0) return [];
+    const lang = state.quizLang || 'en';
+    if (lang === 'en') return raw;
+
+    const topicKey = (state.currentWeek && state.currentWeek.topic) || "active";
+
+    // 1. Check pre-translated in state.currentWeek (e.g. Week 1 Osteoarthritis)
+    if (lang === 'zh' && state.currentWeek && Array.isArray(state.currentWeek.quizZh) && state.currentWeek.quizZh.length === raw.length) {
+      return state.currentWeek.quizZh;
+    }
+    if (lang === 'ms' && state.currentWeek && Array.isArray(state.currentWeek.quizMs) && state.currentWeek.quizMs.length === raw.length) {
+      return state.currentWeek.quizMs;
+    }
+
+    // 2. Check cached dynamic AI translation
+    if (state.quizTranslations[topicKey] && state.quizTranslations[topicKey][lang]) {
+      return state.quizTranslations[topicKey][lang];
+    }
+
+    return raw;
+  }
+
+  async function translateQuizQuestionsWithAi(targetLang) {
+    const rawQuestions = state.quizQuestions;
+    if (!rawQuestions || rawQuestions.length === 0) return null;
+
+    const topicKey = (state.currentWeek && state.currentWeek.topic) || "active";
+    if (state.quizTranslations[topicKey] && state.quizTranslations[topicKey][targetLang]) {
+      return state.quizTranslations[topicKey][targetLang];
+    }
+
+    const langName = targetLang === 'zh' ? 'Simplified Chinese (华语/中文)' : 'Bahasa Melayu (BM)';
+    const prompt = `You are a clinical pharmacy educator for PMG Pharmacy in Malaysia.
+Translate the following multiple-choice clinical pharmacy quiz scenarios into ${langName}.
+
+STRICT RULES:
+1. Preserve the EXACT question order and options order (options 0, 1, 2, 3).
+2. Keep the correct answer index unchanged!
+3. Preserve brand names and drug names in standard retail pharmacy format (e.g. "JH Nutrition Flexson", "Livemore Flexmore", "Biowell Terrafast", "Medicplast Heat Therapy Patch", "warfarin", "paracetamol", "ibuprofen", "boswellia", "turmeric").
+4. Translate each item into a clean JSON object with keys:
+   - "q": translated scenario text
+   - "options": array of 4 translated options
+   - "answer": integer index (same as original)
+   - "rationale": translated clinical explanation
+   - "safety": translated safety tip
+5. Return ONLY a valid JSON array of objects. Do not include markdown codeblocks or commentary.
+
+Source Questions:
+${JSON.stringify(rawQuestions, null, 2)}`;
+
+    try {
+      const res = await dposGenerate('gemini-3.5-flash-lite', prompt);
+      const text = res.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+      const parsed = extractJson(text);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (!state.quizTranslations[topicKey]) state.quizTranslations[topicKey] = {};
+        state.quizTranslations[topicKey][targetLang] = parsed.map((item, idx) => ({
+          q: item.q || rawQuestions[idx].q,
+          options: (Array.isArray(item.options) && item.options.length === 4) ? item.options : rawQuestions[idx].options,
+          answer: rawQuestions[idx].answer,
+          rationale: item.rationale || rawQuestions[idx].rationale,
+          safety: item.safety || rawQuestions[idx].safety
+        }));
+        return state.quizTranslations[topicKey][targetLang];
+      }
+    } catch (err) {
+      console.warn("AI Quiz translation error:", err);
+    }
+    return null;
+  }
+
+  async function setQuizLang(lang) {
+    if (state.quizLang === lang && !state.isTranslatingQuiz) return;
+    state.quizLang = lang;
+    try {
+      localStorage.setItem('pmg_dpos_quiz_lang', lang);
+    } catch (e) {}
+
+    const container = document.getElementById("dposContentContainer");
+
+    if (lang === 'en') {
+      renderQuiz(container);
+      return;
+    }
+
+    const topicKey = (state.currentWeek && state.currentWeek.topic) || "active";
+    const hasPre = (lang === 'zh' && state.currentWeek && state.currentWeek.quizZh) || (lang === 'ms' && state.currentWeek && state.currentWeek.quizMs);
+    const hasCached = state.quizTranslations[topicKey] && state.quizTranslations[topicKey][lang];
+
+    if (!hasPre && !hasCached) {
+      state.isTranslatingQuiz = true;
+      renderQuiz(container);
+      await translateQuizQuestionsWithAi(lang);
+      state.isTranslatingQuiz = false;
+    }
+
+    renderQuiz(container);
+  }
+
   function renderQuiz(container) {
-    const qList = state.quizQuestions;
-    if (!qList || qList.length === 0) {
+    if (!container) return;
+    const rawList = state.quizQuestions;
+    if (!rawList || rawList.length === 0) {
       container.innerHTML = `<div class="dpos-card" style="text-align:center; padding:30px; color:#666;">No quiz questions available for this module.</div>`;
       return;
     }
 
     // If quiz completed, show results screen
-    if (state.quizIndex >= qList.length) {
+    if (state.quizIndex >= rawList.length) {
       renderQuizResults(container);
       return;
     }
 
-    const cur = qList[state.quizIndex];
-    const total = qList.length;
+    const qList = getActiveQuizList();
+    const cur = qList[state.quizIndex] || rawList[state.quizIndex];
+    const total = rawList.length;
     const progressPct = ((state.quizIndex + 1) / total) * 100;
+    const lang = state.quizLang || 'en';
 
     let optionsHtml = cur.options.map((opt, optIdx) => {
       let optClass = "dpos-quiz-option";
@@ -1534,55 +1641,97 @@
     let feedbackHtml = '';
     if (state.quizAnswered) {
       const isCorrect = state.quizSelectedOption === cur.answer;
+      const feedbackTitle = isCorrect 
+        ? (lang === 'zh' ? '🎉 回答正确！' : (lang === 'ms' ? '🎉 Tepat Sekali!' : '🎉 Correct!'))
+        : (lang === 'zh' ? '⚠️ 回答错误' : (lang === 'ms' ? '⚠️ Tidak Tepat' : '⚠️ Incorrect'));
+      const rationaleLabel = lang === 'zh' ? '临床药理逻辑剖析:' : (lang === 'ms' ? 'Rasional Klinikal:' : 'Clinical Rationale:');
+      const safetyLabel = lang === 'zh' ? '用药安全红旗指征:' : (lang === 'ms' ? 'Semakan Keselamatan:' : 'Safety Check:');
+      const nextBtnText = state.quizIndex + 1 < total
+        ? (lang === 'zh' ? '下一道临床情境 ➡️' : (lang === 'ms' ? 'Senario Seterusnya ➡️' : 'Next Scenario ➡️'))
+        : (lang === 'zh' ? '查看测验总分 🏆' : (lang === 'ms' ? 'Lihat Skor Kuiz 🏆' : 'View Quiz Score 🏆'));
+
       feedbackHtml = `
         <div style="margin-top:14px; padding:12px; border-radius:10px; background:${isCorrect ? '#f0fdf4' : '#fef2f2'}; border:1px solid ${isCorrect ? '#86efac' : '#fca5a5'};">
           <div style="font-weight:800; font-size:0.85rem; color:${isCorrect ? '#15803d' : '#b91c1c'}; margin-bottom:4px;">
-            ${isCorrect ? '🎉 Correct!' : '⚠️ Incorrect'}
+            ${feedbackTitle}
           </div>
           <div style="font-size:0.78rem; color:#334155; line-height:1.4; margin-bottom:6px;">
-            <b>Clinical Rationale:</b> ${escapeHtml(cur.rationale)}
+            <b>${rationaleLabel}</b> ${escapeHtml(cur.rationale)}
           </div>
           ${cur.safety ? `
             <div style="font-size:0.74rem; color:#0f766e; background:#ccfbf1; padding:6px 10px; border-radius:6px; font-weight:600; line-height:1.3;">
-              🛡️ <b>Safety Check:</b> ${escapeHtml(cur.safety)}
+              🛡️ <b>${safetyLabel}</b> ${escapeHtml(cur.safety)}
             </div>` : ''}
           <div style="text-align:right; margin-top:10px;">
             <button class="btn" style="background:#0d9488; color:white; padding:8px 18px; font-size:0.82rem; font-weight:bold;" onclick="window.DPOS.nextQuestion()">
-              ${state.quizIndex + 1 < total ? 'Next Scenario ➡️' : 'View Quiz Score 🏆'}
+              ${nextBtnText}
             </button>
           </div>
         </div>
       `;
     }
 
+    const scenarioLabel = lang === 'zh' 
+      ? `场景 ${state.quizIndex + 1} / 共 ${total} 题` 
+      : (lang === 'ms' ? `Senario ${state.quizIndex + 1} drpd ${total}` : `Scenario ${state.quizIndex + 1} of ${total}`);
+
     container.innerHTML = `
       <div class="dpos-card">
-        <!-- PROGRESS BAR -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <span style="font-size:0.72rem; font-weight:800; color:#0d9488; text-transform:uppercase;">Scenario ${state.quizIndex + 1} of ${total}</span>
-          <span style="font-size:0.72rem; font-weight:700; color:#64748b;">${Math.round(progressPct)}%</span>
+        <!-- HEADER WITH LANGUAGE TOGGLE TABS -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:0.72rem; font-weight:800; color:#0d9488; text-transform:uppercase;">${scenarioLabel}</span>
+            <span style="font-size:0.72rem; font-weight:700; color:#64748b;">(${Math.round(progressPct)}%)</span>
+          </div>
+          
+          <div style="display:flex; gap:3px; background:#f1f5f9; padding:2px; border-radius:6px;">
+            <button type="button" class="btn-lang-toggle ${lang === 'en' ? 'active' : ''}" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; font-weight:${lang === 'en' ? '800' : '600'};" onclick="window.DPOS.setQuizLang('en')">
+              🇬🇧 EN
+            </button>
+            <button type="button" class="btn-lang-toggle ${lang === 'zh' ? 'active' : ''}" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; font-weight:${lang === 'zh' ? '800' : '600'};" onclick="window.DPOS.setQuizLang('zh')">
+              🇨🇳 华语
+            </button>
+            <button type="button" class="btn-lang-toggle ${lang === 'ms' ? 'active' : ''}" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; font-weight:${lang === 'ms' ? '800' : '600'};" onclick="window.DPOS.setQuizLang('ms')">
+              🇲🇾 BM
+            </button>
+          </div>
         </div>
+
+        <!-- PROGRESS BAR -->
         <div style="width:100%; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; margin-bottom:14px;">
           <div style="width:${progressPct}%; height:100%; background:linear-gradient(90deg, #0d9488, #14b8a6); border-radius:3px; transition:width 0.3s ease;"></div>
         </div>
 
-        <!-- QUESTION -->
-        <div style="font-size:0.92rem; font-weight:700; color:#1e293b; line-height:1.45; margin-bottom:14px;">
-          ${escapeHtml(cur.q)}
-        </div>
+        ${state.isTranslatingQuiz ? `
+          <div style="text-align:center; padding:35px 15px; color:#0f766e;">
+            <div style="font-size:2rem; margin-bottom:10px;">⏳</div>
+            <div style="font-weight:800; font-size:0.92rem; color:#0f766e;">
+              ${lang === 'zh' ? '正在通过 AI 翻译本套临床情境与选项...' : 'Sedang menterjemah senario kuiz klinikal ke Bahasa Melayu...'}
+            </div>
+            <div style="font-size:0.75rem; color:#64748b; margin-top:5px;">
+              ${lang === 'zh' ? '正在保留专业临床药理与用药红旗安全准则' : 'Mengekalkan farmakologi klinikal & panduan keselamatan'}
+            </div>
+          </div>
+        ` : `
+          <!-- QUESTION -->
+          <div style="font-size:0.92rem; font-weight:700; color:#1e293b; line-height:1.45; margin-bottom:14px;">
+            ${escapeHtml(cur.q)}
+          </div>
 
-        <!-- OPTIONS -->
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          ${optionsHtml}
-        </div>
+          <!-- OPTIONS -->
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${optionsHtml}
+          </div>
 
-        <!-- FEEDBACK -->
-        ${feedbackHtml}
+          <!-- FEEDBACK -->
+          ${feedbackHtml}
+        `}
       </div>
     `;
   }
 
   function renderQuizResults(container) {
+    if (!container) return;
     const total = state.quizQuestions.length;
     const correctCount = state.quizUserAnswers.filter(a => a.isCorrect).length;
     const scoreOut10 = Math.round((correctCount / total) * 10);
@@ -1592,33 +1741,51 @@
     saveTeammateScore(scoreOut10, null, null, null);
 
     const isPass = scoreOut10 >= 7;
+    const lang = state.quizLang || 'en';
+
+    const quizTitle = lang === 'zh' ? '临床测验已完成！' : (lang === 'ms' ? 'Kuiz Selesai!' : 'Quiz Completed!');
+    const passMsg = lang === 'zh' 
+      ? '表现出色！你展现了扎实的门市分诊、用药红旗排查及自有品牌配方安全知识。' 
+      : (lang === 'ms' ? 'Syabas! Anda menunjukkan penguasaan kukuh dalam triaj klinikal, saringan tanda amaran dan keselamatan produk Jenama Sendiri.' : 'Great job! You showed solid mastery of clinical triage, red-flag screening, and House Brand formulation safety.');
+    const failMsg = lang === 'zh'
+      ? '建议继续复习本周临床焦点，在接待顾客前争取考取 7/10 分以上。'
+      : (lang === 'ms' ? 'Teruskan mengulang kaji sorotan klinikal. Kami sarankan markah sekurang-kurangnya 7/10 sebelum sesi rundingan bersama pelanggan.' : 'Keep reviewing the clinical spotlight. We recommend scoring at least 7/10 before customer consultations.');
+    const retakeText = lang === 'zh' ? '🔄 重新测验' : (lang === 'ms' ? '🔄 Ulang Kuiz' : '🔄 Retake Quiz');
+    const proceedText = lang === 'zh' ? '前往双向对练角色扮演 🎙️' : (lang === 'ms' ? 'Teruskan ke Latihan Suara 🎙️' : 'Proceed to Voice Role-Play 🎙️');
 
     container.innerHTML = `
       <div class="dpos-card" style="text-align:center; padding:30px 20px;">
+        <!-- LANGUAGE TABS -->
+        <div style="display:flex; justify-content:flex-end; gap:3px; margin-bottom:12px;">
+          <div style="display:flex; gap:3px; background:#f1f5f9; padding:2px; border-radius:6px;">
+            <button type="button" class="btn-lang-toggle ${lang === 'en' ? 'active' : ''}" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; font-weight:${lang === 'en' ? '800' : '600'};" onclick="window.DPOS.setQuizLang('en')">🇬🇧 EN</button>
+            <button type="button" class="btn-lang-toggle ${lang === 'zh' ? 'active' : ''}" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; font-weight:${lang === 'zh' ? '800' : '600'};" onclick="window.DPOS.setQuizLang('zh')">🇨🇳 华语</button>
+            <button type="button" class="btn-lang-toggle ${lang === 'ms' ? 'active' : ''}" style="padding:2px 7px; font-size:0.72rem; border-radius:4px; font-weight:${lang === 'ms' ? '800' : '600'};" onclick="window.DPOS.setQuizLang('ms')">🇲🇾 BM</button>
+          </div>
+        </div>
+
         <div style="font-size:3rem; margin-bottom:6px;">${isPass ? '🌟' : '📚'}</div>
-        <h3 style="margin:0 0 6px 0; color:#0f172a; font-size:1.25rem;">Quiz Completed!</h3>
+        <h3 style="margin:0 0 6px 0; color:#0f172a; font-size:1.25rem;">${quizTitle}</h3>
         <div style="font-size:2rem; font-weight:800; color:${isPass ? '#0d9488' : '#e11d48'}; margin-bottom:6px;">
           ${scoreOut10} / 10
         </div>
         <div style="font-size:0.85rem; color:#475569; max-width:360px; margin:0 auto 16px auto; line-height:1.4;">
-          ${isPass 
-            ? 'Great job! You showed solid mastery of clinical triage, red-flag screening, and House Brand formulation safety.' 
-            : 'Keep reviewing the clinical spotlight. We recommend scoring at least 7/10 before customer consultations.'}
+          ${isPass ? passMsg : failMsg}
         </div>
 
         <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
           <button class="btn" style="background:#f1f5f9; color:#334155; padding:10px 16px; font-size:0.82rem; font-weight:bold;" onclick="window.DPOS.retakeQuiz()">
-            🔄 Retake Quiz
+            ${retakeText}
           </button>
           <button class="btn btn-image" style="padding:10px 20px; font-size:0.82rem; font-weight:bold;" onclick="window.DPOS.setTab('roleplay')">
-            Proceed to Voice Role-Play 🎙️
+            ${proceedText}
           </button>
         </div>
       </div>
     `;
   }
 
-  // ─── TAB 3: TWO-WAY VOICE ROLE-PLAY ────────────────────────────────────────
+// ─── TAB 3: TWO-WAY VOICE ROLE-PLAY ────────────────────────────────────────
   function renderRolePlay(container) {
     const rawPersona = (state.currentWeek && state.currentWeek.persona) || "";
     const persona = splitPersona(rawPersona);
@@ -3775,6 +3942,7 @@ Output strictly in JSON:
     setTab: setTab,
     setTopicMode: setTopicMode,
     generateNewRandomCase: generateNewRandomCase,
+    setQuizLang: setQuizLang,
     selectOption: selectOption,
     nextQuestion: nextQuestion,
     retakeQuiz: retakeQuiz,
