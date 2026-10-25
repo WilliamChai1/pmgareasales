@@ -1744,6 +1744,104 @@ async function submitSalesUpload() {
 // ─── 5-POINT OUTLET PIC DAILY BRIEFING ENGINE ────────────────────────────────
 let currentBriefingState = null;
 
+function getLatestClosedHistoryEntry(historyData, targetDateStr) {
+  if (!historyData || historyData.length === 0) return null;
+  if (targetDateStr) {
+    const parsed = parseMytDate(targetDateStr);
+    if (parsed) {
+      const found = historyData.find(h => {
+        const md = parseMytDate(h.date);
+        return md && md.day === parsed.day && md.month === parsed.month && md.year === parsed.year;
+      });
+      if (found) return found;
+    }
+  }
+  // If targetDateStr is not specified or today, check if today has a closed record in history
+  const todayMyt = parseMytDate(new Date());
+  if (todayMyt) {
+    const foundToday = historyData.find(h => {
+      const md = parseMytDate(h.date);
+      return md && md.day === todayMyt.day && md.month === todayMyt.month && md.year === todayMyt.year;
+    });
+    if (foundToday) return foundToday;
+  }
+  // Otherwise, strictly fall back to the latest completed day in historyData (matches Director Report last column)
+  return historyData[historyData.length - 1];
+}
+
+function computeBriefingSec1Text(summary, targets, matchedHist, staff, daysInMonth) {
+  summary = summary || {};
+  targets = targets || {};
+  staff = staff || [];
+
+  const todayMyt = parseMytDate(new Date()) || { day: 25, month: 9, year: 2026 };
+
+  // Daily figures: strictly match Director Report historical record, fallback to staff only if history is completely empty
+  const dailyTs = matchedHist ? Number(matchedHist.ts || 0) : staff.reduce((acc, s) => acc + Number(s.dailyTs || 0), 0);
+  const dailyHb = matchedHist ? Number(matchedHist.hb || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHb || 0), 0);
+  const dailyHm = matchedHist ? Number(matchedHist.hm || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHm || 0), 0);
+  const dailyCust = matchedHist ? Number(matchedHist.cust || 0) : staff.reduce((acc, s) => acc + Number(s.dailyCust || 0), 0);
+
+  const hbPct = dailyTs > 0 ? ((dailyHb / dailyTs) * 100).toFixed(1) : "0.0";
+  const hmPct = dailyTs > 0 ? ((dailyHm / dailyTs) * 100).toFixed(1) : "0.0";
+  const avgBasket = dailyCust > 0 ? (dailyTs / dailyCust).toFixed(2) : "0.00";
+  const hbBasket = dailyCust > 0 ? (dailyHb / dailyCust).toFixed(2) : "0.00";
+
+  // MTD figures: strictly match Dashboard Cumulative Card (summary.mtdTs and summary.mtdHb)
+  const mtdTs = Number(summary.mtdTs || 0);
+  const mtdHb = Number(summary.mtdHb || 0);
+  const targetTs = Number(targets.ts || 0);
+  const targetHb = Number(targets.hb || 0);
+  const mtdTsPct = targetTs > 0 ? ((mtdTs / targetTs) * 100).toFixed(1) : "0.0";
+  const mtdHbPct = targetHb > 0 ? ((mtdHb / targetHb) * 100).toFixed(1) : "0.0";
+
+  const histMyt = matchedHist ? parseMytDate(matchedHist.date) : null;
+  const pacingDay = histMyt ? histMyt.day : todayMyt.day;
+  const currentDay = Math.min(daysInMonth || 31, Math.max(1, pacingDay));
+  const expectedTs = (targetTs / (daysInMonth || 31)) * currentDay;
+  const expectedHb = (targetHb / (daysInMonth || 31)) * currentDay;
+  const tsPacingGap = mtdTs - expectedTs;
+  const hbPacingGap = mtdHb - expectedHb;
+  const tsGapStr = tsPacingGap >= 0 ? `+RM ${Math.round(tsPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(tsPacingGap)).toLocaleString()} (Behind 🔴)`;
+  const hbGapStr = hbPacingGap >= 0 ? `+RM ${Math.round(hbPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(hbPacingGap)).toLocaleString()} (Behind 🔴)`;
+
+  let takeaway = "";
+  if (Number(hbPct) >= 40) {
+    takeaway = `💡 *Operational Takeaway:*\nStore HB achieved ${hbPct}%, surpassing the 40% benchmark! Basket size RM ${avgBasket} (HB Basket: RM ${hbBasket}) across ${dailyCust} transactions. Strong clinical conversion yesterday—let's maintain this momentum today!`;
+  } else {
+    takeaway = `💡 *Operational Takeaway:*\nStore HB closed at ${hbPct}% with RM ${avgBasket} basket size and ${dailyCust} transactions. Strengthen 1+1 acute pairing at the counter today to push HB ratio beyond 40%!`;
+  }
+
+  const sec1Text = `• Total Sales (TS): RM ${dailyTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+• House Brand (HB): RM ${dailyHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hbPct}%)
+• High Margin (HM): RM ${dailyHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hmPct}%)
+• Customer Count: ${dailyCust} transactions
+• Average Basket Size: RM ${avgBasket} (HB Basket: RM ${hbBasket})
+• MTD Progress: TS ${formatRM(mtdTs)} / ${formatRM(targetTs)} (${mtdTsPct}% | ${tsGapStr}), HB ${formatRM(mtdHb)} / ${formatRM(targetHb)} (${mtdHbPct}% | ${hbGapStr})
+
+${takeaway}`;
+
+  return {
+    sec1Text,
+    dailyTs,
+    dailyHb,
+    dailyHm,
+    dailyCust,
+    hbPct,
+    hmPct,
+    avgBasket,
+    hbBasket,
+    mtdTs,
+    mtdHb,
+    targetTs,
+    targetHb,
+    mtdTsPct,
+    mtdHbPct,
+    tsGapStr,
+    hbGapStr
+  };
+}
+
 function openDailyBriefingModal(targetDateStr) {
   if (!isManagementOrPharmacist(currentUser)) {
     alert("Access restricted: Daily Briefing is only available to Pharmacist and Management.");
@@ -1771,64 +1869,33 @@ function openDailyBriefingModal(targetDateStr) {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const dateDisplay = `${String(salesDateObj.getDate()).padStart(2, '0')}-${months[salesDateObj.getMonth()]}-${salesDateObj.getFullYear()}`;
 
-  const targetDay = salesDateObj.getDate();
-  const matchedHist = historyData.find(h => {
-    const md = parseMytDate(h.date);
-    return md && md.day === targetDay;
-  });
+  const matchedHist = getLatestClosedHistoryEntry(historyData, targetDateStr);
+  const sec1Data = computeBriefingSec1Text(summary, targets, matchedHist, staff, daysInMonth);
 
-  const dailyTs = matchedHist ? Number(matchedHist.ts || 0) : staff.reduce((acc, s) => acc + Number(s.dailyTs || 0), 0);
-  const dailyHb = matchedHist ? Number(matchedHist.hb || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHb || 0), 0);
-  const dailyHm = matchedHist ? Number(matchedHist.hm || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHm || 0), 0);
-  const dailyCust = matchedHist ? Number(matchedHist.cust || 0) : staff.reduce((acc, s) => acc + Number(s.dailyCust || 0), 0);
-
-  const hbPct = dailyTs > 0 ? ((dailyHb / dailyTs) * 100).toFixed(1) : "0.0";
-  const hmPct = dailyTs > 0 ? ((dailyHm / dailyTs) * 100).toFixed(1) : "0.0";
-  const avgBasket = dailyCust > 0 ? (dailyTs / dailyCust).toFixed(2) : "0.00";
-  const hbBasket = dailyCust > 0 ? (dailyHb / dailyCust).toFixed(2) : "0.00";
-
-  const mtdTs = Number(summary.mtdTs || 0);
-  const mtdHb = Number(summary.mtdHb || 0);
-  const targetTs = Number(targets.ts || 0);
-  const targetHb = Number(targets.hb || 0);
-  const mtdTsPct = targetTs > 0 ? ((mtdTs / targetTs) * 100).toFixed(1) : "0.0";
-  const mtdHbPct = targetHb > 0 ? ((mtdHb / targetHb) * 100).toFixed(1) : "0.0";
-
-  const currentDay = Math.min(daysInMonth, Math.max(1, targetDay));
-  const expectedTs = (targetTs / daysInMonth) * currentDay;
-  const expectedHb = (targetHb / daysInMonth) * currentDay;
-  const tsPacingGap = mtdTs - expectedTs;
-  const hbPacingGap = mtdHb - expectedHb;
-  const tsGapStr = tsPacingGap >= 0 ? `+RM ${Math.round(tsPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(tsPacingGap)).toLocaleString()} (Behind 🔴)`;
-  const hbGapStr = hbPacingGap >= 0 ? `+RM ${Math.round(hbPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(hbPacingGap)).toLocaleString()} (Behind 🔴)`;
-
-  let takeaway = "";
-  if (Number(hbPct) >= 40) {
-    takeaway = `💡 *Operational Takeaway:*\nStore HB achieved ${hbPct}%, surpassing the 40% benchmark! Basket size RM ${avgBasket} (HB Basket: RM ${hbBasket}) across ${dailyCust} transactions. Strong clinical conversion yesterday—let's maintain this momentum today!`;
-  } else {
-    takeaway = `💡 *Operational Takeaway:*\nStore HB closed at ${hbPct}% with RM ${avgBasket} basket size and ${dailyCust} transactions. Strengthen 1+1 acute pairing at the counter today to push HB ratio beyond 40%!`;
-  }
-
-  const sec1Text = `• Total Sales (TS): RM ${dailyTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-• House Brand (HB): RM ${dailyHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hbPct}%)
-• High Margin (HM): RM ${dailyHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hmPct}%)
-• Customer Count: ${dailyCust} transactions
-• Average Basket Size: RM ${avgBasket} (HB Basket: RM ${hbBasket})
-• MTD Progress: TS ${formatRM(mtdTs)} / ${formatRM(targetTs)} (${mtdTsPct}% | ${tsGapStr}), HB ${formatRM(mtdHb)} / ${formatRM(targetHb)} (${mtdHbPct}% | ${hbGapStr})
-
-${takeaway}`;
-
-  const dailyTargetTs = Math.round(targetTs / daysInMonth);
-  const dailyTargetHb = Math.round(targetHb / daysInMonth);
+  const dailyTargetTs = Math.round(sec1Data.targetTs / daysInMonth);
+  const dailyTargetHb = Math.round(sec1Data.targetHb / daysInMonth);
 
   const dposTopic = (window.dposState && window.dposState.activeWeekTopic) || "Hypertension & Chronic Care";
   const featuredModule = (window.getPmgHouseBrandRecommendation && window.getPmgHouseBrandRecommendation(salesDateObj, dposTopic)) || (window.PMG_CLINICAL_UPSELL_MODULES && window.PMG_CLINICAL_UPSELL_MODULES[0]);
 
-  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${hbPct}%—let's build on this momentum today!`;
+  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${sec1Data.hbPct}%—let's build on this momentum today!`;
 
-  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!`;
+  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(sec1Data.mtdHb).toLocaleString()} / RM ${Math.round(sec1Data.targetHb).toLocaleString()} (${sec1Data.mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!\n`;
 
   const sec4Default = `• Make sure follow FEFO\n• Clean gondola from front to back and snap photo to google chat.\n• Refill stock and snap photo to google chat.\n• Update price gondola and snap photo into google chat.`;
+
+  // Preserve PIC custom notes if existing briefing exists, while synchronizing incentive tracking line
+  const existingBriefing = window.activeDailyBriefing || (currentData && currentData.dailyBriefing);
+  let sec2Val = (existingBriefing && existingBriefing.sec2) ? existingBriefing.sec2 : sec2Default;
+  let sec3Val = (existingBriefing && existingBriefing.sec3) ? existingBriefing.sec3 : sec3Default;
+  let sec4Val = (existingBriefing && existingBriefing.sec4) ? existingBriefing.sec4 : sec4Default;
+
+  if (sec3Val && typeof sec3Val === 'string') {
+    sec3Val = sec3Val.replace(
+      /• \[HQ Incentive Tracking\]: Outlet MTD HB is RM [0-9,.]+ \/ RM [0-9,.]+ \([0-9.]+%\), steadily pacing toward the FY2027 Tier 3 incentive \(RM 500\/pax reward\)!/,
+      `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(sec1Data.mtdHb).toLocaleString()} / RM ${Math.round(sec1Data.targetHb).toLocaleString()} (${sec1Data.mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!`
+    );
+  }
 
   const sortedStaff = [...staff].sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
   let rankingLines = [];
@@ -1850,10 +1917,7 @@ ${takeaway}`;
 
   const hbRecBlock = featuredModule ? `\n\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${featuredModule.condition}】\n\n• Standard Relief (OTC): ${featuredModule.standardOtc}\n\n• Golden Pairing (HB): ${featuredModule.hbProduct}\n\n• Recommended Dialogue: "${featuredModule.script}"\n\n• Red Flags (Refer Pharmacist): ${featuredModule.redFlags}` : '';
 
-  const sec5Text = `🏆 *Yesterday's House Brand Top Performers:*
-${rankingLines.join('\n')}
-
-Thank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness. Let's keep up the great effort today! 💪🔥${hbRecBlock}`;
+  const sec5Text = `🏆 *Yesterday's House Brand Top Performers:\n${rankingLines.join('\n')}\n\nThank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness. Let's keep up the great effort today! 💪🔥${hbRecBlock}`;
 
   const pmgAppVal = (currentData.pmgApps && currentData.pmgApps[dateIsoKey] !== undefined)
     ? currentData.pmgApps[dateIsoKey]
@@ -1863,10 +1927,10 @@ Thank you all for your hard work and great team coordination yesterday! Every pr
     dateDisplay,
     dateIsoKey,
     branch: selectedBranch,
-    sec1: sec1Text,
-    sec2: sec2Default,
-    sec3: sec3Default,
-    sec4: sec4Default,
+    sec1: sec1Data.sec1Text,
+    sec2: sec2Val,
+    sec3: sec3Val,
+    sec4: sec4Val,
     sec5: sec5Text,
     featuredModule: featuredModule
   };
@@ -1875,10 +1939,10 @@ Thank you all for your hard work and great team coordination yesterday! Every pr
   document.getElementById("briefingBranchDisplay").innerText = selectedBranch;
   document.getElementById("briefingPmgAppInput").value = pmgAppVal;
 
-  document.getElementById("briefingSec1Text").innerText = sec1Text;
-  document.getElementById("briefingSec2Input").value = sec2Default;
-  document.getElementById("briefingSec3Input").value = sec3Default;
-  document.getElementById("briefingSec4Input").value = sec4Default;
+  document.getElementById("briefingSec1Text").innerText = sec1Data.sec1Text;
+  document.getElementById("briefingSec2Input").value = sec2Val;
+  document.getElementById("briefingSec3Input").value = sec3Val;
+  document.getElementById("briefingSec4Input").value = sec4Val;
   document.getElementById("briefingSec5Text").innerText = sec5Text;
 
   const select = document.getElementById("briefingHbSelect");
@@ -2708,63 +2772,19 @@ function buildDefaultBriefingObject(branch) {
   const daysInMonth = (currentData && currentData.daysInMonth) || 31;
   const historyData = (currentData && currentData.history) || [];
 
-  const salesDateObj = new Date();
+  const todayMyt = parseMytDate(new Date()) || { day: 25, month: 9, year: 2026 };
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const dateDisplay = `${String(salesDateObj.getDate()).padStart(2, '0')}-${months[salesDateObj.getMonth()]}-${salesDateObj.getFullYear()}`;
-  const dateIsoKey = formatMytIsoDate(salesDateObj);
+  const dateDisplay = `${String(todayMyt.day).padStart(2, '0')}-${months[todayMyt.month]}-${todayMyt.year}`;
+  const dateIsoKey = `${todayMyt.year}-${String(todayMyt.month + 1).padStart(2, '0')}-${String(todayMyt.day).padStart(2, '0')}`;
 
-  const targetDay = salesDateObj.getDate();
-  const matchedHist = historyData.find(h => {
-    const md = parseMytDate(h.date);
-    return md && md.day === targetDay;
-  });
+  const matchedHist = getLatestClosedHistoryEntry(historyData);
+  const sec1Data = computeBriefingSec1Text(summary, targets, matchedHist, staff, daysInMonth);
 
-  const dailyTs = matchedHist ? Number(matchedHist.ts || 0) : staff.reduce((acc, s) => acc + Number(s.dailyTs || 0), 0);
-  const dailyHb = matchedHist ? Number(matchedHist.hb || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHb || 0), 0);
-  const dailyHm = matchedHist ? Number(matchedHist.hm || 0) : staff.reduce((acc, s) => acc + Number(s.dailyHm || 0), 0);
-  const dailyCust = matchedHist ? Number(matchedHist.cust || 0) : staff.reduce((acc, s) => acc + Number(s.dailyCust || 0), 0);
+  const dailyTargetTs = Math.round(sec1Data.targetTs / daysInMonth);
+  const dailyTargetHb = Math.round(sec1Data.targetHb / daysInMonth);
 
-  const hbPct = dailyTs > 0 ? ((dailyHb / dailyTs) * 100).toFixed(1) : "0.0";
-  const hmPct = dailyTs > 0 ? ((dailyHm / dailyTs) * 100).toFixed(1) : "0.0";
-  const avgBasket = dailyCust > 0 ? (dailyTs / dailyCust).toFixed(2) : "0.00";
-  const hbBasket = dailyCust > 0 ? (dailyHb / dailyCust).toFixed(2) : "0.00";
-
-  const mtdTs = Number(summary.mtdTs || 0);
-  const mtdHb = Number(summary.mtdHb || 0);
-  const targetTs = Number(targets.ts || 0);
-  const targetHb = Number(targets.hb || 0);
-  const mtdTsPct = targetTs > 0 ? ((mtdTs / targetTs) * 100).toFixed(1) : "0.0";
-  const mtdHbPct = targetHb > 0 ? ((mtdHb / targetHb) * 100).toFixed(1) : "0.0";
-
-  const currentDay = Math.min(daysInMonth, Math.max(1, targetDay));
-  const expectedTs = (targetTs / daysInMonth) * currentDay;
-  const expectedHb = (targetHb / daysInMonth) * currentDay;
-  const tsPacingGap = mtdTs - expectedTs;
-  const hbPacingGap = mtdHb - expectedHb;
-  const tsGapStr = tsPacingGap >= 0 ? `+RM ${Math.round(tsPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(tsPacingGap)).toLocaleString()} (Behind 🔴)`;
-  const hbGapStr = hbPacingGap >= 0 ? `+RM ${Math.round(hbPacingGap).toLocaleString()} (Ahead 🟢)` : `-RM ${Math.round(Math.abs(hbPacingGap)).toLocaleString()} (Behind 🔴)`;
-
-  let takeaway = "";
-  if (Number(hbPct) >= 40) {
-    takeaway = `💡 *Operational Takeaway:*\nStore HB achieved ${hbPct}%, surpassing the 40% benchmark! Basket size RM ${avgBasket} (HB Basket: RM ${hbBasket}) across ${dailyCust} transactions. Strong clinical conversion yesterday—let's maintain this momentum today!`;
-  } else {
-    takeaway = `💡 *Operational Takeaway:*\nStore HB closed at ${hbPct}% with RM ${avgBasket} basket size and ${dailyCust} transactions. Strengthen 1+1 acute pairing at the counter today to push HB ratio beyond 40%!`;
-  }
-
-  const sec1Text = `• Total Sales (TS): RM ${dailyTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-• House Brand (HB): RM ${dailyHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hbPct}%)
-• High Margin (HM): RM ${dailyHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${hmPct}%)
-• Customer Count: ${dailyCust} transactions
-• Average Basket Size: RM ${avgBasket} (HB Basket: RM ${hbBasket})
-• MTD Progress: TS ${formatRM(mtdTs)} / ${formatRM(targetTs)} (${mtdTsPct}% | ${tsGapStr}), HB ${formatRM(mtdHb)} / ${formatRM(targetHb)} (${mtdHbPct}% | ${hbGapStr})
-
-${takeaway}`;
-
-  const dailyTargetTs = Math.round(targetTs / daysInMonth);
-  const dailyTargetHb = Math.round(targetHb / daysInMonth);
-
-  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${hbPct}%—let's build on this momentum today!`;
-  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(mtdHb).toLocaleString()} / RM ${Math.round(targetHb).toLocaleString()} (${mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!`;
+  const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${sec1Data.hbPct}%—let's build on this momentum today!`;
+  const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(sec1Data.mtdHb).toLocaleString()} / RM ${Math.round(sec1Data.targetHb).toLocaleString()} (${sec1Data.mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!`;
   const sec4Default = `• Make sure follow FEFO\n• Clean gondola from front to back and snap photo to google chat.\n• Refill stock and snap photo to google chat.\n• Update price gondola and snap photo into google chat.`;
 
   const sortedStaff = [...staff].sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
@@ -2785,18 +2805,19 @@ ${takeaway}`;
     }
   });
 
+  const salesDateObj = new Date(todayMyt.year, todayMyt.month, todayMyt.day);
   const dposTopic = (window.dposState && window.dposState.activeWeekTopic) || "Hypertension & Chronic Care";
   const featuredModule = (window.getPmgHouseBrandRecommendation && window.getPmgHouseBrandRecommendation(salesDateObj, dposTopic)) || (window.PMG_CLINICAL_UPSELL_MODULES && window.PMG_CLINICAL_UPSELL_MODULES[0]);
 
   const hbRecBlock = featuredModule ? `\n\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${featuredModule.condition}】\n\n• Standard Relief (OTC): ${featuredModule.standardOtc}\n\n• Golden Pairing (HB): ${featuredModule.hbProduct}\n\n• Recommended Dialogue: "${featuredModule.script}"\n\n• Red Flags (Refer Pharmacist): ${featuredModule.redFlags}` : '';
 
-  const sec5Text = `🏆 *Yesterday's House Brand Top Performers:*\n${rankingLines.join('\n')}\n\nThank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness. Let's keep up the great effort today! 💪🔥${hbRecBlock}`;
+  const sec5Text = `🏆 *Yesterday's House Brand Top Performers:\n${rankingLines.join('\n')}\n\nThank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness. Let's keep up the great effort today! 💪🔥${hbRecBlock}`;
 
   return {
     branch: branch,
     dateDisplay: dateDisplay,
     dateIsoKey: dateIsoKey,
-    sec1: sec1Text,
+    sec1: sec1Data.sec1Text,
     sec2: sec2Default,
     sec3: sec3Default,
     sec4: sec4Default,
@@ -2804,6 +2825,43 @@ ${takeaway}`;
     featuredModule: featuredModule,
     translations: {}
   };
+}
+
+function reconcileBriefingFinancials(briefing, branch) {
+  if (!briefing || !currentData) return briefing;
+
+  const bName = branch || briefing.branch || selectedBranch || DEFAULT_BRANCH;
+  const branchKey = findBranchKey(currentData.summary, bName) || "KOTA SENTOSA";
+  const targetKey = findBranchKey(currentData.targets, bName) || "KOTA SENTOSA";
+  const summary = (currentData.summary && currentData.summary[branchKey]) || {};
+  const targets = (currentData.targets && currentData.targets[targetKey]) || {};
+  const historyData = currentData.history || [];
+  const staff = archiveAndGetOctoberMtd((currentData && currentData.staff) || [], summary, (currentData && currentData.currentDay) || 1);
+  const daysInMonth = (currentData && currentData.daysInMonth) || 31;
+
+  const matchedHist = getLatestClosedHistoryEntry(historyData, briefing.dateDisplay);
+  const sec1Data = computeBriefingSec1Text(summary, targets, matchedHist, staff, daysInMonth);
+
+  // Reconcile Section 1 (always strictly reflect live financial facts)
+  briefing.sec1 = sec1Data.sec1Text;
+
+  // Reconcile Section 3 standard MTD incentive line if present
+  if (briefing.sec3 && typeof briefing.sec3 === 'string') {
+    briefing.sec3 = briefing.sec3.replace(
+      /• \[HQ Incentive Tracking\]: Outlet MTD HB is RM [0-9,.]+ \/ RM [0-9,.]+ \([0-9.]+%\), steadily pacing toward the FY2027 Tier 3 incentive \(RM 500\/pax reward\)!/,
+      `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(sec1Data.mtdHb).toLocaleString()} / RM ${Math.round(sec1Data.targetHb).toLocaleString()} (${sec1Data.mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!`
+    );
+  }
+
+  // Ensure branch and date display are updated
+  briefing.branch = bName;
+  if (!briefing.dateDisplay) {
+    const todayMyt = parseMytDate(new Date()) || { day: 25, month: 9, year: 2026 };
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    briefing.dateDisplay = `${String(todayMyt.day).padStart(2, '0')}-${months[todayMyt.month]}-${todayMyt.year}`;
+  }
+
+  return briefing;
 }
 
 function renderDashboardDailyBriefing() {
@@ -2824,6 +2882,9 @@ function renderDashboardDailyBriefing() {
 
   if (!briefing) {
     briefing = buildDefaultBriefingObject(selectedBranch);
+  } else {
+    // RECONCILE: Ensure briefing financial metrics always tally 100% with live data
+    briefing = reconcileBriefingFinancials(briefing, selectedBranch);
   }
 
   window.activeDailyBriefing = briefing;
@@ -2870,32 +2931,29 @@ const BRIEFING_TITLES = {
 
 function getOrGenerateBriefingTranslation(briefing, lang) {
   if (!briefing) return null;
-  if (lang === 'en') {
+  if (!lang || lang === "en") {
     return {
-      sec1: briefing.sec1 || "",
-      sec2: briefing.sec2 || "",
-      sec3: briefing.sec3 || "",
-      sec4: briefing.sec4 || "",
-      sec5: briefing.sec5 || ""
+      sec1: briefing.sec1,
+      sec2: briefing.sec2,
+      sec3: briefing.sec3,
+      sec4: briefing.sec4,
+      sec5: briefing.sec5
     };
   }
 
-  // Purge/override stale cache if sec5 still contains English podium ranks
-  if (briefing.translations && briefing.translations[lang]) {
-    const t = briefing.translations[lang];
-    const isStale = !t.sec5 || t.sec5.includes("1st Place:") || t.sec5.includes("Featured House Brand") || t.sec5.includes("Thank you all for your hard work");
-    if (!isStale) {
-      return t;
-    }
-  }
+  // Always compute sec1 deterministically from live briefing.sec1 so numbers ALWAYS tally 100%
+  const freshSec1 = translateBriefingSec1Deterministic(briefing.sec1, lang);
+  const freshSec3 = translateBriefingSec3Deterministic(briefing.sec3, lang);
 
-  // Compute clean, complete deterministic translation (instant 0ms)
+  let cached = briefing.translations && briefing.translations[lang];
+  const isSec5Stale = !cached || !cached.sec5 || cached.sec5.includes("1st Place:") || cached.sec5.includes("Featured House Brand") || cached.sec5.includes("Thank you all for your hard work");
+
   const fresh = {
-    sec1: translateBriefingSec1Deterministic(briefing.sec1, lang),
-    sec2: translateBriefingSec2Deterministic(briefing.sec2, lang),
-    sec3: translateBriefingSec3Deterministic(briefing.sec3, lang),
-    sec4: translateBriefingSec4Deterministic(briefing.sec4, lang),
-    sec5: translateBriefingSec5Deterministic(briefing.sec5, lang)
+    sec1: freshSec1,
+    sec2: (cached && !isSec5Stale && cached.sec2) ? cached.sec2 : translateBriefingSec2Deterministic(briefing.sec2, lang),
+    sec3: freshSec3,
+    sec4: (cached && !isSec5Stale && cached.sec4) ? cached.sec4 : translateBriefingSec4Deterministic(briefing.sec4, lang),
+    sec5: (cached && !isSec5Stale && cached.sec5) ? cached.sec5 : translateBriefingSec5Deterministic(briefing.sec5, lang)
   };
 
   if (!briefing.translations) briefing.translations = {};
@@ -2978,38 +3036,38 @@ function translateBriefingSec1Deterministic(sec1, lang) {
   let t = sec1;
   if (lang === "zh") {
     t = t
+      .replace(/Store HB achieved ([0-9.]+)%, surpassing the 40% benchmark! Basket size RM ([0-9.]+) \(HB Basket: RM ([0-9.]+)\) across (\d+) (?:transactions|笔交易)\. Strong clinical conversion yesterday—let's maintain this momentum today!/g,
+        "昨日门市 HB 占比达 $1%，成功突破 40% 基准线！总客单价 RM $2（HB 客单价 RM $3），共完成 $4 笔交易。昨日临床搭配转化成效亮眼，今天请全员保持势头，继续精进！")
+      .replace(/Store HB closed at ([0-9.]+)% with RM ([0-9.]+) basket size and (\d+) (?:transactions|笔交易)\. Strengthen 1\+1 acute pairing at the counter today to push HB ratio beyond 40%!/g,
+        "昨日门市 HB 占比为 $1%，客单价 RM $2，共计 $3 笔交易。今天请在柜台加把劲推进“1+1 急症黄金搭配”，全力冲刺 40%+ HB 占比！")
       .replace(/• Total Sales \(TS\):/g, "• 总营业额 (TS):")
       .replace(/• House Brand \(HB\):/g, "• 自家品牌 (HB):")
       .replace(/• High Margin \(HM\):/g, "• 高利润商品 (HM):")
       .replace(/• Customer Count:/g, "• 顾客交易次数:")
-      .replace(/transactions/g, "笔交易")
       .replace(/• Average Basket Size:/g, "• 平均客单价 (Basket Size):")
       .replace(/\(HB Basket:/g, "(HB 客单价:")
+      .replace(/transactions/g, "笔交易")
       .replace(/• MTD Progress:/g, "• 本月累计进度 (MTD):")
       .replace(/\(Ahead 🟢\)/g, "(超前 🟢)")
       .replace(/\(Behind 🔴\)/g, "(落后 🔴)")
-      .replace(/💡 \*Operational Takeaway:\*/g, "💡 *昨日营运复盘与洞察:*")
-      .replace(/Store HB achieved ([0-9.]+)%, surpassing the 40% benchmark! Basket size RM ([0-9.]+) \(HB Basket: RM ([0-9.]+)\) across (\d+) transactions\. Strong clinical conversion yesterday—let's maintain this momentum today!/g,
-        "昨日门市 HB 占比达 $1%，成功突破 40% 基准线！总客单价 RM $2（HB 客单价 RM $3），共完成 $4 笔交易。昨日临床搭配转化成效亮眼，今天请全员保持势头，继续精进！")
-      .replace(/Store HB closed at ([0-9.]+)% with RM ([0-9.]+) basket size and (\d+) transactions\. Strengthen 1\+1 acute pairing at the counter today to push HB ratio beyond 40%!/g,
-        "昨日门市 HB 占比为 $1%，客单价 RM $2，共计 $3 笔交易。今天请在柜台加把劲推进“1+1 急症黄金搭配”，全力冲刺 40%+ HB 占比！");
+      .replace(/💡 \*Operational Takeaway:\*/g, "💡 *昨日营运复盘与洞察:*");
   } else if (lang === "ms") {
     t = t
+      .replace(/Store HB achieved ([0-9.]+)%, surpassing the 40% benchmark! Basket size RM ([0-9.]+) \(HB Basket: RM ([0-9.]+)\) across (\d+) (?:transactions|transaksi)\. Strong clinical conversion yesterday—let's maintain this momentum today!/g,
+        "HB cawangan semalam mencapai $1%, melepasi tanda aras 40%! Purata saiz bakul RM $2 (Bakul HB RM $3) merentasi $4 transaksi. Penukaran klinikal yang sangat baik semalam—mari kita kekalkan momentum ini hari ini!")
+      .replace(/Store HB closed at ([0-9.]+)% with RM ([0-9.]+) basket size and (\d+) (?:transactions|transaksi)\. Strengthen 1\+1 acute pairing at the counter today to push HB ratio beyond 40%!/g,
+        "HB cawangan semalam ditutup pada $1% dengan saiz bakul RM $2 merentasi $3 transaksi. Perkukuhkan padanan 1+1 di kaunter hari ini untuk melonjakkan nisbah HB melebihi 40%!")
       .replace(/• Total Sales \(TS\):/g, "• Jumlah Jualan (TS):")
       .replace(/• House Brand \(HB\):/g, "• Jenama Sendiri (HB):")
       .replace(/• High Margin \(HM\):/g, "• Margin Tinggi (HM):")
       .replace(/• Customer Count:/g, "• Bilangan Pelanggan:")
-      .replace(/transactions/g, "transaksi")
       .replace(/• Average Basket Size:/g, "• Purata Saiz Bakul:")
       .replace(/\(HB Basket:/g, "(Bakul HB:")
+      .replace(/transactions/g, "transaksi")
       .replace(/• MTD Progress:/g, "• Kemajuan Terkumpul MTD:")
       .replace(/\(Ahead 🟢\)/g, "(Mendahului 🟢)")
       .replace(/\(Behind 🔴\)/g, "(Ketinggalan 🔴)")
-      .replace(/💡 \*Operational Takeaway:\*/g, "💡 *Sorotan Operasi Semalam:*")
-      .replace(/Store HB achieved ([0-9.]+)%, surpassing the 40% benchmark! Basket size RM ([0-9.]+) \(HB Basket: RM ([0-9.]+)\) across (\d+) transactions\. Strong clinical conversion yesterday—let's maintain this momentum today!/g,
-        "HB cawangan semalam mencapai $1%, melepasi tanda aras 40%! Purata saiz bakul RM $2 (Bakul HB RM $3) merentasi $4 transaksi. Penukaran klinikal yang sangat baik semalam—mari kita kekalkan momentum ini hari ini!")
-      .replace(/Store HB closed at ([0-9.]+)% with RM ([0-9.]+) basket size and (\d+) transactions\. Strengthen 1\+1 acute pairing at the counter today to push HB ratio beyond 40%!/g,
-        "HB cawangan semalam ditutup pada $1% dengan saiz bakul RM $2 merentasi $3 transaksi. Perkukuhkan padanan 1+1 di kaunter hari ini untuk melonjakkan nisbah HB melebihi 40%!");
+      .replace(/💡 \*Operational Takeaway:\*/g, "💡 *Sorotan Operasi Semalam:*");
   }
   return t;
 }
@@ -3268,6 +3326,21 @@ async function saveAndPublishBriefing() {
   const dateDisplay = currentBriefingState.dateDisplay || formatDisplayDate(new Date());
   const dateIsoKey = currentBriefingState.dateIsoKey || formatMytIsoDate(new Date());
 
+  const freshZhTrans = {
+    sec1: translateBriefingSec1Deterministic(sec1, 'zh'),
+    sec2: translateBriefingSec2Deterministic(sec2, 'zh'),
+    sec3: translateBriefingSec3Deterministic(sec3, 'zh'),
+    sec4: translateBriefingSec4Deterministic(sec4, 'zh'),
+    sec5: translateBriefingSec5Deterministic(sec5, 'zh')
+  };
+  const freshMsTrans = {
+    sec1: translateBriefingSec1Deterministic(sec1, 'ms'),
+    sec2: translateBriefingSec2Deterministic(sec2, 'ms'),
+    sec3: translateBriefingSec3Deterministic(sec3, 'ms'),
+    sec4: translateBriefingSec4Deterministic(sec4, 'ms'),
+    sec5: translateBriefingSec5Deterministic(sec5, 'ms')
+  };
+
   const briefingPayload = {
     branch: branch,
     dateDisplay: dateDisplay,
@@ -3280,7 +3353,10 @@ async function saveAndPublishBriefing() {
     featuredModule: currentBriefingState.featuredModule || null,
     updatedBy: (currentUser && currentUser.name) || "PIC",
     updatedAt: new Date().toISOString(),
-    translations: (window.activeDailyBriefing && window.activeDailyBriefing.translations) || {}
+    translations: {
+      zh: freshZhTrans,
+      ms: freshMsTrans
+    }
   };
 
   window.activeDailyBriefing = briefingPayload;
