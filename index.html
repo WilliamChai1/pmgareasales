@@ -9,7 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=77.5">
+  <link rel="stylesheet" href="./styles.css?v=77.6">
   <script>
     // Register Native PMG Service Worker
     if ('serviceWorker' in navigator) {
@@ -19,6 +19,7 @@
         navigator.serviceWorker.register('./sw.js', { scope: swScope })
           .then(function(reg) {
             console.log("Native PMG Service Worker active on scope:", reg.scope);
+            try { reg.update(); } catch(e) {}
           })
           .catch(function(err) {
             console.warn("Service Worker registration notice:", err);
@@ -612,7 +613,7 @@
       <div style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 10px; padding: 14px; margin-bottom: 15px;">
         <div style="font-weight: 800; color: #0369a1; font-size: 0.92rem; margin-bottom: 4px;">📱 Device Push Status</div>
         <div style="font-size: 0.78rem; color: #0c4a6e; line-height: 1.4;" id="pushStatusDescription">
-          Get real-time push alerts whenever your Area Manager or PIC publishes today's 5-Point Daily Briefing or when a new DPOS Academy roleplay module is live.
+          Get real-time push alerts on your phone lockscreen whenever your Area Manager or PIC publishes today's 5-Point Daily Briefing or when a new DPOS Academy roleplay module is live. No app installation needed.
         </div>
         <div style="margin-top: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
           <button class="btn" id="btnSubscribePush" style="background: #0284c7; color: white; padding: 10px 16px; margin: 0; font-size: 0.85rem; font-weight: 800;" onclick="subscribeToNativePush()">
@@ -647,10 +648,10 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=77.5"></script>
-  <script src="./data/dpos_week1.js?v=77.5"></script>
-  <script src="./data/dpos_catalog.js?v=77.5"></script>
-  <script src="./dpos.js?v=77.5"></script>
-  <script src="./app.js?v=77.5"></script>
+  <script src="./data/clinical_upsell_modules.js?v=77.6"></script>
+  <script src="./data/dpos_week1.js?v=77.6"></script>
+  <script src="./data/dpos_catalog.js?v=77.6"></script>
+  <script src="./dpos.js?v=77.6"></script>
+  <script src="./app.js?v=77.6"></script>
 </body>
 </html>

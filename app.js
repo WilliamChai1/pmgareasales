@@ -3359,44 +3359,124 @@ async function saveAndPublishBriefing() {
     }
   };
 
+  // 1. Optimistic Local Save & Instant Dashboard Render (<50ms)
   window.activeDailyBriefing = briefingPayload;
   try {
     localStorage.setItem("pmg_saved_briefing_" + branchUpper, JSON.stringify(briefingPayload));
   } catch (e) {}
 
-  try {
-    await fetch(API_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        action: 'saveDailyBriefing',
-        branch: branch,
-        date: dateIsoKey,
-        briefing: briefingPayload,
-        username: (currentUser && currentUser.username) || 'manager',
-        sendPush: true
-      })
-    });
-  } catch (err) {
-    console.warn("Backend briefing save error:", err);
-  }
+  renderDashboardDailyBriefing();
+  closeDailyBriefingModal();
+  if (btn) btn.innerText = "💾 Save & Publish (+ Push Alert)";
 
+  // 2. Instant Push Notification (<200ms directly to ntfy / teammate phones)
   dispatchPushNotification(
     `📊 PMG ${branch} Daily Briefing Ready!`,
     `Today's sales targets, priorities, and clinical pairings have been published. Tap to view!`,
     `https://williamchai1.github.io/pmgareasales/`
   );
 
-  renderDashboardDailyBriefing();
-  closeDailyBriefingModal();
+  // 3. Background Asynchronous Save to Google Sheet (Non-blocking, sendPush: false)
+  fetch(API_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      action: 'saveDailyBriefing',
+      branch: branch,
+      date: dateIsoKey,
+      briefing: briefingPayload,
+      username: (currentUser && currentUser.username) || 'manager',
+      sendPush: false
+    })
+  }).then(function(res) {
+    return res.json();
+  }).then(function(res) {
+    console.log("Background Google Sheet save complete for branch:", branch, res);
+  }).catch(function(err) {
+    console.warn("Background briefing save notice:", err);
+  });
 
-  if (btn) btn.innerText = "💾 Save & Publish (+ Push Alert)";
-  alert(`🎉 5-Point Daily Briefing published!\n• Live on App Dashboard for all teammates\n• Push notification dispatched to teammates' phones\n• Click "Copy to Google Chat" anytime to broadcast.`);
+  alert(`🎉 5-Point Daily Briefing published!\n• Live on App Dashboard for all teammates\n• Push notification dispatched to teammates' phones\n• Saving to Google Sheet in background...`);
 }
 
-// ─── PURE NATIVE BROWSER PUSH ENGINE ───────────────────────────────
+// ─── PURE NATIVE BROWSER PUSH ENGINE (W3C LOCKSCREEN & VAPID GATEWAY) ──
+const NTFY_VAPID_PUBLIC_KEY = "BEMjM0sNxh41x0a6Lz3YaqkJ7AUhZefxsOQgw-at69i0fM1CybVBcj7-QQXf4N_tPCgFnOXdRbQ5jrSrr9Yg9Lc";
 let nativeAlertEventSource = null;
+
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function registerLockscreenWebPush(channelOverride) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.log("PushManager not supported on this browser.");
+    return false;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if (!reg || !reg.pushManager) return false;
+
+    let sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      try {
+        const expectedKey = urlB64ToUint8Array(NTFY_VAPID_PUBLIC_KEY);
+        const existingKey = sub.options && sub.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
+        let keysMatch = false;
+        if (existingKey && existingKey.length === expectedKey.length) {
+          keysMatch = true;
+          for (let i = 0; i < expectedKey.length; i++) {
+            if (existingKey[i] !== expectedKey[i]) { keysMatch = false; break; }
+          }
+        }
+        if (!keysMatch) {
+          console.log("Unsubscribing outdated push subscription...");
+          await sub.unsubscribe();
+          sub = null;
+        }
+      } catch (e) {}
+    }
+
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64ToUint8Array(NTFY_VAPID_PUBLIC_KEY)
+      });
+    }
+
+    if (sub) {
+      const raw = sub.toJSON();
+      const channel = channelOverride || getBranchChannelSlug();
+      const regPayload = {
+        endpoint: raw.endpoint,
+        auth: (raw.keys && raw.keys.auth) || "",
+        p256dh: (raw.keys && raw.keys.p256dh) || "",
+        topics: [channel, "pmg-alert-all"]
+      };
+
+      const res = await fetch("https://ntfy.sh/v1/webpush", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(regPayload)
+      });
+
+      if (res.ok) {
+        console.log("✅ W3C Lockscreen Web Push registered with ntfy for topics:", regPayload.topics);
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn("Lockscreen Web Push subscription error:", err);
+  }
+  return false;
+}
 
 function getBranchChannelSlug(branchName) {
   const b = branchName || (currentUser && currentUser.branch) || (typeof selectedBranch !== "undefined" ? selectedBranch : "") || "all";
@@ -3407,6 +3487,11 @@ function initNativePushAlerts() {
   updateNativePushUiStatus();
   checkTeammatePushBanner();
   connectNativePushStream();
+  if ("Notification" in window && Notification.permission === "granted") {
+    registerLockscreenWebPush().catch(function(e) {
+      console.warn("Lockscreen auto-sync notice:", e);
+    });
+  }
 }
 
 function connectNativePushStream() {
@@ -3482,10 +3567,10 @@ function updateNativePushUiStatus() {
 
   const perm = Notification.permission;
   if (perm === "granted") {
-    badge.innerText = "Subscribed 🟢";
+    badge.innerText = "Subscribed 🟢 (Lockscreen Ready)";
     badge.style.background = "#dcfce7";
     badge.style.color = "#15803d";
-    if (btn) btn.innerText = "✅ Push Alerts Enabled";
+    if (btn) btn.innerText = "✅ Lockscreen Push Active";
     dismissPushBanner();
   } else if (perm === "denied") {
     badge.innerText = "Blocked 🔴";
@@ -3550,25 +3635,34 @@ async function subscribeToNativePush() {
     return;
   }
 
-  if (Notification.permission === "granted") {
-    updateNativePushUiStatus();
-    alert("✅ Push notifications are already ACTIVE on this device!\n\nTap '🚀 Send Test Alert' to test receiving an alert.");
-    return;
-  }
-
-  if (btn) btn.innerText = "⏳ Requesting Permission...";
+  if (btn) btn.innerText = "⏳ Registering Lockscreen Push...";
 
   try {
-    const perm = await Notification.requestPermission();
+    let perm = Notification.permission;
+    if (perm !== "granted") {
+      perm = await Notification.requestPermission();
+    }
+
     if (perm === "granted") {
       updateNativePushUiStatus();
       connectNativePushStream();
+
+      // Register true W3C lockscreen push with FCM / APNs gateway via ntfy
+      const lockscreenOk = await registerLockscreenWebPush();
+
       triggerNativeAlertNotification(
         "🎉 PMG Performance Hub",
-        "Push notifications successfully enabled! You will receive daily briefing updates and training reminders.",
+        "Lockscreen push notifications enabled! You will receive daily briefing updates and training reminders.",
         "https://williamchai1.github.io/pmgareasales/"
       );
-      alert("🎉 Awesome! Push notifications are now ENABLED on your phone!\n\nTap '🚀 Send Test Alert' to test receiving an alert.");
+
+      updateNativePushUiStatus();
+
+      if (lockscreenOk) {
+        alert("🎉 Awesome! Lockscreen push notifications are now ACTIVE on your device!\n\nYou will receive real-time alerts even when your phone is locked or browser is closed.\n\nTap '🚀 Send Test Alert' to test receiving an alert.");
+      } else {
+        alert("🎉 Awesome! Push notifications are now ENABLED on your phone!\n\nTap '🚀 Send Test Alert' to test receiving an alert.");
+      }
     } else {
       updateNativePushUiStatus();
       alert("⚠️ Notification permission was not granted. Tap 'Enable Push Notifications' and choose 'Allow'.");
@@ -3691,9 +3785,16 @@ async function sendDposPendingReminderPush() {
 }
 window.sendDposPendingReminderPush = sendDposPendingReminderPush;
 
-function openLockscreenAlertSubscribe() {
-  const channel = getBranchChannelSlug();
-  const url = "https://ntfy.sh/" + channel;
-  window.open(url, "_blank");
+async function openLockscreenAlertSubscribe() {
+  const btn = document.getElementById("btnNtfyLockscreen");
+  if (btn) btn.innerText = "⏳ Syncing Lockscreen...";
+  const ok = await registerLockscreenWebPush();
+  if (btn) btn.innerText = "📱 Lockscreen Push Link";
+  if (ok) {
+    alert("✅ Lockscreen Push successfully synced with phone push service (FCM / APNs)!\n\nYou will receive alerts even when your phone is locked or browser is closed.");
+  } else {
+    const channel = getBranchChannelSlug();
+    window.open("https://ntfy.sh/" + channel, "_blank");
+  }
 }
 window.openLockscreenAlertSubscribe = openLockscreenAlertSubscribe;

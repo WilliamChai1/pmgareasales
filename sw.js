@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pmg-hub-v77.5';
+const CACHE_NAME = 'pmg-hub-v77.6';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -39,7 +39,7 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Native Web Push Event Handler
+// Native Web Push Event Handler (W3C Lockscreen & Foreground)
 self.addEventListener('push', (event) => {
   let title = "⚡ PMG Performance Hub";
   let body = "New update in PMG Sales Hub.";
@@ -48,9 +48,15 @@ self.addEventListener('push', (event) => {
   if (event.data) {
     try {
       const data = event.data.json();
-      title = data.title || title;
-      body = data.message || data.body || body;
-      url = data.url || data.click || url;
+      if (data.message && typeof data.message === "object") {
+        title = data.message.title || data.title || title;
+        body = data.message.message || data.message.body || body;
+        url = data.message.click || data.message.url || data.click || data.url || url;
+      } else {
+        title = data.title || title;
+        body = data.message || data.body || body;
+        url = data.click || data.url || url;
+      }
     } catch (e) {
       body = event.data.text() || body;
     }
@@ -61,7 +67,9 @@ self.addEventListener('push', (event) => {
     icon: "./favicon.ico",
     badge: "./favicon.ico",
     vibrate: [200, 100, 200],
-    data: { url: url }
+    data: { url: url },
+    tag: "pmg-alert-" + Date.now(),
+    renotify: true
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
