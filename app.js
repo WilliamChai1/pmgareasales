@@ -441,6 +441,53 @@ function getActivePmgApp(branchName) {
   return 0;
 }
 
+// ─── STAFF DAILY RECONCILIATION & OFF-DUTY DEFENSE ENGINE ───────────
+function reconcileStaffDailySalesByLatestDate(staffList, historyData) {
+  if (!Array.isArray(staffList) || staffList.length === 0) return staffList;
+
+  // Identify latest closed sales date from historyData or max lastDate
+  let latestIsoDate = "";
+  if (Array.isArray(historyData) && historyData.length > 0) {
+    const lastHist = historyData[historyData.length - 1];
+    if (lastHist && lastHist.date) {
+      latestIsoDate = formatMytIsoDate(new Date(lastHist.date));
+    }
+  }
+
+  if (!latestIsoDate) {
+    let maxTime = 0;
+    staffList.forEach(s => {
+      if (s.lastDate) {
+        const t = new Date(s.lastDate).getTime();
+        if (t > maxTime) {
+          maxTime = t;
+          latestIsoDate = formatMytIsoDate(new Date(s.lastDate));
+        }
+      }
+    });
+  }
+
+  if (!latestIsoDate) return staffList;
+
+  return staffList.map(s => {
+    const sDateKey = s.lastDate ? formatMytIsoDate(new Date(s.lastDate)) : "";
+    if (sDateKey && sDateKey !== latestIsoDate) {
+      return {
+        ...s,
+        dailyTs: 0,
+        dailyHb: 0,
+        dailyHm: 0,
+        dailyCust: 0,
+        isOffDuty: true
+      };
+    }
+    return {
+      ...s,
+      isOffDuty: false
+    };
+  });
+}
+
 // ─── OCTOBER 2026 MONTH-ROLLOVER & ARCHIVE ENGINE ────────────────────────────
 // Exact September 2026 cumulative staff sales derived directly from DailySales records:
 const KNOWN_SEP_2026_BASELINES = {
@@ -632,7 +679,9 @@ function renderDashboard() {
   const targetKey = findBranchKey(currentData.targets, selectedBranch) || "KOTA SENTOSA";
   const summary = currentData.summary[branchKey] || {};
   const targets = currentData.targets[targetKey] || {};
-  const staff = archiveAndGetOctoberMtd(currentData.staff || [], summary, currentData.currentDay);
+  const historyData = currentData.history || [];
+  const cleanStaff = reconcileStaffDailySalesByLatestDate(currentData.staff || [], historyData);
+  const staff = archiveAndGetOctoberMtd(cleanStaff, summary, currentData.currentDay);
   const ap = currentData.actionPlan || {w1:"", w2:"", w3:"", w4:""};
   
   // Role-based permissions:
@@ -754,16 +803,33 @@ function renderDashboard() {
   if (canViewReports) updateGeminiBadge();
   document.getElementById("staffPerformanceSection").style.display = canViewStaffPerformance ? "block" : "none";
 
-  // Teammates Daily Breakdown
+  // Teammates Daily Breakdown with Recorded Sales Date Header
+  const latestHistEntry = (currentData.history && currentData.history.length > 0) ? currentData.history[currentData.history.length - 1] : null;
+  let latestSalesDateStr = "";
+  if (latestHistEntry && latestHistEntry.date) {
+    const parsedD = parseMytDate(latestHistEntry.date);
+    if (parsedD) {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      latestSalesDateStr = ` (Sales Date: ${String(parsedD.day).padStart(2, '0')}-${months[parsedD.month]}-${parsedD.year})`;
+    }
+  }
+
+  const staffSectionTitle = document.querySelector("#staffPerformanceSection h3") || document.querySelector("#staffPerformanceSection .card-title");
+  if (staffSectionTitle) {
+    staffSectionTitle.innerText = `Today's Staff Performance${latestSalesDateStr}`;
+  }
+
   const tbody = document.querySelector("#teammatesTable tbody");
   tbody.innerHTML = "";
   staff.forEach(s => {
     const sDts = Number(s.dailyTs || 0);
     const sDhb = Number(s.dailyHb || 0);
     const sDhm = Number(s.dailyHm || 0);
+    const isOff = s.isOffDuty || (sDts === 0 && sDhb === 0);
+    const roleSub = isOff ? `${s.role} • <span style="color:#e11d48; font-weight:bold;">Off-Duty</span>` : s.role;
     tbody.innerHTML += `
       <tr>
-        <td><b>${s.name}</b><br><span style="font-size:0.65rem; color:#666;">${s.role}</span></td>
+        <td><b>${s.name}</b><br><span style="font-size:0.65rem; color:#666;">${roleSub}</span></td>
         <td>RM ${sDts.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
         <td>RM ${sDhb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
         <td>RM ${sDhm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
@@ -1723,7 +1789,12 @@ async function submitSalesUpload() {
 
       alert(`✅ ${result.message}\nTotal Sales: RM ${savedTotalTs.toLocaleString()} | HB: RM ${savedTotalHb.toLocaleString()}`);
 
-      openDailyBriefingModal(savedDate);
+      const staffSalesUploaded = currentParsedUploadData.staffSales || [];
+      try {
+        localStorage.setItem("pmg_uploaded_staff_" + bKey + "_" + currentParsedUploadData.dateKey, JSON.stringify(staffSalesUploaded));
+      } catch (e) {}
+
+      openDailyBriefingModal(savedDate, staffSalesUploaded);
     } else {
       alert("Upload error from server: " + ((result && result.message) || "Unknown error"));
       if (btn) {
@@ -1842,7 +1913,7 @@ ${takeaway}`;
   };
 }
 
-function openDailyBriefingModal(targetDateStr) {
+function openDailyBriefingModal(targetDateStr, activeStaffSales) {
   if (!isManagementOrPharmacist(currentUser)) {
     alert("Access restricted: Daily Briefing is only available to Pharmacist and Management.");
     return;
@@ -1856,7 +1927,40 @@ function openDailyBriefingModal(targetDateStr) {
   const summary = currentData.summary[branchKey] || {};
   const targets = currentData.targets[targetKey] || {};
   const historyData = currentData.history || [];
-  const staff = archiveAndGetOctoberMtd(currentData.staff || [], summary, currentData.currentDay);
+
+  let rawStaff = currentData.staff || [];
+  if (Array.isArray(activeStaffSales) && activeStaffSales.length > 0) {
+    const activeMap = {};
+    activeStaffSales.forEach(as => {
+      activeMap[String(as.name || '').trim().toLowerCase()] = as;
+    });
+    rawStaff = rawStaff.map(s => {
+      const found = activeMap[String(s.name || '').trim().toLowerCase()];
+      if (found) {
+        return {
+          ...s,
+          dailyTs: Number(found.ts || 0),
+          dailyHb: Number(found.hb || 0),
+          dailyHm: Number(found.hm || 0),
+          dailyCust: Number(found.cust || 0),
+          isOffDuty: false
+        };
+      } else {
+        return {
+          ...s,
+          dailyTs: 0,
+          dailyHb: 0,
+          dailyHm: 0,
+          dailyCust: 0,
+          isOffDuty: true
+        };
+      }
+    });
+  } else {
+    rawStaff = reconcileStaffDailySalesByLatestDate(rawStaff, historyData);
+  }
+
+  const staff = archiveAndGetOctoberMtd(rawStaff, summary, currentData.currentDay);
   const profile = getBranchProfile(selectedBranch);
   const daysInMonth = currentData.daysInMonth || 31;
 
@@ -1897,23 +2001,30 @@ function openDailyBriefingModal(targetDateStr) {
     );
   }
 
-  const sortedStaff = [...staff].sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
+  const activeStaff = [...staff]
+    .filter(s => Number(s.dailyHb || 0) > 0)
+    .sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
+  const offDutyStaff = [...staff].filter(s => Number(s.dailyHb || 0) <= 0);
+
   let rankingLines = [];
-  sortedStaff.forEach((s, idx) => {
+  activeStaff.forEach((s, idx) => {
     const sHb = Number(s.dailyHb || 0);
     const sHbFormatted = sHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    if (idx === 0 && sHb > 0) {
+    if (idx === 0) {
       rankingLines.push(`🥇 1st Place: *${s.name}* (HB RM ${sHbFormatted}) 🌟`);
-    } else if (idx === 1 && sHb > 0) {
+    } else if (idx === 1) {
       rankingLines.push(`🥈 2nd Place: *${s.name}* (HB RM ${sHbFormatted}) 👏`);
-    } else if (idx === 2 && sHb > 0) {
+    } else if (idx === 2) {
       rankingLines.push(`🥉 3rd Place: *${s.name}* (HB RM ${sHbFormatted}) 👍`);
-    } else if (sHb > 0) {
-      rankingLines.push(`• *${s.name}*: HB RM ${sHbFormatted}`);
     } else {
-      rankingLines.push(`• *${s.name}*: HB RM 0.00`);
+      rankingLines.push(`• *${s.name}*: HB RM ${sHbFormatted}`);
     }
   });
+
+  if (offDutyStaff.length > 0) {
+    const offNames = offDutyStaff.map(s => `*${s.name}*`).join(', ');
+    rankingLines.push(`• Off-Duty / Leave: ${offNames} (HB RM 0.00)`);
+  }
 
   const hbRecBlock = featuredModule ? `\n\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${featuredModule.condition}】\n\n• Standard Relief (OTC): ${featuredModule.standardOtc}\n\n• Golden Pairing (HB): ${featuredModule.hbProduct}\n\n• Recommended Dialogue: "${featuredModule.script}"\n\n• Red Flags (Refer Pharmacist): ${featuredModule.redFlags}` : '';
 
@@ -2768,9 +2879,10 @@ function buildDefaultBriefingObject(branch) {
   const targetKey = findBranchKey(currentData && currentData.targets, branch) || "KOTA SENTOSA";
   const summary = (currentData && currentData.summary && currentData.summary[branchKey]) || {};
   const targets = (currentData && currentData.targets && currentData.targets[targetKey]) || {};
-  const staff = archiveAndGetOctoberMtd((currentData && currentData.staff) || [], summary, (currentData && currentData.currentDay) || 1);
-  const daysInMonth = (currentData && currentData.daysInMonth) || 31;
   const historyData = (currentData && currentData.history) || [];
+  const cleanStaff = reconcileStaffDailySalesByLatestDate((currentData && currentData.staff) || [], historyData);
+  const staff = archiveAndGetOctoberMtd(cleanStaff, summary, (currentData && currentData.currentDay) || 1);
+  const daysInMonth = (currentData && currentData.daysInMonth) || 31;
 
   const todayMyt = parseMytDate(new Date()) || { day: 25, month: 9, year: 2026 };
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -2872,6 +2984,9 @@ function renderDashboardDailyBriefing() {
   if (String(selectedBranch).toUpperCase() === 'ALL') selectedBranch = DEFAULT_BRANCH;
   const branchUpper = selectedBranch.toUpperCase();
 
+  const contentWrapper = document.getElementById("dashBriefingContentWrapper");
+  const pendingPrompt = document.getElementById("dashBriefingPendingPrompt");
+
   let briefing = (currentData && currentData.dailyBriefing) || null;
   if (!briefing) {
     try {
@@ -2880,13 +2995,19 @@ function renderDashboardDailyBriefing() {
     } catch (e) {}
   }
 
+  // STRICT REQUIREMENT: DO NOT prefix/fabricate a fake briefing ahead of time if none is saved/published
   if (!briefing) {
-    briefing = buildDefaultBriefingObject(selectedBranch);
-  } else {
-    // RECONCILE: Ensure briefing financial metrics always tally 100% with live data
-    briefing = reconcileBriefingFinancials(briefing, selectedBranch);
+    if (contentWrapper) contentWrapper.style.display = "none";
+    if (pendingPrompt) pendingPrompt.style.display = "block";
+    container.style.display = "block";
+    return;
   }
 
+  if (pendingPrompt) pendingPrompt.style.display = "none";
+  if (contentWrapper) contentWrapper.style.display = "block";
+
+  // RECONCILE: Ensure briefing financial metrics always tally 100% with live data
+  briefing = reconcileBriefingFinancials(briefing, selectedBranch);
   window.activeDailyBriefing = briefing;
 
   const dateDisplay = briefing.dateDisplay || formatDisplayDate(new Date());
@@ -2895,11 +3016,33 @@ function renderDashboardDailyBriefing() {
   if (dateEl) dateEl.innerText = dateDisplay;
   if (branchEl) branchEl.innerText = selectedBranch;
 
+  // Visual status badge
+  const badgeEl = container.querySelector(".badge-briefing-live");
+  if (badgeEl) {
+    const todayMyt = parseMytDate(new Date());
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const todayDisplay = todayMyt ? `${String(todayMyt.day).padStart(2, '0')}-${months[todayMyt.month]}-${todayMyt.year}` : '';
+    if (dateDisplay === todayDisplay) {
+      badgeEl.innerText = "🔴 LIVE TODAY";
+      badgeEl.style.background = "#fee2e2";
+      badgeEl.style.color = "#991b1b";
+    } else {
+      badgeEl.innerText = `✅ PUBLISHED (${dateDisplay})`;
+      badgeEl.style.background = "#dcfce7";
+      badgeEl.style.color = "#15803d";
+    }
+  }
+
   updateDashboardBriefingText(currentDashboardBriefingLang);
 
   const editBtn = document.getElementById("dashEditBriefingBtn");
   if (editBtn) {
     editBtn.style.display = isManagementOrPharmacist(currentUser) ? "inline-block" : "none";
+  }
+
+  const uploadBtn = document.getElementById("dashUploadNewCsvBtn");
+  if (uploadBtn) {
+    uploadBtn.style.display = isManagementOrPharmacist(currentUser) ? "inline-block" : "none";
   }
 
   container.style.display = "block";

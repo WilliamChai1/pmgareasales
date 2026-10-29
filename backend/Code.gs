@@ -562,6 +562,18 @@ function getDashboardData(requestedBranch, role, username) {
     }
   }
 
+  // Zero out daily metrics for staff who did not work on the store's latest sales date
+  const latestDateKey = normalizeDateKey(latestDate);
+  for (let sName in staffMap) {
+    let sDateKey = normalizeDateKey(staffMap[sName].lastDate);
+    if (sDateKey !== latestDateKey) {
+      staffMap[sName].dailyTs = 0;
+      staffMap[sName].dailyHb = 0;
+      staffMap[sName].dailyHm = 0;
+      staffMap[sName].dailyCust = 0;
+    }
+  }
+
   let staff = Object.values(staffMap);
   let currentDayOfMonth = latestDate.getDate() || new Date().getDate();
 
@@ -625,7 +637,8 @@ function getDashboardData(requestedBranch, role, username) {
     pmgApps: pmgAppsMap,
     geminiKey: scriptKey,
     oneSignalAppId: PropertiesService.getScriptProperties().getProperty("ONESIGNAL_APP_ID") || "",
-    dailyBriefing: getDailyBriefing(reqBranchUpper)
+    dailyBriefing: getDailyBriefing(reqBranchUpper),
+    latestSalesDate: latestDateKey
   };
 }
 
