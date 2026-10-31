@@ -1359,6 +1359,30 @@
             : 'A mystery walk-in customer has arrived with an undisclosed health condition. Greet them, investigate their symptoms from scratch, navigate their personality and objections, and deliver the DPOS frontline protocol.'}
         </div>
 
+        ${(isMgr && state.topicMode === 'weekly') ? `
+          <!-- MANAGER TEAM SPRINT TRACKER (HERO LEVEL VISIBILITY) -->
+          <div style="margin-top:12px; background:linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border:1.5px solid #a7f3d0; border-radius:10px; padding:12px 14px; box-shadow:0 2px 4px rgba(0,0,0,0.03);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <div style="font-size:0.68rem; font-weight:800; color:#0f766e; text-transform:uppercase; letter-spacing:0.5px;">👑 Pharmacist / Area Manager Team Tracker</div>
+                <div style="font-size:0.86rem; font-weight:800; color:#0f172a; margin-top:3px;" id="dposTeamSprintSummary">
+                  ${state.reviewRoster && state.reviewRoster.length > 0 
+                    ? (`📝 Quiz Done: ${state.reviewRoster.filter(r => r.quizScore !== null).length}/${state.reviewRoster.length} • 🎙️ Role-Play Certified: ${state.reviewRoster.filter(r => r.rolePlayScore !== null && r.rolePlayScore >= 70).length}/${state.reviewRoster.length}`)
+                    : 'Loading team sprint status...'}
+                </div>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="btn" style="background:#0f766e; color:white; padding:6px 12px; font-size:0.75rem; font-weight:800; margin:0; border-radius:6px; cursor:pointer;" onclick="window.DPOS.setTab('review')">
+                  📊 View Full Roster
+                </button>
+                <button type="button" class="btn" style="background:#0284c7; color:white; padding:6px 12px; font-size:0.75rem; font-weight:800; margin:0; border-radius:6px; cursor:pointer;" onclick="window.DPOS.forceSyncReview()">
+                  🔄 Sync Live Scores
+                </button>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
         ${state.topicMode === 'random' ? `
           <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <select id="dposDomainSelect" onchange="window.DPOS.generateNewRandomCase(this.value)" style="padding:6px 10px; font-size:0.72rem; font-weight:700; border-radius:6px; border:1px solid #cbd5e1; background:white; color:#1e293b; max-width:260px;">
@@ -1739,6 +1763,9 @@ ${JSON.stringify(rawQuestions, null, 2)}`;
 
     // Save quiz score immediately
     saveTeammateScore(scoreOut10, null, null, null);
+    if (!state.userScore) state.userScore = {};
+    state.userScore.quizScore = scoreOut10;
+    state.userScore.status = (state.userScore.rolePlayScore !== null && state.userScore.rolePlayScore !== undefined) ? 'Completed' : 'In Progress';
 
     const isPass = scoreOut10 >= 7;
     const lang = state.quizLang || 'en';
@@ -2308,8 +2335,15 @@ ${JSON.stringify(rawQuestions, null, 2)}`;
       const isComplete = r.status === 'Completed';
       const rowClass = r.needsCoaching ? (isComplete ? 'row-coaching-amber' : 'row-coaching-red') : '';
       
-      const qDisplay = r.quizScore !== null ? `${r.quizScore}/10` : `<span style="color:#ef4444; font-weight:bold;">Pending</span>`;
-      let rpDisplay = r.rolePlayScore !== null ? `${r.rolePlayScore}/100` : `<span style="color:#ef4444; font-weight:bold;">Pending</span>`;
+      const qDisplay = r.quizScore !== null 
+        ? `<span style="background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:4px; font-weight:800;">${r.quizScore}/10 ✅</span>` 
+        : `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700;">Pending ⏳</span>`;
+      
+      let rpDisplay = r.rolePlayScore !== null 
+        ? (r.rolePlayScore >= 70 
+            ? `<span style="background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:4px; font-weight:800;">${r.rolePlayScore}/100 🌟</span>`
+            : `<span style="background:#fef3c7; color:#854d0e; padding:2px 6px; border-radius:4px; font-weight:800;">${r.rolePlayScore}/100 ⚠️</span>`)
+        : `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700;">Pending ⏳</span>`;
       if (r.transcript || r.coachingTip || r.breakdown) {
         rpDisplay += `<br><button type="button" class="btn" style="background:#f0fdf4; color:#0d9488; border:1px solid #99f6e4; padding:3px 8px; font-size:0.65rem; font-weight:700; border-radius:4px; margin-top:4px; cursor:pointer;" onclick="window.DPOS.openReviewTranscript(${idx})">📄 View Dialogue Transcript</button>`;
       }
@@ -2359,14 +2393,22 @@ ${JSON.stringify(rawQuestions, null, 2)}`;
         <!-- DPOS WEEKLY ROLEPLAY COMPLETION & PENDING REMINDER CARD -->
         <div style="background:#fdf2f8; border:1.5px solid #fbcfe8; border-radius:10px; padding:12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
-            <div style="font-weight:800; color:#9d174d; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
-              <span>📢 Roleplay Completion:</span>
-              <span style="background:#fce7f3; color:#be185d; padding:2px 8px; border-radius:10px; font-size:0.72rem; font-weight:800;">
-                ${completedCount} Completed / ${roster.filter(r => r.status !== 'Completed').length} Pending
-              </span>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="font-weight:800; color:#0369a1; font-size:0.86rem; display:flex; align-items:center; gap:6px;">
+                <span>📝 Quiz Done:</span>
+                <span style="background:#e0f2fe; color:#0284c7; padding:2px 8px; border-radius:10px; font-size:0.72rem; font-weight:800;">
+                  ${roster.filter(r => r.quizScore !== null).length} / ${totalCount} Passed
+                </span>
+              </div>
+              <div style="font-weight:800; color:#9d174d; font-size:0.86rem; display:flex; align-items:center; gap:6px;">
+                <span>🎙️ Role-Play:</span>
+                <span style="background:#fce7f3; color:#be185d; padding:2px 8px; border-radius:10px; font-size:0.72rem; font-weight:800;">
+                  ${completedCount} Completed / ${roster.filter(r => r.status !== 'Completed').length} Pending
+                </span>
+              </div>
             </div>
-            <div style="font-size:0.72rem; color:#831843; margin-top:4px;">
-              ${roster.filter(r => r.status !== 'Completed').length > 0 ? ('⏳ Pending: ' + roster.filter(r => r.status !== 'Completed').map(p => '<b>' + escapeHtml(p.name) + '</b>').join(', ')) : '🎉 All teammates have completed this week!'}
+            <div style="font-size:0.72rem; color:#831843; margin-top:6px;">
+              ${roster.filter(r => r.status !== 'Completed').length > 0 ? ('⏳ Pending Role-Play: ' + roster.filter(r => r.status !== 'Completed').map(p => '<b>' + escapeHtml(p.name) + '</b>' + (p.quizScore !== null ? ' (Quiz: ' + p.quizScore + '/10 ✅)' : '')).join(', ')) : '🎉 All teammates have completed this week!'}
             </div>
           </div>
           ${roster.filter(r => r.status !== 'Completed').length > 0 ? `
@@ -3532,6 +3574,14 @@ You MUST provide:
 5. "clinical_audit": Object containing { "status": "passed" | "issues_found", "issues": [ { "title": "...", "stated": "...", "correction": "...", "deduction": 5 } ] }
 6. "pa_assessment": Object containing the 8 evaluated schemes and total score out of 20.
 
+CRITICAL MULTILINGUAL RECOGNITION (NEVER DEDUCT IF SPOKEN):
+- SENIOR CARE PLUS & 28TH SCREENING:
+  Accept Mandarin and Malay equivalents: "Senior Care Plus", "乐龄关怀", "老年保健", "28号免费验血糖", "28hb saringan gula percuma", "28hb ujian gula".
+  If the teammate mentioned ANY of these phrases, you MUST award senior_care_28th = 10, award membership = 20 (if general membership also mentioned), and NEVER add "Missed Senior Care Plus" to missed_items!
+- CASHIER PWP / GWP ADD-ON:
+  Accept Mandarin and Malay equivalents: "PWP", "GWP", "加购", "加买", "加够", "特价加购", "满30块特价", "tambah RM... dapat item murah".
+  If the teammate pitched ANY counter add-on or spending tier, you MUST award pwp = 15, and NEVER add "Missed PWP" to missed_items!
+
 Output strictly in JSON:
 {
   "totalScore": 65,
@@ -3542,10 +3592,10 @@ Output strictly in JSON:
     "fluency": ${avgFluency},
     "empathy": 8,
     "dpos": 30,
-    "pwp": 0,
+    "pwp": 15,
     "membership_general": 10,
-    "senior_care_28th": 0,
-    "membership": 10
+    "senior_care_28th": 10,
+    "membership": 20
   },
   "pa_assessment": {
     "be_friendly": { "score": 2, "rating": "Remember customers name, address customer with good title", "rationale": "..." },
@@ -3614,15 +3664,30 @@ Output strictly in JSON:
         memScore = Number(bd.loyaltySeniorCare || 0);
       }
 
-      // DETERMINISTIC CODE-LEVEL GUARD: Check whether Senior Care Plus or 28th test was spoken
+      // ─── DETERMINISTIC TRANSCRIPT VERIFIER & FAIR-SCORING ENGINE ──────────
       const teammateWords = userTurns.map(t => t.text || '').join(' ').toLowerCase();
-      const mentionsSeniorCareOr28 = /(senior\s*care|scp|28\s*hb|28th|28\s*号|二十八|ujian\s*gula|saringan\s*gula|cek\s*gula|gula\s*percuma|验血糖|免费验血|乐龄|银发)/i.test(teammateWords);
+      const mentionsSeniorCareOr28 = /(senior\s*care|scp|28\s*hb|28th|28\s*号|二十八|28号|28日|ujian\s*gula|saringan\s*gula|cek\s*gula|gula\s*percuma|验血糖|免费验血|乐龄|老年保健|银发)/i.test(teammateWords);
+      const mentionsPwpOrGwp = /(pwp|purchase\s*with\s*purchase|gwp|gift\s*with\s*purchase|hadiah\s*percuma|free\s*gift|promosi\s*kaunter|tambah\s*(rm|\d+)|belanja\s*rm|beli\s*rm250|beli\s*rm20|beli\s*rm30|消费30|消费20|价格便宜|特价|加购|加买|加够|换购|送赠品)/i.test(teammateWords);
+      const mentionsMembership = /(ahli|member|membership|daftar\s*ahli|kad\s*ahli|pmg\s*member|free\s*membership|会员|入会|免费办卡|牌局)/i.test(teammateWords);
+
       const personaRaw = (state.currentWeek && (state.currentWeek.persona || state.currentWeek.topic)) || "";
       const isSeniorPersona = /uncle|auntie|aunty|pak\s*cik|mak\s*cik|senior|retiree|warga\s*emas|5[5-9]|6[0-9]|7[0-9]|8[0-9]/i.test(personaRaw) || (w.promo && /28/i.test(w.promo));
 
-      if (isSeniorPersona && !mentionsSeniorCareOr28) {
-        // Enforce hard cap: cannot score more than 10/20 on loyalty if SCP / 28th screening was omitted
+      // Guarantee full credit when Senior Care Plus / 28th test is explicitly spoken
+      if (mentionsSeniorCareOr28) {
+        if (mentionsMembership || memScore >= 10) {
+          memScore = 20; // Full 20/20 for Loyalty + Senior Care Plus
+        } else {
+          memScore = Math.max(memScore, 10);
+        }
+      } else if (isSeniorPersona) {
         memScore = Math.min(memScore, 10);
+      }
+
+      // Guarantee full credit when PWP / GWP add-on is explicitly pitched
+      let finalPwpScore = pwpScore;
+      if (mentionsPwpOrGwp) {
+        finalPwpScore = 15; // Full 15/15 for Cashier Add-on
       }
 
       // Run Universal Clinical Integrity Audit (Combining Deterministic Rules + Gemini Deep Audit)
@@ -3665,32 +3730,42 @@ Output strictly in JSON:
         fluency: Math.min(10, Math.max(0, fluency)),
         empathy: Math.min(10, Math.max(0, empathy)),
         dpos: Math.min(35, Math.max(0, dposScore)),
-        pwp: Math.min(15, Math.max(0, pwpScore)),
+        pwp: Math.min(15, Math.max(0, finalPwpScore)),
         membership: Math.min(20, Math.max(0, memScore))
       };
 
       const calculatedTotal = cleanBreakdown.warmth + cleanBreakdown.fluency + cleanBreakdown.empathy + cleanBreakdown.dpos + cleanBreakdown.pwp + cleanBreakdown.membership;
       const totalScore = calculatedTotal;
 
-      // If senior persona omitted Senior Care Plus / 28th test, ensure deduction note is present
-      if (isSeniorPersona && !mentionsSeniorCareOr28) {
+      // STRICT PURGE: Never allow false deductions if teammate actually spoke the required lines
+      if (mentionsSeniorCareOr28) {
+        missedItems = missedItems.filter(m => !/senior\s*care|28|scp|ujian\s*gula|saringan\s*gula|验血糖/i.test(m));
+        if (!highlights.some(h => /senior\s*care|28/i.test(h))) {
+          highlights.push("🏆 Senior Care Plus & 28th Screening: Successfully introduced Senior Care Plus benefits and 28th monthly free blood glucose test to the customer.");
+        }
+      } else if (isSeniorPersona) {
         const scpDeduction = "Missed Senior Care Plus / 28th Screening: Did not introduce Senior Care Plus or highlight 28th monthly free blood glucose test for seniors (-10 pts)";
         if (!missedItems.some(m => /senior\s*care|28|scp|ujian\s*gula/i.test(m))) {
           missedItems.push(scpDeduction);
         }
       }
 
-      // Explicitly account for any points deducted across all 6 rubric categories
-      if (cleanBreakdown.membership < 20) {
-        const diff = 20 - cleanBreakdown.membership;
-        if (!missedItems.some(m => /membership|loyalty|senior\s*care|28|scp/i.test(m))) {
-          missedItems.push(`Missed Loyalty / Senior Care: Incomplete PMG membership pitch, points redemption, or Senior Care Plus 28th free screening (-${diff} pts)`);
+      if (mentionsPwpOrGwp) {
+        missedItems = missedItems.filter(m => !/pwp|gwp|counter|promosi|tambah|gift|加购/i.test(m));
+        if (!highlights.some(h => /pwp|gwp|add-on/i.test(h))) {
+          highlights.push("🎯 Proactive Cashier Add-on: Enthusiastic counter PWP/GWP pitch before checkout.");
         }
-      }
-      if (cleanBreakdown.pwp < 15) {
+      } else if (cleanBreakdown.pwp < 15) {
         const diff = 15 - cleanBreakdown.pwp;
         if (!missedItems.some(m => /pwp|gwp|counter|promosi|tambah|gift/i.test(m))) {
           missedItems.push(`Missed PWP / GWP: Did not pitch counter PWP special or GWP gift tier before completing payment (-${diff} pts)`);
+        }
+      }
+
+      if (cleanBreakdown.membership < 20 && !mentionsSeniorCareOr28) {
+        const diff = 20 - cleanBreakdown.membership;
+        if (!missedItems.some(m => /membership|loyalty|senior\s*care|28|scp/i.test(m))) {
+          missedItems.push(`Missed Loyalty: Incomplete PMG membership pitch or points redemption (-${diff} pts)`);
         }
       }
       if (cleanBreakdown.dpos < 35) {
@@ -3954,6 +4029,17 @@ Output strictly in JSON:
     openReviewTranscript: openReviewTranscript,
     closeReviewTranscript: closeReviewTranscript,
     changeReviewTopic: changeReviewTopic,
+    forceSyncReview: function() {
+      const btn = (typeof event !== 'undefined' && event && event.target) ? event.target : null;
+      if (btn) btn.innerText = "⏳ Syncing...";
+      renderReview(document.getElementById("dposContentContainer")).finally(() => {
+        if (btn) btn.innerText = "🔄 Sync Live Scores";
+        const sumEl = document.getElementById("dposTeamSprintSummary");
+        if (sumEl && state.reviewRoster) {
+          sumEl.innerText = `📝 Quiz Done: ${state.reviewRoster.filter(r => r.quizScore !== null).length}/${state.reviewRoster.length} • 🎙️ Role-Play Certified: ${state.reviewRoster.filter(r => r.rolePlayScore !== null && r.rolePlayScore >= 70).length}/${state.reviewRoster.length}`;
+        }
+      });
+    },
     goToReviewTopic: goToReviewTopic,
     dposReset: dposReset,
     // Pure functions for testing
