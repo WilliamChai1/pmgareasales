@@ -453,6 +453,7 @@ function getActivePmgApp(branchName) {
 // ─── STAFF DAILY RECONCILIATION & OFF-DUTY DEFENSE ENGINE ───────────
 function reconcileStaffDailySalesByLatestDate(staffList, historyData) {
   if (!Array.isArray(staffList) || staffList.length === 0) return staffList;
+  staffList = staffList.filter(s => !/daniela|janet|meylina|ting|kenix/i.test(s.name || ''));
 
   // Identify latest closed sales date from historyData or max lastDate
   let latestIsoDate = "";
@@ -1973,16 +1974,18 @@ function openDailyBriefingModal(targetDateStr, activeStaffSales) {
   const profile = getBranchProfile(selectedBranch);
   const daysInMonth = currentData.daysInMonth || 31;
 
+  const matchedHist = getLatestClosedHistoryEntry(historyData, targetDateStr);
   let salesDateObj = new Date();
   if (targetDateStr) {
     const parsed = parseMytDate(targetDateStr);
+    if (parsed) salesDateObj = new Date(parsed.year, parsed.month, parsed.day);
+  } else if (matchedHist && matchedHist.date) {
+    const parsed = parseMytDate(matchedHist.date);
     if (parsed) salesDateObj = new Date(parsed.year, parsed.month, parsed.day);
   }
   const dateIsoKey = formatMytIsoDate(salesDateObj);
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const dateDisplay = `${String(salesDateObj.getDate()).padStart(2, '0')}-${months[salesDateObj.getMonth()]}-${salesDateObj.getFullYear()}`;
-
-  const matchedHist = getLatestClosedHistoryEntry(historyData, targetDateStr);
   const sec1Data = computeBriefingSec1Text(summary, targets, matchedHist, staff, daysInMonth);
 
   const dailyTargetTs = Math.round(sec1Data.targetTs / daysInMonth);
@@ -2011,9 +2014,10 @@ function openDailyBriefingModal(targetDateStr, activeStaffSales) {
   }
 
   const activeStaff = [...staff]
-    .filter(s => Number(s.dailyHb || 0) > 0)
+    .filter(s => Number(s.dailyHb || 0) > 0 && !/daniela|janet|meylina|ting|kenix/i.test(s.name || ''))
     .sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
-  const offDutyStaff = [...staff].filter(s => Number(s.dailyHb || 0) <= 0);
+  const offDutyStaff = [...staff]
+    .filter(s => Number(s.dailyHb || 0) <= 0 && !/daniela|janet|meylina|ting|kenix/i.test(s.name || ''));
 
   let rankingLines = [];
   activeStaff.forEach((s, idx) => {
@@ -2957,10 +2961,29 @@ function reconcileBriefingFinancials(briefing, branch) {
   const summary = (currentData.summary && currentData.summary[branchKey]) || {};
   const targets = (currentData.targets && currentData.targets[targetKey]) || {};
   const historyData = currentData.history || [];
-  const staff = archiveAndGetOctoberMtd((currentData && currentData.staff) || [], summary, (currentData && currentData.currentDay) || 1);
+
+  // 1. Auto-synchronize to latest closed sales day from history
+  const latestHist = (historyData.length > 0) ? historyData[historyData.length - 1] : null;
+  let latestDisplayDate = briefing.dateDisplay;
+  let latestIsoKey = briefing.dateIsoKey;
+  if (latestHist && latestHist.date) {
+    const md = parseMytDate(latestHist.date);
+    if (md) {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      latestDisplayDate = `${String(md.day).padStart(2, '0')}-${months[md.month]}-${md.year}`;
+      latestIsoKey = formatMytIsoDate(new Date(latestHist.date));
+    }
+  }
+
+  briefing.dateDisplay = latestDisplayDate || briefing.dateDisplay;
+  briefing.dateIsoKey = latestIsoKey || briefing.dateIsoKey;
+  briefing.branch = bName;
+
+  const cleanStaff = reconcileStaffDailySalesByLatestDate((currentData && currentData.staff) || [], historyData);
+  const staff = archiveAndGetOctoberMtd(cleanStaff, summary, (currentData && currentData.currentDay) || 1);
   const daysInMonth = (currentData && currentData.daysInMonth) || 31;
 
-  const matchedHist = getLatestClosedHistoryEntry(historyData, briefing.dateDisplay);
+  const matchedHist = latestHist || getLatestClosedHistoryEntry(historyData, briefing.dateDisplay);
   const sec1Data = computeBriefingSec1Text(summary, targets, matchedHist, staff, daysInMonth);
 
   // Reconcile Section 1 (always strictly reflect live financial facts)
@@ -2974,13 +2997,67 @@ function reconcileBriefingFinancials(briefing, branch) {
     );
   }
 
-  // Ensure branch and date display are updated
-  briefing.branch = bName;
-  if (!briefing.dateDisplay) {
-    const todayMyt = parseMytDate(new Date()) || { day: 25, month: 9, year: 2026 };
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    briefing.dateDisplay = `${String(todayMyt.day).padStart(2, '0')}-${months[todayMyt.month]}-${todayMyt.year}`;
+  // 2. DYNAMIC RECONCILE SECTION 5: Rebuild House Brand Top Performers strictly for latest sales day & active staff
+  const activeStaff = staff
+    .filter(s => Number(s.dailyHb || 0) > 0 && !/daniela|janet|meylina|ting|kenix/i.test(s.name || ''))
+    .sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
+  const offDutyStaff = staff
+    .filter(s => Number(s.dailyHb || 0) <= 0 && !/daniela|janet|meylina|ting|kenix/i.test(s.name || ''));
+
+  let rankingLines = [];
+  activeStaff.forEach((s, idx) => {
+    const sHb = Number(s.dailyHb || 0);
+    const sHbFormatted = sHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (idx === 0) {
+      rankingLines.push(`🥇 1st Place: *${s.name}* (HB RM ${sHbFormatted}) 🌟`);
+    } else if (idx === 1) {
+      rankingLines.push(`🥈 2nd Place: *${s.name}* (HB RM ${sHbFormatted}) 👏`);
+    } else if (idx === 2) {
+      rankingLines.push(`🥉 3rd Place: *${s.name}* (HB RM ${sHbFormatted}) 👍`);
+    } else {
+      rankingLines.push(`• *${s.name}*: HB RM ${sHbFormatted}`);
+    }
+  });
+
+  if (offDutyStaff.length > 0) {
+    const offNames = offDutyStaff.map(s => `*${s.name}*`).join(', ');
+    rankingLines.push(`• Off-Duty / Leave: ${offNames} (HB RM 0.00)`);
   }
+
+  // Extract featured clinical pairing if present
+  let hbRecBlock = "";
+  if (briefing.sec5 && typeof briefing.sec5 === 'string' && briefing.sec5.includes("Featured House Brand Clinical Pairing")) {
+    const parts = briefing.sec5.split(/(?=\n\n💡 \*Featured House Brand Clinical Pairing)/);
+    if (parts.length > 1) {
+      hbRecBlock = parts.slice(1).join("");
+    }
+  }
+  if (!hbRecBlock) {
+    const dposTopic = (window.dposState && window.dposState.activeWeekTopic) || "Hypertension & Chronic Care";
+    const featuredModule = (window.getPmgHouseBrandRecommendation && window.getPmgHouseBrandRecommendation(new Date(), dposTopic)) || (window.PMG_CLINICAL_UPSELL_MODULES && window.PMG_CLINICAL_UPSELL_MODULES[0]);
+    if (featuredModule) {
+      hbRecBlock = `\n\n💡 *Featured House Brand Clinical Pairing (Clinical Upsell):*\n【${featuredModule.condition}】\n\n• Standard Relief (OTC): ${featuredModule.standardOtc}\n\n• Golden Pairing (HB): ${featuredModule.hbProduct}\n\n• Recommended Dialogue: "${featuredModule.script}"\n\n• Red Flags (Refer Pharmacist): ${featuredModule.redFlags}`;
+    }
+  }
+
+  briefing.sec5 = `🏆 *Yesterday's House Brand Top Performers:\n${rankingLines.join('\n')}\n\nThank you all for your hard work and great team coordination yesterday! Every professional clinical pairing genuinely improves customer wellness. Let's keep up the great effort today! 💪🔥${hbRecBlock}`;
+
+  // Reconcile Translations deterministically
+  if (!briefing.translations) briefing.translations = {};
+  briefing.translations.zh = {
+    sec1: translateBriefingSec1Deterministic(briefing.sec1, 'zh'),
+    sec2: translateBriefingSec2Deterministic(briefing.sec2, 'zh'),
+    sec3: translateBriefingSec3Deterministic(briefing.sec3, 'zh'),
+    sec4: translateBriefingSec4Deterministic(briefing.sec4, 'zh'),
+    sec5: translateBriefingSec5Deterministic(briefing.sec5, 'zh')
+  };
+  briefing.translations.ms = {
+    sec1: translateBriefingSec1Deterministic(briefing.sec1, 'ms'),
+    sec2: translateBriefingSec2Deterministic(briefing.sec2, 'ms'),
+    sec3: translateBriefingSec3Deterministic(briefing.sec3, 'ms'),
+    sec4: translateBriefingSec4Deterministic(briefing.sec4, 'ms'),
+    sec5: translateBriefingSec5Deterministic(briefing.sec5, 'ms')
+  };
 
   return briefing;
 }
