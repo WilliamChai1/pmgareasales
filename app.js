@@ -32,8 +32,8 @@ async function executeLogin() {
   const btn = document.getElementById("loginBtn");
   
   if(!user || !pass) return alert("Please enter username and password");
-  if (/meylina/i.test(user)) {
-    return alert("This account has been deactivated (resigned). Please contact Area Manager.");
+  if (/meylina|ting|kenix/i.test(user)) {
+    return alert("This account has been deactivated (no longer in Kota Sentosa). Please contact Area Manager.");
   }
   btn.innerText = "Authenticating...";
   
@@ -239,7 +239,7 @@ function initSession() {
     const saved = localStorage.getItem("pmg_session");
     if (saved) {
       currentUser = JSON.parse(saved);
-      if (currentUser && (/meylina/i.test(currentUser.username || '') || /meylina/i.test(currentUser.name || ''))) {
+      if (currentUser && (/meylina|ting|kenix/i.test(currentUser.username || '') || /meylina|ting|kenix/i.test(currentUser.name || ''))) {
         localStorage.removeItem("pmg_session");
         currentUser = null;
         document.getElementById("loginOverlay").style.display = "flex";
@@ -520,7 +520,7 @@ function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
   } catch (e) {}
 
   // Exclude resigned staff
-  staffList = (staffList || []).filter(s => !/daniela|janet|meylina/i.test(s.name || ''));
+  staffList = (staffList || []).filter(s => !/daniela|janet|meylina|ting|kenix/i.test(s.name || ''));
 
   const storeOctTs = Number(summary && summary.mtdTs || 0);
   const storeOctHb = Number(summary && summary.mtdHb || 0);
@@ -1937,7 +1937,7 @@ function openDailyBriefingModal(targetDateStr, activeStaffSales) {
   const targets = currentData.targets[targetKey] || {};
   const historyData = currentData.history || [];
 
-  let rawStaff = (currentData.staff || []).filter(s => !/daniela|janet|meylina/i.test(s.name || ''));
+  let rawStaff = (currentData.staff || []).filter(s => !/daniela|janet|meylina|ting|kenix/i.test(s.name || ''));
   if (Array.isArray(activeStaffSales) && activeStaffSales.length > 0) {
     const activeMap = {};
     activeStaffSales.forEach(as => {

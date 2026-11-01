@@ -160,8 +160,8 @@ function authenticateUser(username, password) {
   const inputPass = String(password).trim();
   const inputPassHash = hashPassword(inputPass);
 
-  if (inputUser === 'meylina' || inputUser.includes('meylina')) {
-    return { success: false, message: "This account has been deactivated (resigned)." };
+  if (inputUser === 'meylina' || inputUser.includes('meylina') || inputUser === 'ting' || inputUser.includes('ting') || inputUser === 'kenix' || inputUser.includes('kenix')) {
+    return { success: false, message: "This account has been deactivated (no longer in Kota Sentosa)." };
   }
   
   for (let i = 1; i < data.length; i++) {
@@ -550,7 +550,7 @@ function getDashboardData(requestedBranch, role, username) {
       let sRole = staffRoles[sName] || 'Staff';
       
       // EXCLUDE HQ AND RESIGNED STAFF DYNAMICALLY OR BY NAME
-      if (sRole.toLowerCase() === 'hq' || sRole.toLowerCase().includes("resign") || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare") || sNameLower.includes("meylina")) {
+      if (sRole.toLowerCase() === 'hq' || sRole.toLowerCase().includes("resign") || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare") || sNameLower.includes("meylina") || sNameLower.includes("ting") || sNameLower.includes("kenix")) {
         continue; 
       }
 
@@ -1043,7 +1043,7 @@ function dposGetReview(req) {
       const sNameLower = sName.toLowerCase();
       const sRole = String(mData[i][3] || '').trim();
 
-      if (st === 'inactive' || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare") || sNameLower.includes("meylina") || sRole.toLowerCase() === 'hq') {
+      if (st === 'inactive' || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare") || sNameLower.includes("meylina") || sNameLower.includes("ting") || sNameLower.includes("kenix") || sRole.toLowerCase() === 'hq') {
         continue;
       }
       if (b === "KOTA SENTOSA" || b === "ALL") {
@@ -1695,7 +1695,7 @@ function dposSendReminderPush(req) {
       for (let j = 1; j < stData.length; j++) {
         const name = String(stData[j][2] || '').trim();
         const role = String(stData[j][3] || '').trim().toLowerCase();
-        if (name && !role.includes('hq') && !role.includes('resign') && !name.toLowerCase().includes('public medicare') && !name.toLowerCase().includes('meylina')) {
+        if (name && !role.includes('hq') && !role.includes('resign') && !name.toLowerCase().includes('public medicare') && !name.toLowerCase().includes('meylina') && !name.toLowerCase().includes('ting') && !name.toLowerCase().includes('kenix')) {
           if (!completedStaff[name.toLowerCase()]) {
             pendingNames.push(name);
           }
