@@ -32,6 +32,9 @@ async function executeLogin() {
   const btn = document.getElementById("loginBtn");
   
   if(!user || !pass) return alert("Please enter username and password");
+  if (/meylina/i.test(user)) {
+    return alert("This account has been deactivated (resigned). Please contact Area Manager.");
+  }
   btn.innerText = "Authenticating...";
   
   try {
@@ -236,6 +239,12 @@ function initSession() {
     const saved = localStorage.getItem("pmg_session");
     if (saved) {
       currentUser = JSON.parse(saved);
+      if (currentUser && (/meylina/i.test(currentUser.username || '') || /meylina/i.test(currentUser.name || ''))) {
+        localStorage.removeItem("pmg_session");
+        currentUser = null;
+        document.getElementById("loginOverlay").style.display = "flex";
+        return;
+      }
       // Lock role and single-branch view strictly to PMG Kota Sentosa
       if (!currentUser.branch || String(currentUser.branch).toUpperCase() === 'ALL') {
         currentUser.branch = DEFAULT_BRANCH;
@@ -511,7 +520,7 @@ function archiveAndGetOctoberMtd(staffList, summary, currentDay) {
   } catch (e) {}
 
   // Exclude resigned staff
-  staffList = (staffList || []).filter(s => !/daniela|janet/i.test(s.name || ''));
+  staffList = (staffList || []).filter(s => !/daniela|janet|meylina/i.test(s.name || ''));
 
   const storeOctTs = Number(summary && summary.mtdTs || 0);
   const storeOctHb = Number(summary && summary.mtdHb || 0);
@@ -1928,7 +1937,7 @@ function openDailyBriefingModal(targetDateStr, activeStaffSales) {
   const targets = currentData.targets[targetKey] || {};
   const historyData = currentData.history || [];
 
-  let rawStaff = currentData.staff || [];
+  let rawStaff = (currentData.staff || []).filter(s => !/daniela|janet|meylina/i.test(s.name || ''));
   if (Array.isArray(activeStaffSales) && activeStaffSales.length > 0) {
     const activeMap = {};
     activeStaffSales.forEach(as => {
@@ -3510,16 +3519,9 @@ async function saveAndPublishBriefing() {
 
   renderDashboardDailyBriefing();
   closeDailyBriefingModal();
-  if (btn) btn.innerText = "💾 Save & Publish (+ Push Alert)";
+  if (btn) btn.innerText = "💾 Save & Publish Briefing";
 
-  // 2. Instant Push Notification (<200ms directly to ntfy / teammate phones)
-  dispatchPushNotification(
-    `📊 PMG ${branch} Daily Briefing Ready!`,
-    `Today's sales targets, priorities, and clinical pairings have been published. Tap to view!`,
-    `https://williamchai1.github.io/pmgareasales/`
-  );
-
-  // 3. Background Asynchronous Save to Google Sheet (Non-blocking, sendPush: false)
+  // 2. Background Asynchronous Save to Google Sheet (Non-blocking, sendPush: false)
   fetch(API_URL, {
     method: 'POST',
     redirect: 'follow',
@@ -3540,7 +3542,32 @@ async function saveAndPublishBriefing() {
     console.warn("Background briefing save notice:", err);
   });
 
-  alert(`🎉 5-Point Daily Briefing published!\n• Live on App Dashboard for all teammates\n• Push notification dispatched to teammates' phones\n• Saving to Google Sheet in background...`);
+  alert(`🎉 5-Point Daily Briefing published!\n• Live on App Dashboard for all teammates\n• ⏰ Scheduled 11:00 PM static push will broadcast to teammates nightly.\n• Saving to Google Sheet in background...`);
+}
+
+async function triggerTest11PmBriefingPush() {
+  const btn = (typeof event !== 'undefined' && event && event.target) ? event.target : null;
+  if (btn) btn.innerText = "⏳ Testing 11 PM Push...";
+  try {
+    const branch = selectedBranch || "Kota Sentosa";
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'sendBackendNativePush',
+        branch: branch,
+        title: `PMG ${branch}: Tomorrow's Briefing Ready! (11:00 PM)`,
+        message: "Test 11:00 PM Daily Briefing Alert: Tomorrow's daily priorities and sales targets are published. Tap to review!",
+        url: "https://williamchai1.github.io/pmgareasales/?tab=briefing"
+      })
+    });
+    alert(`✅ 11:00 PM Push Alert test dispatched successfully to pmg-alert-${branch.toLowerCase().replace(/[^a-z0-9]/g, '')}!\nCheck your phone.`);
+  } catch (e) {
+    alert("Test push notice: " + e.message);
+  } finally {
+    if (btn) btn.innerText = "🔔 Test 11 PM Push Now";
+  }
 }
 
 // ─── PURE NATIVE BROWSER PUSH ENGINE (W3C LOCKSCREEN & VAPID GATEWAY) ──

@@ -1,0 +1,22 @@
+name: 11PM Daily Sales Briefing Push Alert
+
+on:
+  schedule:
+    # 15:00 UTC is 23:00 (11:00 PM) Malaysia Time (UTC+8), runs daily
+    - cron: '0 15 * * *'
+  workflow_dispatch: # Allows manual trigger anytime from GitHub Actions tab
+
+jobs:
+  send-briefing-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run 11:00 PM Daily Briefing Push Alert
+        run: node scripts/send_daily_briefing_cron.js "Kota Sentosa"

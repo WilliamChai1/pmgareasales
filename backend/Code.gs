@@ -93,6 +93,11 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(dposSendReminderPush(request)))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (request.action === "sendDailyBriefingPushCron" || request.action === "cronDailyBriefing") {
+      return ContentService.createTextOutput(JSON.stringify(sendDailyBriefingPushCron(request.branch)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: true, message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -106,6 +111,33 @@ function doOptions(e) {
     "Access-Control-Allow-Headers": "Content-Type"
   };
   return ContentService.createTextOutput("").setHeaders(headers);
+}
+
+function doGet(e) {
+  try {
+    const params = (e && e.parameter) || {};
+    const action = params.action || "";
+    const branch = params.branch || "Kota Sentosa";
+
+    if (action === "sendDailyBriefingPushCron" || action === "cronDailyBriefing") {
+      return ContentService.createTextOutput(JSON.stringify(sendDailyBriefingPushCron(branch)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === "getDailyBriefing") {
+      return ContentService.createTextOutput(JSON.stringify(getDailyBriefing(branch)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "online",
+      message: "PMG Performance Hub Webhook API Active",
+      timestamp: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: true, message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function getStaffSheet(ss) {
@@ -127,6 +159,10 @@ function authenticateUser(username, password) {
   const inputUser = String(username).trim().toLowerCase();
   const inputPass = String(password).trim();
   const inputPassHash = hashPassword(inputPass);
+
+  if (inputUser === 'meylina' || inputUser.includes('meylina')) {
+    return { success: false, message: "This account has been deactivated (resigned)." };
+  }
   
   for (let i = 1; i < data.length; i++) {
     const rowUser = String(data[i][0]).trim().toLowerCase();
@@ -514,7 +550,7 @@ function getDashboardData(requestedBranch, role, username) {
       let sRole = staffRoles[sName] || 'Staff';
       
       // EXCLUDE HQ AND RESIGNED STAFF DYNAMICALLY OR BY NAME
-      if (sRole.toLowerCase() === 'hq' || sRole.toLowerCase().includes("resign") || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare")) {
+      if (sRole.toLowerCase() === 'hq' || sRole.toLowerCase().includes("resign") || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare") || sNameLower.includes("meylina")) {
         continue; 
       }
 
@@ -1007,7 +1043,7 @@ function dposGetReview(req) {
       const sNameLower = sName.toLowerCase();
       const sRole = String(mData[i][3] || '').trim();
 
-      if (st === 'inactive' || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare") || sRole.toLowerCase() === 'hq') {
+      if (st === 'inactive' || sNameLower.includes("daniela") || sNameLower.includes("janet") || sNameLower.includes("ngu chuin") || sNameLower.includes("public medicare") || sNameLower.includes("meylina") || sRole.toLowerCase() === 'hq') {
         continue;
       }
       if (b === "KOTA SENTOSA" || b === "ALL") {
@@ -1470,6 +1506,57 @@ function saveDailyBriefing(req) {
   }
 }
 
+function sendDailyBriefingPushCron(reqOrBranch) {
+  try {
+    const branch = (typeof reqOrBranch === 'object' && reqOrBranch && reqOrBranch.branch) ? reqOrBranch.branch : (typeof reqOrBranch === 'string' && reqOrBranch ? reqOrBranch : 'Kota Sentosa');
+    const briefing = getDailyBriefing(branch);
+    
+    let pushTitle = "PMG " + branch + ": Tomorrow's Briefing Ready! (11:00 PM)";
+    let pushMsg = "Tomorrow's daily briefing and sales targets are published. Tap to review before your shift!";
+    
+    if (briefing) {
+      let topPerformerText = "";
+      if (briefing.sec5 && typeof briefing.sec5 === 'string') {
+        const m = briefing.sec5.match(/1st Place:\s*\*?([^*()\n]+)\*?\s*\(HB\s*RM\s*([0-9.,]+)\)/i);
+        if (m) {
+          topPerformerText = "🏆 Top HB: " + m[1].trim() + " (RM " + m[2].trim() + "). ";
+        }
+      }
+      
+      let priorityText = "";
+      if (briefing.sec2 && typeof briefing.sec2 === 'string') {
+        const lines = briefing.sec2.split('\n').map(l => l.replace(/[*#_•-]/g, '').trim()).filter(Boolean);
+        if (lines.length > 0) {
+          priorityText = "🎯 Focus: " + lines[0].substring(0, 75) + "... ";
+        }
+      }
+      
+      if (topPerformerText || priorityText) {
+        pushMsg = (topPerformerText + priorityText).trim();
+      }
+    }
+    
+    const pushUrl = "https://williamchai1.github.io/pmgareasales/?tab=briefing";
+    const pushRes = sendBackendNativePush({
+      title: "📢 " + pushTitle,
+      message: pushMsg,
+      url: pushUrl,
+      branch: branch
+    });
+    
+    return {
+      success: true,
+      timestamp: Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm:ss"),
+      branch: branch,
+      title: pushTitle,
+      message: pushMsg,
+      pushResult: pushRes
+    };
+  } catch (err) {
+    return { success: false, message: "11PM Cron Push failed: " + err.toString() };
+  }
+}
+
 function getDailyBriefing(branch) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -1608,7 +1695,7 @@ function dposSendReminderPush(req) {
       for (let j = 1; j < stData.length; j++) {
         const name = String(stData[j][2] || '').trim();
         const role = String(stData[j][3] || '').trim().toLowerCase();
-        if (name && !role.includes('hq') && !role.includes('resign') && !name.toLowerCase().includes('public medicare')) {
+        if (name && !role.includes('hq') && !role.includes('resign') && !name.toLowerCase().includes('public medicare') && !name.toLowerCase().includes('meylina')) {
           if (!completedStaff[name.toLowerCase()]) {
             pendingNames.push(name);
           }

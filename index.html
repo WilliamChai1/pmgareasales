@@ -9,7 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=77.8">
+  <link rel="stylesheet" href="./styles.css?v=77.9">
   <script>
     // Register Native PMG Service Worker
     if ('serviceWorker' in navigator) {
@@ -335,7 +335,7 @@
       <!-- Action Buttons -->
       <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
         <button class="btn" id="btnSaveBriefingPublish" style="flex: 1.2; background: #0f766e; color: white; padding: 12px; margin: 0; font-size: 0.88rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="saveAndPublishBriefing()">
-          💾 Save & Publish (+ Push Alert)
+          💾 Save & Publish Briefing
         </button>
         <button class="btn btn-copy" style="flex: 1; padding: 12px; margin: 0; font-size: 0.88rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="copyBriefingMessage()">
           📋 Copy to Google Chat
@@ -344,6 +344,22 @@
           🌐 Translate (华语/BM)
         </button>
         <button class="btn-logout" style="padding: 12px 18px; margin: 0;" onclick="closeDailyBriefingModal()">Close</button>
+      </div>
+
+      <!-- 11:00 PM Scheduled Push Notification Banner -->
+      <div style="margin-top: 12px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <div style="font-size: 0.76rem; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 5px;">
+            <span>⏰ 11:00 PM Daily Push Notification Scheduled</span>
+            <span style="background: #dcfce7; color: #15803d; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem;">Active</span>
+          </div>
+          <div style="font-size: 0.68rem; color: #15803d; margin-top: 2px;">
+            Teammates automatically receive the bedtime briefing alert at 11:00 PM nightly via GitHub Actions / cron-job.org.
+          </div>
+        </div>
+        <button type="button" class="btn" style="background: #15803d; color: white; padding: 6px 12px; margin: 0; font-size: 0.72rem; font-weight: 800; border-radius: 6px;" onclick="triggerTest11PmBriefingPush()">
+          🔔 Test 11 PM Push Now
+        </button>
       </div>
     </div>
   </div>
@@ -666,10 +682,10 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=77.8"></script>
-  <script src="./data/dpos_week1.js?v=77.8"></script>
-  <script src="./data/dpos_catalog.js?v=77.8"></script>
-  <script src="./dpos.js?v=77.8"></script>
-  <script src="./app.js?v=77.8"></script>
+  <script src="./data/clinical_upsell_modules.js?v=77.9"></script>
+  <script src="./data/dpos_week1.js?v=77.9"></script>
+  <script src="./data/dpos_catalog.js?v=77.9"></script>
+  <script src="./dpos.js?v=77.9"></script>
+  <script src="./app.js?v=77.9"></script>
 </body>
 </html>

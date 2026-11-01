@@ -2319,7 +2319,8 @@ ${JSON.stringify(rawQuestions, null, 2)}`;
     }
 
     state.selectedReviewTopic = reviewData.topicTitle;
-    const roster = reviewData.roster || [];
+    const rawRoster = reviewData.roster || [];
+    const roster = rawRoster.filter(r => !/daniela|janet|meylina/i.test(r.name || '') && !/meylina/i.test(r.username || ''));
     state.reviewRoster = roster;
     const totalCount = roster.length;
     const completedCount = roster.filter(r => r.status === 'Completed').length;
