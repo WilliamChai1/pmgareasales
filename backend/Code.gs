@@ -1511,30 +1511,8 @@ function sendDailyBriefingPushCron(reqOrBranch) {
     const branch = (typeof reqOrBranch === 'object' && reqOrBranch && reqOrBranch.branch) ? reqOrBranch.branch : (typeof reqOrBranch === 'string' && reqOrBranch ? reqOrBranch : 'Kota Sentosa');
     const briefing = getDailyBriefing(branch);
     
-    let pushTitle = "PMG " + branch + ": Tomorrow's Briefing Ready! (11:00 PM)";
-    let pushMsg = "Tomorrow's daily briefing and sales targets are published. Tap to review before your shift!";
-    
-    if (briefing) {
-      let topPerformerText = "";
-      if (briefing.sec5 && typeof briefing.sec5 === 'string') {
-        const m = briefing.sec5.match(/1st Place:\s*\*?([^*()\n]+)\*?\s*\(HB\s*RM\s*([0-9.,]+)\)/i);
-        if (m) {
-          topPerformerText = "🏆 Top HB: " + m[1].trim() + " (RM " + m[2].trim() + "). ";
-        }
-      }
-      
-      let priorityText = "";
-      if (briefing.sec2 && typeof briefing.sec2 === 'string') {
-        const lines = briefing.sec2.split('\n').map(l => l.replace(/[*#_•-]/g, '').trim()).filter(Boolean);
-        if (lines.length > 0) {
-          priorityText = "🎯 Focus: " + lines[0].substring(0, 75) + "... ";
-        }
-      }
-      
-      if (topPerformerText || priorityText) {
-        pushMsg = (topPerformerText + priorityText).trim();
-      }
-    }
+    let pushTitle = "PMG " + branch + ": Daily Briefing Ready!";
+    let pushMsg = "Read daily sales report. Complete DPOS ASAP.";
     
     const pushUrl = "https://williamchai1.github.io/pmgareasales/?tab=briefing";
     const pushRes = sendBackendNativePush({

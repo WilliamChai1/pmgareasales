@@ -9,7 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=78.1">
+  <link rel="stylesheet" href="./styles.css?v=78.2">
   <script>
     // Register Native PMG Service Worker
     if ('serviceWorker' in navigator) {
@@ -272,9 +272,12 @@
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 0.85rem; font-weight: 800; color: #86198f;">📱 PMG Medicare App Installs:</span>
           <input type="number" id="briefingPmgAppInput" class="input-field" placeholder="0" min="0" style="width: 70px; margin: 0; padding: 4px 8px; font-weight: 800; text-align: center; border: 1.5px solid #d946ef;">
-          <button type="button" class="btn" style="background: #a21caf; color: white; padding: 6px 12px; margin: 0; font-size: 0.75rem; font-weight: bold;" onclick="saveBriefingPmgApp()">💾 Save</button>
+          <button type="button" class="btn" style="background: #a21caf; color: white; padding: 6px 12px; margin: 0; font-size: 0.75rem; font-weight: bold;" onclick="saveBriefingPmgApp()">💾 Save App Count</button>
         </div>
-        <button type="button" class="btn" style="background: #2563eb; color: white; padding: 6px 12px; margin: 0; font-size: 0.75rem; font-weight: bold;" onclick="openReportModal('director')">📊 View Director 7-Day Report</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" class="btn" id="btnSaveBriefingPublishTop" style="background: #0f766e; color: white; padding: 6px 14px; margin: 0; font-size: 0.75rem; font-weight: 800;" onclick="saveAndPublishBriefing()">💾 Save & Publish</button>
+          <button type="button" class="btn" style="background: #2563eb; color: white; padding: 6px 12px; margin: 0; font-size: 0.75rem; font-weight: bold;" onclick="openReportModal('director')">📊 View Director 7-Day Report</button>
+        </div>
       </div>
 
       <!-- Section 1 (Auto-calculated) -->
@@ -354,7 +357,7 @@
             <span style="background: #dcfce7; color: #15803d; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem;">Active</span>
           </div>
           <div style="font-size: 0.68rem; color: #15803d; margin-top: 2px;">
-            Teammates automatically receive the bedtime briefing alert at 11:00 PM nightly via GitHub Actions / cron-job.org.
+            Teammates automatically receive briefing reminders: "Read daily sales report. Complete DPOS ASAP."
           </div>
         </div>
         <button type="button" class="btn" style="background: #15803d; color: white; padding: 6px 12px; margin: 0; font-size: 0.72rem; font-weight: 800; border-radius: 6px;" onclick="triggerTest11PmBriefingPush()">
@@ -682,10 +685,10 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=78.1"></script>
-  <script src="./data/dpos_week1.js?v=78.1"></script>
-  <script src="./data/dpos_catalog.js?v=78.1"></script>
-  <script src="./dpos.js?v=78.1"></script>
-  <script src="./app.js?v=78.1"></script>
+  <script src="./data/clinical_upsell_modules.js?v=78.2"></script>
+  <script src="./data/dpos_week1.js?v=78.2"></script>
+  <script src="./data/dpos_catalog.js?v=78.2"></script>
+  <script src="./dpos.js?v=78.2"></script>
+  <script src="./app.js?v=78.2"></script>
 </body>
 </html>

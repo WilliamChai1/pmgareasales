@@ -2001,7 +2001,13 @@ function openDailyBriefingModal(targetDateStr, activeStaffSales) {
   const sec4Default = `• Make sure follow FEFO\n• Clean gondola from front to back and snap photo to google chat.\n• Refill stock and snap photo to google chat.\n• Update price gondola and snap photo into google chat.`;
 
   // Preserve PIC custom notes if existing briefing exists, while synchronizing incentive tracking line
-  const existingBriefing = window.activeDailyBriefing || (currentData && currentData.dailyBriefing);
+  let existingBriefing = window.activeDailyBriefing || (currentData && currentData.dailyBriefing);
+  if (!existingBriefing) {
+    try {
+      const local = localStorage.getItem("pmg_saved_briefing_" + selectedBranch.toUpperCase());
+      if (local) existingBriefing = JSON.parse(local);
+    } catch (e) {}
+  }
   let sec2Val = (existingBriefing && existingBriefing.sec2) ? existingBriefing.sec2 : sec2Default;
   let sec3Val = (existingBriefing && existingBriefing.sec3) ? existingBriefing.sec3 : sec3Default;
   let sec4Val = (existingBriefing && existingBriefing.sec4) ? existingBriefing.sec4 : sec4Default;
@@ -3073,13 +3079,16 @@ function renderDashboardDailyBriefing() {
   const contentWrapper = document.getElementById("dashBriefingContentWrapper");
   const pendingPrompt = document.getElementById("dashBriefingPendingPrompt");
 
-  let briefing = (currentData && currentData.dailyBriefing) || null;
-  if (!briefing) {
-    try {
-      const local = localStorage.getItem("pmg_saved_briefing_" + branchUpper);
-      if (local) briefing = JSON.parse(local);
-    } catch (e) {}
-  }
+  let briefing = window.activeDailyBriefing || (currentData && currentData.dailyBriefing) || null;
+  try {
+    const local = localStorage.getItem("pmg_saved_briefing_" + branchUpper);
+    if (local) {
+      const parsedLocal = JSON.parse(local);
+      if (!briefing || (parsedLocal && parsedLocal.updatedAt && (!briefing.updatedAt || new Date(parsedLocal.updatedAt) >= new Date(briefing.updatedAt)))) {
+        briefing = parsedLocal;
+      }
+    }
+  } catch (e) {}
 
   // STRICT REQUIREMENT: DO NOT prefix/fabricate a fake briefing ahead of time if none is saved/published
   if (!briefing) {
@@ -3095,6 +3104,7 @@ function renderDashboardDailyBriefing() {
   // RECONCILE: Ensure briefing financial metrics always tally 100% with live data
   briefing = reconcileBriefingFinancials(briefing, selectedBranch);
   window.activeDailyBriefing = briefing;
+  if (currentData) currentData.dailyBriefing = briefing;
 
   const dateDisplay = briefing.dateDisplay || formatDisplayDate(new Date());
   const dateEl = document.getElementById("dashBriefingDate");
@@ -3336,12 +3346,47 @@ function translateBriefingSec3Deterministic(sec3, lang) {
 }
 
 function translateBriefingSec4Deterministic(sec4, lang) {
-  if (lang === "zh") {
-    return "• 确保严格遵守 FEFO（先过期先出）原则\n• 从前往后彻底清洁排面展架，并拍照发送至 Google Chat。\n• 补足缺货商品，并拍照发送至 Google Chat。\n• 更新排面价钱牌，并拍照发送至 Google Chat。";
-  } else if (lang === "ms") {
-    return "• Pastikan patuhi prinsip FEFO (First-Expired, First-Out)\n• Bersihkan gondola dari depan ke belakang dan hantar gambar ke Google Chat.\n• Tambah stok barang dan hantar gambar ke Google Chat.\n• Kemas kini tanda harga gondola dan hantar gambar ke Google Chat.";
+  if (!sec4 || typeof sec4 !== 'string') return "";
+  
+  const standardFefoLines = [
+    "Make sure follow FEFO",
+    "Clean gondola from front to back and snap photo to google chat.",
+    "Refill stock and snap photo to google chat.",
+    "Update price gondola and snap photo into google chat."
+  ];
+  
+  const isDefaultExact = standardFefoLines.every(line => sec4.includes(line)) && sec4.trim().split('\n').filter(Boolean).length <= 4;
+  if (isDefaultExact) {
+    if (lang === "zh") {
+      return "• 严格遵守 FEFO(先到期先出)原则\n• 从前到后彻底清洁货架，拍照发送至 Google Chat。\n• 补齐排面缺货，拍照发送至 Google Chat。\n• 更新货架价格标签，拍照发送至 Google Chat。";
+    } else if (lang === "ms") {
+      return "• Pastikan patuhi prinsip FEFO (First-Expired, First-Out)\n• Bersihkan gondola dari depan ke belakang dan hantar gambar ke Google Chat.\n• Tambah stok barang dan hantar gambar ke Google Chat.\n• Kemas kini tanda harga gondola dan hantar gambar ke Google Chat.";
+    }
   }
-  return sec4;
+
+  // Preserve custom leader job scopes and directives while localizing standard SOP cues
+  const lines = sec4.split('\n');
+  const translated = lines.map(line => {
+    const raw = line.trim();
+    if (!raw) return "";
+    const prefix = /^[•\-\*]/.test(raw) ? "" : "• ";
+    
+    if (/make\s*sure\s*follow\s*fefo/i.test(raw)) {
+      return lang === "zh" ? "• 严格遵守 FEFO(先到期先出)原则" : (lang === "ms" ? "• Pastikan patuhi prinsip FEFO (First-Expired, First-Out)" : raw);
+    }
+    if (/clean\s*gondola.*google\s*chat/i.test(raw)) {
+      return lang === "zh" ? "• 从前到后彻底清洁货架，拍照发送至 Google Chat。" : (lang === "ms" ? "• Bersihkan gondola dari depan ke belakang dan hantar gambar ke Google Chat." : raw);
+    }
+    if (/refill\s*stock.*google\s*chat/i.test(raw)) {
+      return lang === "zh" ? "• 补齐排面缺货，拍照发送至 Google Chat。" : (lang === "ms" ? "• Tambah stok barang dan hantar gambar ke Google Chat." : raw);
+    }
+    if (/update\s*price.*google\s*chat/i.test(raw)) {
+      return lang === "zh" ? "• 更新货架价格标签，拍照发送至 Google Chat。" : (lang === "ms" ? "• Kemas kini tanda harga gondola dan hantar gambar ke Google Chat." : raw);
+    }
+    return prefix + raw.replace(/^[•\-\*]\s*/, '');
+  });
+
+  return translated.filter(Boolean).join('\n');
 }
 
 function translateBriefingSec5Deterministic(sec5, lang) {
@@ -3539,6 +3584,8 @@ async function saveAndPublishBriefing() {
 
   const btn = document.getElementById("btnSaveBriefingPublish");
   if (btn) btn.innerText = "⏳ Publishing & Broadcasting...";
+  const topBtn = document.getElementById("btnSaveBriefingPublishTop");
+  if (topBtn) topBtn.innerText = "⏳ Publishing...";
 
   const sec1 = (document.getElementById("briefingSec1Text").innerText || currentBriefingState.sec1).trim();
   const rawSec2 = document.getElementById("briefingSec2Input").value || currentBriefingState.sec2 || "";
@@ -3588,17 +3635,34 @@ async function saveAndPublishBriefing() {
     }
   };
 
-  // 1. Optimistic Local Save & Instant Dashboard Render (<50ms)
+  // 1. Optimistic Synchronous In-Memory & Local Save (<10ms)
+  if (currentData) {
+    currentData.dailyBriefing = briefingPayload;
+  }
   window.activeDailyBriefing = briefingPayload;
   try {
     localStorage.setItem("pmg_saved_briefing_" + branchUpper, JSON.stringify(briefingPayload));
+    localStorage.setItem("pmg_saved_briefing_time_" + branchUpper, String(Date.now()));
   } catch (e) {}
+
+  // 2. Direct DOM Text Update for Instant Visual Confirmation
+  const s1 = document.getElementById("dashBriefingSec1");
+  const s2 = document.getElementById("dashBriefingSec2");
+  const s3 = document.getElementById("dashBriefingSec3");
+  const s4 = document.getElementById("dashBriefingSec4");
+  const s5 = document.getElementById("dashBriefingSec5");
+  if (s1) s1.innerText = sec1;
+  if (s2) s2.innerText = sec2;
+  if (s3) s3.innerText = sec3;
+  if (s4) s4.innerText = sec4;
+  if (s5) s5.innerText = sec5;
 
   renderDashboardDailyBriefing();
   closeDailyBriefingModal();
   if (btn) btn.innerText = "💾 Save & Publish Briefing";
+  if (topBtn) topBtn.innerText = "💾 Save & Publish";
 
-  // 2. Background Asynchronous Save to Google Sheet (Non-blocking, sendPush: false)
+  // 3. Background Asynchronous Save to Google Sheet (Non-blocking, sendPush: false)
   fetch(API_URL, {
     method: 'POST',
     redirect: 'follow',
@@ -3619,12 +3683,12 @@ async function saveAndPublishBriefing() {
     console.warn("Background briefing save notice:", err);
   });
 
-  alert(`🎉 5-Point Daily Briefing published!\n• Live on App Dashboard for all teammates\n• ⏰ Scheduled 11:00 PM static push will broadcast to teammates nightly.\n• Saving to Google Sheet in background...`);
+  alert("🎉 5-Point Daily Briefing published!\n• Live on App Dashboard for all teammates\n• Changes show up directly on screen.\n• Saving to Google Sheet in background...");
 }
 
 async function triggerTest11PmBriefingPush() {
   const btn = (typeof event !== 'undefined' && event && event.target) ? event.target : null;
-  if (btn) btn.innerText = "⏳ Testing 11 PM Push...";
+  if (btn) btn.innerText = "⏳ Testing Push...";
   try {
     const branch = selectedBranch || "Kota Sentosa";
     const res = await fetch(API_URL, {
@@ -3634,16 +3698,16 @@ async function triggerTest11PmBriefingPush() {
       body: JSON.stringify({
         action: 'sendBackendNativePush',
         branch: branch,
-        title: `PMG ${branch}: Tomorrow's Briefing Ready! (11:00 PM)`,
-        message: "Test 11:00 PM Daily Briefing Alert: Tomorrow's daily priorities and sales targets are published. Tap to review!",
+        title: `PMG ${branch}: Daily Briefing Ready!`,
+        message: "Read daily sales report. Complete DPOS ASAP.",
         url: "https://williamchai1.github.io/pmgareasales/?tab=briefing"
       })
     });
-    alert(`✅ 11:00 PM Push Alert test dispatched successfully to pmg-alert-${branch.toLowerCase().replace(/[^a-z0-9]/g, '')}!\nCheck your phone.`);
+    alert(`✅ Push Alert test dispatched successfully to pmg-alert-${branch.toLowerCase().replace(/[^a-z0-9]/g, '')}!\nMessage: "Read daily sales report. Complete DPOS ASAP."\nCheck your phone.`);
   } catch (e) {
     alert("Test push notice: " + e.message);
   } finally {
-    if (btn) btn.innerText = "🔔 Test 11 PM Push Now";
+    if (btn) btn.innerText = "🔔 Test Push Alert Now";
   }
 }
 

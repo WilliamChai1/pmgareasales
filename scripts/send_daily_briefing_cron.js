@@ -40,8 +40,8 @@ async function runCronPush() {
     }
 
     // Header Title MUST be ASCII-safe for HTTP compliance
-    const pushTitle = `PMG ${BRANCH}: Tomorrow's Briefing Ready! (11:00 PM)`;
-    const pushMsg = (topPerformerText + priorityText).trim() || "Tomorrow's daily priorities and sales targets are published. Tap to review before your shift!";
+    const pushTitle = `PMG ${BRANCH}: Daily Briefing Ready!`;
+    const pushMsg = "Read daily sales report. Complete DPOS ASAP.";
     const pushUrl = "https://williamchai1.github.io/pmgareasales/?tab=briefing";
     const channel = "pmg-alert-" + BRANCH.toLowerCase().replace(/[^a-z0-9]/g, "");
 
