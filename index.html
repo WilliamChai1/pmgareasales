@@ -9,7 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=78.3">
+  <link rel="stylesheet" href="./styles.css?v=78.4">
   <script>
     // Register Native PMG Service Worker
     if ('serviceWorker' in navigator) {
@@ -467,7 +467,7 @@
       🎓 DPOS Academy
     </button>
     <button class="main-nav-btn" id="btnNavLeaders" onclick="switchMainTab('leaders')">
-      ⭐ Future Leaders
+      ⭐ Future Leaders & Staff Roles
     </button>
   </div>
 
@@ -834,7 +834,7 @@
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="font-size: 2rem;">⭐</span>
           <div>
-            <div style="font-size: 1.15rem; font-weight: 800; color: #78350f;">PMG Future Leaders Task & Job Scope</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #78350f;">PMG Branch Staff Roles & Future Leaders Portfolios</div>
             <div style="font-size: 0.78rem; color: #92400e; margin-top: 2px;">
               Empowering frontline teammates with operational ownership, systematic audits, and management portfolios.
             </div>
@@ -846,6 +846,19 @@
           </button>
         </div>
       </div>
+      <!-- Category Filter Tabs -->
+      <div style="display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;">
+        <button type="button" class="btn" id="btnFilterRoleAll" style="background: #78350f; color: white; padding: 5px 12px; font-size: 0.74rem; font-weight: 800; border-radius: 20px; margin: 0;" onclick="switchLeadersFilter('all')">
+          🌟 All Roles (8)
+        </button>
+        <button type="button" class="btn" id="btnFilterRoleCore" style="background: white; color: #4338ca; border: 1.5px solid #c7d2fe; padding: 5px 12px; font-size: 0.74rem; font-weight: 700; border-radius: 20px; margin: 0;" onclick="switchLeadersFilter('core')">
+          👔 Core Positions: Pharmacist, ABM, PA (3)
+        </button>
+        <button type="button" class="btn" id="btnFilterRolePortfolio" style="background: white; color: #0f766e; border: 1.5px solid #99f6e4; padding: 5px 12px; font-size: 0.74rem; font-weight: 700; border-radius: 20px; margin: 0;" onclick="switchLeadersFilter('portfolio')">
+          ⭐ Task Portfolios: Admin, 6S, Aging, CN, DPOS (5)
+        </button>
+      </div>
+
       <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: #b45309; border-top: 1px dashed #fde68a; padding-top: 8px;">
         <span>Branch: <strong id="leadersBranchLabel">KOTA SENTOSA</strong></span>
         <span id="leadersUpdatedLabel">🟢 Live Synchronized</span>
@@ -859,10 +872,10 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=78.3"></script>
-  <script src="./data/dpos_week1.js?v=78.3"></script>
-  <script src="./data/dpos_catalog.js?v=78.3"></script>
-  <script src="./dpos.js?v=78.3"></script>
-  <script src="./app.js?v=78.3"></script>
+  <script src="./data/clinical_upsell_modules.js?v=78.4"></script>
+  <script src="./data/dpos_week1.js?v=78.4"></script>
+  <script src="./data/dpos_catalog.js?v=78.4"></script>
+  <script src="./dpos.js?v=78.4"></script>
+  <script src="./app.js?v=78.4"></script>
 </body>
 </html>

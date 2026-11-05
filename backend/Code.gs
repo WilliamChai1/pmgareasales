@@ -1856,10 +1856,65 @@ function get6sPhotos(branch, targetDate) {
 function getDefaultLeadersJobscope() {
   return [
     {
-      role: "Admin",
+      role: "Pharmacist / PRP (Pharmacist in Charge)",
+      category: "core",
+      quota: 1,
+      assigned: "Haniesha Louna / Daniela",
+      icon: "💊",
+      color: "#4338ca",
+      bg: "#eef2ff",
+      border: "#c7d2fe",
+      tasks: [
+        "Screen prescriptions, verify dosages, check drug interactions and dispense Schedule Poisons (Poison B/C) with clinical counseling.",
+        "Provide comprehensive patient counseling on chronic disease titration (HTN, DM, Dyslipidemia), inhaler/insulin technique, and side-effect management.",
+        "Conduct frontline clinical triage, assess OTC ailments, and coordinate urgent referrals for red-flag medical presentations.",
+        "Supervise and mentor Pharmacist Assistants (PA) on the 100-point PMG Frontline Rubric and clinical House Brand acute pairings.",
+        "Audit cold-chain storage (2-8°C / <25°C), maintain statutory Poison C and pseudoephedrine balance registers, and uphold pharmaceutical regulations."
+      ]
+    },
+    {
+      role: "Assistant Branch Manager (ABM)",
+      category: "core",
+      quota: 1,
+      assigned: "Chai Yee Sian",
+      icon: "👔",
+      color: "#0f766e",
+      bg: "#f0fdfa",
+      border: "#99f6e4",
+      tasks: [
+        "Supervise daily branch opening and closing checklists, staff punctuality, shift duty rosters, and frontline grooming standards.",
+        "Align the team during daily sales briefings: review yesterday's TS/HB numbers against monthly targets, set focus items, and track cashier PWP momentum.",
+        "Manage cash float handovers, conduct mid-day register sweeps, verify end-of-day Z-readings, and prepare secure bank deposits.",
+        "Supervise stock delivery receiving: cross-check purchase orders against physical cartons, identify damaged items, and submit receiving slips.",
+        "Manage customer escalations and dispute resolution with professional empathy, ensuring top customer satisfaction and store reputation."
+      ]
+    },
+    {
+      role: "Pharmacist Assistant (PA / Frontline)",
+      category: "core",
+      quota: 1,
+      assigned: "All Frontline Assistants (Fiona, Christina, Farizin, Nurhafizah)",
+      icon: "🩺",
+      color: "#1d4ed8",
+      bg: "#eff6ff",
+      border: "#bfdbfe",
+      tasks: [
+        "Deliver warm customer greetings, active listening, and execute the PMG DPOS protocol (Detect, Probe, Outline OTC, Support with House Brand).",
+        "Drive cashier checkout excellence: introduce PMG Membership, enroll seniors into Senior Care Plus (SCP 55+ with 28th monthly free glucose test), and pitch cashier PWPs (>RM20).",
+        "Execute daily 6S gondola upkeep: front-to-back wipe cleaning, shelf restocking, front-facing alignment, and snap verification photos.",
+        "Enforce First-Expired, First-Out (FEFO) shelf rotation during replenishment and report items within 6 months of expiry to the Expiry Leader.",
+        "Complete weekly DPOS Academy training modules, practice clinical customer scenarios, and maintain passing quiz scores."
+      ]
+    },
+    {
+      role: "Admin Leader",
+      category: "portfolio",
       quota: 1,
       assigned: "Christina",
       icon: "📋",
+      color: "#2563eb",
+      bg: "#eff6ff",
+      border: "#bfdbfe",
       tasks: [
         "Monitor Poison C and pseudoephedrine balance register daily.",
         "Monitor cold-chain and room temperature recording (2-8°C / <25°C).",
@@ -1870,10 +1925,14 @@ function getDefaultLeadersJobscope() {
       ]
     },
     {
-      role: "Stock Expiry & Aging",
+      role: "Stock Expiry & Aging Leader",
+      category: "portfolio",
       quota: 1,
       assigned: "Fiona",
       icon: "⏳",
+      color: "#d97706",
+      bg: "#fffbeb",
+      border: "#fde68a",
       tasks: [
         "Extract invoices and input into PMG Hub Management before 15th of the month to HQ (action plan required).",
         "Extract monthly aging stock list and provide clearance action plan.",
@@ -1881,10 +1940,14 @@ function getDefaultLeadersJobscope() {
       ]
     },
     {
-      role: "Invoices and CN",
+      role: "Invoices and CN Leader",
+      category: "portfolio",
       quota: 1,
       assigned: "Muhammad Nur Farizin",
       icon: "📑",
+      color: "#0891b2",
+      bg: "#ecfeff",
+      border: "#a5f3fc",
       tasks: [
         "Cross-examine supplier invoices against purchase orders and physical stock received.",
         "Track pending CNs with supplier sales reps and match against returns.",
@@ -1892,10 +1955,14 @@ function getDefaultLeadersJobscope() {
       ]
     },
     {
-      role: "Gondola Merchandising & 6S",
+      role: "Gondola Merchandising & 6S Leader",
+      category: "portfolio",
       quota: 1,
       assigned: "Chai Yee Sian",
       icon: "🧹",
+      color: "#16a34a",
+      bg: "#f0fdf4",
+      border: "#bbf7d0",
       tasks: [
         "Enforce FEFO (First-Expired, First-Out) shelf rotation across all gondolas.",
         "Supervise daily front-to-back gondola cleaning and photo upload to Google Drive.",
@@ -1905,9 +1972,13 @@ function getDefaultLeadersJobscope() {
     },
     {
       role: "Chronic Care & DPOS Champion",
+      category: "portfolio",
       quota: 1,
       assigned: "Jong Pei Choo",
-      icon: "🩺",
+      icon: "🌟",
+      color: "#9333ea",
+      bg: "#faf5ff",
+      border: "#e9d5ff",
       tasks: [
         "Drive daily DPOS customer triage and House Brand acute pairing practice.",
         "Educate and enroll eligible seniors into Senior Care Plus (55+).",

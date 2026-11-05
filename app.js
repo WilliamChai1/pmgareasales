@@ -4135,10 +4135,62 @@ async function openLockscreenAlertSubscribe() {
 window.openLockscreenAlertSubscribe = openLockscreenAlertSubscribe;
 
 
-// ─── FUTURE LEADERS PORTFOLIO & JOBSCOPE ENGINE ─────────────────────────────
+// ─── FUTURE LEADERS & STAFF ROLES ENGINE ─────────────────────────────────────
 const DEFAULT_LEADERS_JOBSCOPE = [
   {
-    role: "Admin",
+    role: "Pharmacist / PRP (Pharmacist in Charge)",
+    category: "core",
+    quota: 1,
+    assigned: "Haniesha Louna / Daniela",
+    icon: "💊",
+    color: "#4338ca",
+    bg: "#eef2ff",
+    border: "#c7d2fe",
+    tasks: [
+      "Screen prescriptions, verify dosages, check drug interactions and dispense Schedule Poisons (Poison B/C) with clinical counseling.",
+      "Provide comprehensive patient counseling on chronic disease titration (HTN, DM, Dyslipidemia), inhaler/insulin technique, and side-effect management.",
+      "Conduct frontline clinical triage, assess OTC ailments, and coordinate urgent referrals for red-flag medical presentations.",
+      "Supervise and mentor Pharmacist Assistants (PA) on the 100-point PMG Frontline Rubric and clinical House Brand acute pairings.",
+      "Audit cold-chain storage (2-8°C / <25°C), maintain statutory Poison C and pseudoephedrine balance registers, and uphold pharmaceutical regulations."
+    ]
+  },
+  {
+    role: "Assistant Branch Manager (ABM)",
+    category: "core",
+    quota: 1,
+    assigned: "Chai Yee Sian",
+    icon: "👔",
+    color: "#0f766e",
+    bg: "#f0fdfa",
+    border: "#99f6e4",
+    tasks: [
+      "Supervise daily branch opening and closing checklists, staff punctuality, shift duty rosters, and frontline grooming standards.",
+      "Align the team during daily sales briefings: review yesterday's TS/HB numbers against monthly targets, set focus items, and track cashier PWP momentum.",
+      "Manage cash float handovers, conduct mid-day register sweeps, verify end-of-day Z-readings, and prepare secure bank deposits.",
+      "Supervise stock delivery receiving: cross-check purchase orders against physical cartons, identify damaged items, and submit receiving slips.",
+      "Manage customer escalations and dispute resolution with professional empathy, ensuring top customer satisfaction and store reputation."
+    ]
+  },
+  {
+    role: "Pharmacist Assistant (PA / Frontline)",
+    category: "core",
+    quota: 1,
+    assigned: "All Frontline Assistants (Fiona, Christina, Farizin, Nurhafizah)",
+    icon: "🩺",
+    color: "#1d4ed8",
+    bg: "#eff6ff",
+    border: "#bfdbfe",
+    tasks: [
+      "Deliver warm customer greetings, active listening, and execute the PMG DPOS protocol (Detect, Probe, Outline OTC, Support with House Brand).",
+      "Drive cashier checkout excellence: introduce PMG Membership, enroll seniors into Senior Care Plus (SCP 55+ with 28th monthly free glucose test), and pitch cashier PWPs (>RM20).",
+      "Execute daily 6S gondola upkeep: front-to-back wipe cleaning, shelf restocking, front-facing alignment, and snap verification photos.",
+      "Enforce First-Expired, First-Out (FEFO) shelf rotation during replenishment and report items within 6 months of expiry to the Expiry Leader.",
+      "Complete weekly DPOS Academy training modules, practice clinical customer scenarios, and maintain passing quiz scores."
+    ]
+  },
+  {
+    role: "Admin Leader",
+    category: "portfolio",
     quota: 1,
     assigned: "Christina",
     icon: "📋",
@@ -4155,7 +4207,8 @@ const DEFAULT_LEADERS_JOBSCOPE = [
     ]
   },
   {
-    role: "Stock Expiry & Aging",
+    role: "Stock Expiry & Aging Leader",
+    category: "portfolio",
     quota: 1,
     assigned: "Fiona",
     icon: "⏳",
@@ -4169,7 +4222,8 @@ const DEFAULT_LEADERS_JOBSCOPE = [
     ]
   },
   {
-    role: "Invoices and CN",
+    role: "Invoices and CN Leader",
+    category: "portfolio",
     quota: 1,
     assigned: "Muhammad Nur Farizin",
     icon: "📑",
@@ -4183,7 +4237,8 @@ const DEFAULT_LEADERS_JOBSCOPE = [
     ]
   },
   {
-    role: "Gondola Merchandising & 6S",
+    role: "Gondola Merchandising & 6S Leader",
+    category: "portfolio",
     quota: 1,
     assigned: "Chai Yee Sian",
     icon: "🧹",
@@ -4199,9 +4254,10 @@ const DEFAULT_LEADERS_JOBSCOPE = [
   },
   {
     role: "Chronic Care & DPOS Champion",
+    category: "portfolio",
     quota: 1,
     assigned: "Jong Pei Choo",
-    icon: "🩺",
+    icon: "🌟",
     color: "#9333ea",
     bg: "#faf5ff",
     border: "#e9d5ff",
@@ -4214,14 +4270,45 @@ const DEFAULT_LEADERS_JOBSCOPE = [
   }
 ];
 
+let currentLeadersFilter = 'all';
+
+function switchLeadersFilter(category) {
+  currentLeadersFilter = category || 'all';
+
+  const btnAll = document.getElementById("btnFilterRoleAll");
+  const btnCore = document.getElementById("btnFilterRoleCore");
+  const btnPort = document.getElementById("btnFilterRolePortfolio");
+
+  if (btnAll) {
+    btnAll.style.background = currentLeadersFilter === 'all' ? '#78350f' : 'white';
+    btnAll.style.color = currentLeadersFilter === 'all' ? 'white' : '#78350f';
+    btnAll.style.border = currentLeadersFilter === 'all' ? 'none' : '1.5px solid #fcd34d';
+  }
+  if (btnCore) {
+    btnCore.style.background = currentLeadersFilter === 'core' ? '#4338ca' : 'white';
+    btnCore.style.color = currentLeadersFilter === 'core' ? 'white' : '#4338ca';
+    btnCore.style.border = currentLeadersFilter === 'core' ? 'none' : '1.5px solid #c7d2fe';
+  }
+  if (btnPort) {
+    btnPort.style.background = currentLeadersFilter === 'portfolio' ? '#0f766e' : 'white';
+    btnPort.style.color = currentLeadersFilter === 'portfolio' ? 'white' : '#0f766e';
+    btnPort.style.border = currentLeadersFilter === 'portfolio' ? 'none' : '1.5px solid #99f6e4';
+  }
+
+  renderLeadersView();
+}
+
 function getActiveLeadersJobscope() {
   const branchKey = (selectedBranch || DEFAULT_BRANCH).toUpperCase();
-  if (currentData && currentData.leadersJobscope && Array.isArray(currentData.leadersJobscope) && currentData.leadersJobscope.length > 0) {
+  if (currentData && currentData.leadersJobscope && Array.isArray(currentData.leadersJobscope) && currentData.leadersJobscope.length >= 8) {
     return currentData.leadersJobscope;
   }
   try {
     const local = localStorage.getItem("pmg_leaders_jobscope_" + branchKey);
-    if (local) return JSON.parse(local);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (Array.isArray(parsed) && parsed.length >= 8) return parsed;
+    }
   } catch (e) {}
   return DEFAULT_LEADERS_JOBSCOPE;
 }
@@ -4238,7 +4325,13 @@ function renderLeadersView() {
     editBtn.style.display = isManagementOrPharmacist(currentUser) ? "inline-block" : "none";
   }
 
-  const tasks = getActiveLeadersJobscope();
+  const allTasks = getActiveLeadersJobscope();
+  const tasks = allTasks.filter(item => {
+    if (currentLeadersFilter === 'core') return item.category === 'core';
+    if (currentLeadersFilter === 'portfolio') return item.category !== 'core';
+    return true;
+  });
+
   container.innerHTML = tasks.map((item, idx) => {
     const taskListHtml = (item.tasks || []).map((t, tIdx) => `
       <li style="margin-bottom: 6px; line-height: 1.45; color: #334155;">
@@ -4250,6 +4343,10 @@ function renderLeadersView() {
     const bg = item.bg || "#f0fdfa";
     const border = item.border || "#99f6e4";
     const icon = item.icon || "⭐";
+    const isCore = item.category === 'core';
+    const catBadge = isCore
+      ? `<span style="background: white; border: 1.5px solid ${border}; color: ${color}; font-weight: 800; font-size: 0.65rem; padding: 2px 8px; border-radius: 12px;">👔 Core Position</span>`
+      : `<span style="background: white; border: 1.5px solid ${border}; color: ${color}; font-weight: 800; font-size: 0.65rem; padding: 2px 8px; border-radius: 12px;">⭐ Task Portfolio</span>`;
 
     return `
       <div class="card" style="background: ${bg}; border: 1.5px solid ${border}; border-radius: 12px; padding: 14px; margin: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.04);">
@@ -4257,15 +4354,13 @@ function renderLeadersView() {
           <div>
             <div style="font-size: 0.95rem; font-weight: 800; color: ${color}; display: flex; align-items: center; gap: 6px;">
               <span>${icon}</span>
-              <span>[${item.role}] x ${item.quota || 1}</span>
+              <span>[${item.role}]</span>
             </div>
             <div style="font-size: 0.76rem; font-weight: 700; color: #475569; margin-top: 3px;">
-              👤 Assigned Teammate: <span style="color: ${color}; font-weight: 800;">${item.assigned || 'Pending Assignment'}</span>
+              👤 Assigned: <span style="color: ${color}; font-weight: 800;">${item.assigned || 'Pending Assignment'}</span>
             </div>
           </div>
-          <span style="background: white; border: 1px solid ${border}; color: ${color}; font-weight: 800; font-size: 0.68rem; padding: 2px 8px; border-radius: 12px;">
-            Role #${idx + 1}
-          </span>
+          ${catBadge}
         </div>
         <div style="border-top: 1px dashed ${border}; padding-top: 8px; margin-top: 4px;">
           <div style="font-size: 0.72rem; font-weight: 800; color: #475569; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -4290,19 +4385,32 @@ function openLeadersEditModal() {
   if (!modal || !form) return;
 
   const tasks = getActiveLeadersJobscope();
-  form.innerHTML = tasks.map((item, idx) => `
-    <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px;">
-      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
-        <span style="font-size: 1.2rem;">${item.icon || '⭐'}</span>
-        <input type="text" class="input-field" id="editLeaderRole_${idx}" value="${item.role}" placeholder="Role Title" style="flex: 1.5; margin: 0; font-weight: 800; font-size: 0.82rem;">
-        <input type="text" class="input-field" id="editLeaderAssigned_${idx}" value="${item.assigned || ''}" placeholder="Assigned Teammate Name" style="flex: 1.2; margin: 0; font-weight: 700; font-size: 0.82rem; border-color: #0f766e;">
+  form.innerHTML = tasks.map((item, idx) => {
+    const isCore = item.category === 'core';
+    const tagText = isCore ? '👔 Core Staff Position' : '⭐ Operational Task Portfolio';
+    const tagColor = isCore ? '#4338ca' : '#0f766e';
+    const tagBg = isCore ? '#eef2ff' : '#f0fdfa';
+
+    return `
+      <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 0.68rem; font-weight: 800; color: ${tagColor}; background: ${tagBg}; padding: 2px 8px; border-radius: 6px;">
+            ${tagText}
+          </span>
+          <span style="font-size: 0.68rem; color: #64748b; font-weight: 700;">Role #${idx + 1}</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
+          <span style="font-size: 1.2rem;">${item.icon || '⭐'}</span>
+          <input type="text" class="input-field" id="editLeaderRole_${idx}" value="${item.role}" placeholder="Role Title" style="flex: 1.5; margin: 0; font-weight: 800; font-size: 0.82rem;">
+          <input type="text" class="input-field" id="editLeaderAssigned_${idx}" value="${item.assigned || ''}" placeholder="Assigned Teammate Name" style="flex: 1.2; margin: 0; font-weight: 700; font-size: 0.82rem; border-color: #0f766e;">
+        </div>
+        <div>
+          <label style="font-size: 0.7rem; font-weight: 700; color: #475569;">Responsibilities (one per line):</label>
+          <textarea class="input-field" id="editLeaderTasks_${idx}" rows="4" style="margin: 2px 0 0 0; font-size: 0.78rem; line-height: 1.4;">${(item.tasks || []).join('\n')}</textarea>
+        </div>
       </div>
-      <div>
-        <label style="font-size: 0.7rem; font-weight: 700; color: #475569;">Tasks (one per line):</label>
-        <textarea class="input-field" id="editLeaderTasks_${idx}" rows="4" style="margin: 2px 0 0 0; font-size: 0.78rem; line-height: 1.4;">${(item.tasks || []).join('\n')}</textarea>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   modal.style.display = "flex";
   history.pushState({ modal: 'leadersEditModal' }, '');
@@ -4363,10 +4471,10 @@ async function saveLeadersJobscopeFromModal() {
     });
     const data = await res.json();
     console.log("Leaders jobscope cloud save:", data);
-    alert("✅ Future Leaders jobscope saved and published successfully!");
+    alert("✅ Staff roles and leadership job scopes saved and published successfully!");
   } catch (err) {
     console.warn("Background leaders save notice:", err);
-    alert("✅ Jobscope saved locally! (Cloud sync will complete in background)");
+    alert("✅ Job scopes saved locally! (Cloud sync will complete in background)");
   }
 }
 
