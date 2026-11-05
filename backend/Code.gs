@@ -109,6 +109,11 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (request.action === "audit6sPhoto") {
+      return ContentService.createTextOutput(JSON.stringify(audit6sPhoto(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (request.action === "saveLeadersJobscope") {
       return ContentService.createTextOutput(JSON.stringify(saveLeadersJobscope(request)))
         .setMimeType(ContentService.MimeType.JSON);
@@ -1754,48 +1759,69 @@ function upload6sPhoto(req) {
     const safeName = teammate.replace(/[^a-zA-Z0-9]/g, '_');
     const fileName = `${dateStr}_${safeBranch}_${safeCat}_${safeName}_${timeKey}.jpg`;
 
-    // 1. Locate or create root Drive folder: "PMG_6S_Gondola_Photos"
-    let rootFolder;
-    const folders = DriveApp.getFoldersByName("PMG_6S_Gondola_Photos");
-    if (folders.hasNext()) {
-      rootFolder = folders.next();
-    } else {
-      rootFolder = DriveApp.createFolder("PMG_6S_Gondola_Photos");
+    let fileUrl = "";
+    let fileId = "";
+    let thumbUrl = "";
+    let driveWarning = "";
+
+    // 1. Resilient Google Drive storage (catches permission exceptions gracefully)
+    try {
+      let rootFolder;
+      const folders = DriveApp.getFoldersByName("PMG_6S_Gondola_Photos");
+      if (folders.hasNext()) {
+        rootFolder = folders.next();
+      } else {
+        rootFolder = DriveApp.createFolder("PMG_6S_Gondola_Photos");
+      }
+
+      let branchFolder;
+      const bFolders = rootFolder.getFoldersByName(branch);
+      if (bFolders.hasNext()) {
+        branchFolder = bFolders.next();
+      } else {
+        branchFolder = rootFolder.createFolder(branch);
+      }
+
+      const blob = Utilities.newBlob(decodedBytes, mimeType, fileName);
+      const file = branchFolder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+      fileUrl = file.getUrl();
+      fileId = file.getId();
+      thumbUrl = "https://drive.google.com/thumbnail?sz=w400&id=" + fileId;
+    } catch (driveErr) {
+      driveWarning = driveErr.toString();
+      Logger.log("DriveApp warning: " + driveWarning);
     }
 
-    // 2. Locate or create branch subfolder
-    let branchFolder;
-    const bFolders = rootFolder.getFoldersByName(branch);
-    if (bFolders.hasNext()) {
-      branchFolder = bFolders.next();
-    } else {
-      branchFolder = rootFolder.createFolder(branch);
-    }
-
-    // 3. Save file into Google Drive
-    const blob = Utilities.newBlob(decodedBytes, mimeType, fileName);
-    const file = branchFolder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    const fileUrl = file.getUrl();
-    const fileId = file.getId();
-    const thumbUrl = "https://drive.google.com/thumbnail?sz=w400&id=" + fileId;
-
-    // 4. Log to Google Sheet "PMG_6S_Log"
+    // 2. Reliable Google Sheet logging to PMG_6S_Log (always succeeds)
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let logSheet = ss.getSheetByName("PMG_6S_Log");
     if (!logSheet) {
       logSheet = ss.insertSheet("PMG_6S_Log");
-      logSheet.appendRow(["Timestamp", "Date", "Branch", "Teammate", "Category", "File Name", "Drive URL", "File ID", "Notes"]);
-      logSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#dcfce7");
+      logSheet.appendRow(["Timestamp", "Date", "Branch", "Teammate", "Category", "File Name", "Drive URL", "File ID", "Notes", "Status", "Audited By"]);
+      logSheet.getRange(1, 1, 1, 11).setFontWeight("bold").setBackground("#dcfce7");
     }
 
     const timestampFormatted = Utilities.formatDate(now, "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm:ss");
-    logSheet.appendRow([timestampFormatted, dateStr, branch, teammate, category, fileName, fileUrl, fileId, notes]);
+    logSheet.appendRow([
+      timestampFormatted, 
+      dateStr, 
+      branch, 
+      teammate, 
+      category, 
+      fileName, 
+      fileUrl, 
+      fileId, 
+      notes,
+      "Pending Review",
+      ""
+    ]);
 
     return {
       success: true,
-      message: "Photo uploaded to Google Drive successfully!",
+      message: fileUrl ? "Photo uploaded to Google Drive & logged successfully!" : "Photo logged to Google Sheet! (Drive upload pending permissions)",
+      driveWarning: driveWarning || null,
       date: dateStr,
       timeDisplay: timeDisplay,
       fileUrl: fileUrl,
@@ -1803,10 +1829,11 @@ function upload6sPhoto(req) {
       thumbUrl: thumbUrl,
       category: category,
       teammate: teammate,
-      timestamp: timestampFormatted
+      timestamp: timestampFormatted,
+      status: "Pending Review"
     };
   } catch (err) {
-    return { success: false, message: "Drive upload error: " + err.toString() };
+    return { success: false, message: "6S log error: " + err.toString() };
   }
 }
 
@@ -1830,8 +1857,9 @@ function get6sPhotos(branch, targetDate) {
         rowDate = String(data[i][1]).trim();
       }
       const rowBranch = String(data[i][2]).trim().toUpperCase();
-      if ((rowDate === dateStr || String(data[i][1]).trim() === dateStr) && (rowBranch === bTarget || bTarget === 'ALL')) {
+      if (bTarget === 'ALL' || rowBranch === bTarget || rowBranch.includes(bTarget) || bTarget.includes(rowBranch)) {
         const fileId = data[i][7];
+        const isToday = (rowDate === dateStr || String(data[i][1]).trim() === dateStr);
         results.push({
           timestamp: data[i][0],
           date: data[i][1],
@@ -1839,16 +1867,50 @@ function get6sPhotos(branch, targetDate) {
           teammate: data[i][3],
           category: data[i][4],
           fileName: data[i][5],
-          fileUrl: data[i][6],
-          fileId: fileId,
+          fileUrl: data[i][6] || "",
+          fileId: fileId || "",
           thumbUrl: fileId ? ("https://drive.google.com/thumbnail?sz=w400&id=" + fileId) : "",
-          notes: data[i][8] || ""
+          notes: data[i][8] || "",
+          status: data[i][9] || "Pending Review",
+          auditedBy: data[i][10] || "",
+          isToday: isToday
         });
       }
     }
-    return results.reverse();
+    return results.reverse().slice(0, 30);
   } catch (err) {
     return [];
+  }
+}
+
+function audit6sPhoto(req) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const logSheet = ss.getSheetByName("PMG_6S_Log");
+    if (!logSheet) return { success: false, message: "PMG_6S_Log sheet not found" };
+
+    const targetTimestamp = String(req.timestamp || '').trim();
+    const targetFileId = String(req.fileId || '').trim();
+    const auditor = String(req.auditor || 'Manager').trim();
+    const status = String(req.status || 'Approved ✅').trim();
+    const auditRemark = String(req.remark || '').trim();
+    const nowStr = Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm:ss");
+
+    const data = logSheet.getDataRange().getValues();
+    let found = false;
+    for (let i = 1; i < data.length; i++) {
+      const rowTimestamp = String(data[i][0]).trim();
+      const rowFileId = String(data[i][7]).trim();
+      if ((targetTimestamp && rowTimestamp === targetTimestamp) || (targetFileId && rowFileId === targetFileId)) {
+        logSheet.getRange(i + 1, 10).setValue(status);
+        logSheet.getRange(i + 1, 11).setValue(`${auditor} (${nowStr}) ${auditRemark}`.trim());
+        found = true;
+        break;
+      }
+    }
+    return { success: true, message: found ? "6S photo audited successfully!" : "Recorded audit." };
+  } catch(e) {
+    return { success: false, message: e.toString() };
   }
 }
 

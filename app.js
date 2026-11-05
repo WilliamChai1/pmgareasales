@@ -367,6 +367,9 @@ async function loadDashboardData() {
     if (typeof initNativePushAlerts === 'function') {
       initNativePushAlerts();
     }
+    if (typeof syncPending6sPhotosToCloud === 'function') {
+      syncPending6sPhotosToCloud();
+    }
     renderDashboard();
     document.getElementById("lastUpdated").innerText = `🟢 Live Sync • ${new Date().toLocaleTimeString()}`;
   } catch (e) {
@@ -4575,6 +4578,57 @@ function preview6sSelectedPhoto(input) {
   reader.readAsDataURL(file);
 }
 
+let current6sReviewPhoto = null;
+
+async function syncPending6sPhotosToCloud() {
+  const branchKey = (selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH).toUpperCase();
+  let localPhotos = [];
+  try {
+    const raw = localStorage.getItem("pmg_recent_6s_photos_" + branchKey);
+    if (raw) localPhotos = JSON.parse(raw);
+  } catch (e) {}
+
+  if (!Array.isArray(localPhotos) || localPhotos.length === 0) return;
+
+  const pending = localPhotos.filter(p => p.pendingCloudSync || (!p.fileUrl && p.thumbUrl && p.thumbUrl.startsWith("data:image/")));
+  if (pending.length === 0) return;
+
+  console.log(`Found ${pending.length} pending 6S photos to sync to cloud...`);
+  for (const item of pending) {
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: 'upload6sPhoto',
+          branch: selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH,
+          teammate: item.teammate || (currentUser && currentUser.name) || 'Staff',
+          category: item.category || 'Gondola Cleaning',
+          notes: item.notes || '',
+          photoBase64: item.thumbUrl,
+          mimeType: 'image/jpeg'
+        })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        item.fileUrl = data.fileUrl || "";
+        item.fileId = data.fileId || "";
+        item.pendingCloudSync = false;
+        item.timestamp = data.timestamp || item.timestamp;
+        item.status = data.status || "Pending Review";
+      }
+    } catch (err) {
+      console.warn("Background 6S sync notice:", err);
+    }
+  }
+
+  try {
+    localStorage.setItem("pmg_recent_6s_photos_" + branchKey, JSON.stringify(localPhotos.slice(0, 15)));
+  } catch(e) {}
+
+  render6sSection();
+}
+
 async function submit6sPhotoToDrive() {
   const btn = document.getElementById("btnSubmit6sPhoto");
   if (!selected6sCompressedBase64) {
@@ -4614,13 +4668,17 @@ async function submit6sPhotoToDrive() {
       result = await res.json();
     } catch(e) {}
 
+    const isCloudSuccess = result && result.success;
     const newEntry = {
       timestamp: (result && result.timestamp) || new Date().toLocaleString(),
       teammate: teammate,
       category: category,
       fileUrl: (result && result.fileUrl) || "",
+      fileId: (result && result.fileId) || "",
       thumbUrl: (result && result.thumbUrl) || selected6sCompressedBase64,
-      notes: notes
+      notes: notes,
+      status: (result && result.status) || "Pending Review",
+      pendingCloudSync: !isCloudSuccess
     };
 
     if (!currentData) currentData = {};
@@ -4628,42 +4686,198 @@ async function submit6sPhotoToDrive() {
     currentData.sixSPhotos.unshift(newEntry);
 
     try {
-      localStorage.setItem("pmg_recent_6s_photos_" + branchKey, JSON.stringify(currentData.sixSPhotos.slice(0, 10)));
+      localStorage.setItem("pmg_recent_6s_photos_" + branchKey, JSON.stringify(currentData.sixSPhotos.slice(0, 15)));
     } catch(e) {}
 
     render6sSection();
     close6sUploadModal();
 
-    if (result && result.success) {
-      alert(`🎉 Photo uploaded to Google Drive successfully!\n• Category: ${category}\n• Submitter: ${teammate}\n• Saved in Google Drive: PMG_6S_Gondola_Photos/${branch}`);
+    if (isCloudSuccess) {
+      const driveMsg = result.fileUrl 
+        ? `• Saved in Google Drive: PMG_6S_Gondola_Photos/${branch}` 
+        : `• Saved to PMG_6S_Log in Google Sheet (Drive upload pending permissions)`;
+      alert(`🎉 6S Photo uploaded and recorded successfully!
+• Category: ${category}
+• Submitter: ${teammate}
+${driveMsg}
+• Status: Ready for Manager Review`);
     } else {
-      alert(`✅ 6S Photo recorded in app!\n• Category: ${category}\n• Submitter: ${teammate}\n(Note: To complete automatic Google Drive folder sync, publish the updated Code.gs in Apps Script).`);
+      alert(`✅ 6S Photo recorded on your device!
+• Category: ${category}
+• Submitter: ${teammate}
+(It will automatically sync to Google Drive when cloud endpoint confirms).`);
     }
   } catch (err) {
     console.warn("6S photo network notice:", err);
-    // Fallback: save locally
     const fallbackEntry = {
       timestamp: new Date().toLocaleString(),
       teammate: teammate,
       category: category,
       fileUrl: "",
+      fileId: "",
       thumbUrl: selected6sCompressedBase64,
-      notes: notes
+      notes: notes,
+      status: "Saved Locally",
+      pendingCloudSync: true
     };
     if (!currentData) currentData = {};
     if (!currentData.sixSPhotos) currentData.sixSPhotos = [];
     currentData.sixSPhotos.unshift(fallbackEntry);
     try {
-      localStorage.setItem("pmg_recent_6s_photos_" + branchKey, JSON.stringify(currentData.sixSPhotos.slice(0, 10)));
+      localStorage.setItem("pmg_recent_6s_photos_" + branchKey, JSON.stringify(currentData.sixSPhotos.slice(0, 15)));
     } catch(e) {}
     render6sSection();
     close6sUploadModal();
-    alert(`✅ 6S Photo saved locally!\n• Category: ${category}\n• Submitter: ${teammate}`);
+    alert(`✅ 6S Photo saved on your phone!
+• Category: ${category}
+(Will auto-sync to Google Drive once reconnected).`);
   } finally {
     if (btn) {
       btn.disabled = false;
       btn.innerText = "☁️ Upload to Google Drive";
     }
+  }
+}
+
+function open6sReviewModal(photoOrIdx) {
+  let photo = null;
+  if (typeof photoOrIdx === 'number') {
+    const branchKey = (selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH).toUpperCase();
+    const photos = (currentData && currentData.sixSPhotos) || [];
+    photo = photos[photoOrIdx];
+  } else {
+    photo = photoOrIdx;
+  }
+  if (!photo) return;
+  current6sReviewPhoto = photo;
+
+  const modal = document.getElementById("sixSReviewModal");
+  if (!modal) return;
+
+  const title = document.getElementById("sixSReviewTitle");
+  if (title) title.innerText = `6S Inspection: ${photo.category || 'Gondola'}`;
+
+  const img = document.getElementById("sixSReviewImg");
+  if (img) img.src = photo.thumbUrl || photo.fileUrl || "./favicon.ico";
+
+  const cat = document.getElementById("sixSReviewCategory");
+  if (cat) cat.innerText = photo.category || "-";
+
+  const name = document.getElementById("sixSReviewTeammate");
+  if (name) name.innerText = photo.teammate || "-";
+
+  const time = document.getElementById("sixSReviewTimestamp");
+  if (time) time.innerText = photo.timestamp || "-";
+
+  const notesRow = document.getElementById("sixSReviewNotesRow");
+  const notes = document.getElementById("sixSReviewNotes");
+  if (photo.notes) {
+    if (notesRow) notesRow.style.display = "block";
+    if (notes) notes.innerText = photo.notes;
+  } else if (notesRow) {
+    notesRow.style.display = "none";
+  }
+
+  const badge = document.getElementById("sixSReviewStatusBadge");
+  const isApproved = (photo.status || '').includes("Approved");
+  if (badge) {
+    badge.innerText = photo.status || (photo.fileUrl ? "Uploaded to Drive" : "Recorded in App");
+    badge.style.background = isApproved ? "#dcfce7" : "#fef3c7";
+    badge.style.color = isApproved ? "#15803d" : "#92400e";
+  }
+
+  const auditedRow = document.getElementById("sixSReviewAuditedRow");
+  const auditedBy = document.getElementById("sixSReviewAuditedBy");
+  if (photo.auditedBy) {
+    if (auditedRow) auditedRow.style.display = "block";
+    if (auditedBy) auditedBy.innerText = photo.auditedBy;
+  } else if (auditedRow) {
+    auditedRow.style.display = "none";
+  }
+
+  const driveBox = document.getElementById("sixSReviewDriveLinkBox");
+  const driveLink = document.getElementById("sixSReviewDriveLink");
+  if (photo.fileUrl) {
+    if (driveBox) driveBox.style.display = "block";
+    if (driveLink) {
+      driveLink.href = photo.fileUrl;
+      driveLink.innerText = "Open Original in Google Drive ↗";
+    }
+  } else if (driveBox) {
+    driveBox.style.display = "none";
+  }
+
+  const isMgr = isManagementOrPharmacist(currentUser);
+  const mgrActions = document.getElementById("sixSReviewManagerActions");
+  if (mgrActions) {
+    mgrActions.style.display = isMgr ? "flex" : "none";
+  }
+
+  modal.style.display = "flex";
+  history.pushState({ modal: 'sixSReviewModal' }, '');
+}
+
+function close6sReviewModal(shouldPop = true) {
+  const modal = document.getElementById("sixSReviewModal");
+  if (modal) modal.style.display = "none";
+  current6sReviewPhoto = null;
+  if (shouldPop && history.state && history.state.modal === 'sixSReviewModal') {
+    history.back();
+  }
+}
+
+async function confirmAudit6sPhoto(statusToSet = 'Approved ✅') {
+  if (!current6sReviewPhoto) return;
+  const btn = document.getElementById("btnAuditApprove6s");
+  const remarkInput = document.getElementById("sixSAuditRemarkInput");
+  const remark = (remarkInput && remarkInput.value.trim()) || "Inspected & Approved";
+  const auditorName = (currentUser && currentUser.name) || "Manager";
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "⏳ Confirming Audit...";
+  }
+
+  try {
+    current6sReviewPhoto.status = statusToSet;
+    current6sReviewPhoto.auditedBy = `${auditorName} (${new Date().toLocaleTimeString()}) ${remark}`.trim();
+
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'audit6sPhoto',
+        timestamp: current6sReviewPhoto.timestamp,
+        fileId: current6sReviewPhoto.fileId,
+        auditor: auditorName,
+        status: statusToSet,
+        remark: remark
+      })
+    }).catch(e => console.warn("Audit log notice:", e));
+
+    const branchKey = (selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH).toUpperCase();
+    try {
+      localStorage.setItem("pmg_recent_6s_photos_" + branchKey, JSON.stringify(((currentData && currentData.sixSPhotos) || []).slice(0, 15)));
+    } catch(e) {}
+
+    render6sSection();
+    alert(`✅ 6S Submission marked as ${statusToSet}!
+Audited by: ${auditorName}`);
+    close6sReviewModal();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = "✅ Confirm & Approve 6S";
+    }
+  }
+}
+
+function open6sGalleryListModal() {
+  const photos = (currentData && currentData.sixSPhotos) || [];
+  if (photos.length > 0) {
+    open6sReviewModal(photos[0]);
+  } else {
+    alert("No 6S photos uploaded yet for this branch today. Use 'Snap / Upload Photo' to add the first 6S photo!");
   }
 }
 
@@ -4673,38 +4887,51 @@ function render6sSection() {
 
   const branchKey = (selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH).toUpperCase();
   let photos = (currentData && currentData.sixSPhotos) || [];
-  if (photos.length === 0) {
-    try {
-      const local = localStorage.getItem("pmg_recent_6s_photos_" + branchKey);
-      if (local) photos = JSON.parse(local);
-    } catch (e) {}
-  }
   
+  // Merge with local photos
+  try {
+    const local = localStorage.getItem("pmg_recent_6s_photos_" + branchKey);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        parsed.forEach(lp => {
+          if (!photos.some(p => (p.timestamp && p.timestamp === lp.timestamp) || (p.fileId && lp.fileId && p.fileId === lp.fileId))) {
+            photos.push(lp);
+          }
+        });
+      }
+    }
+  } catch (e) {}
+
+  if (currentData) currentData.sixSPhotos = photos;
+
   // 1. Update status cards (Cleaning, Refill, Price Tag)
   const cleaning = photos.find(p => p.category && p.category.includes("Cleaning"));
   const refill = photos.find(p => p.category && p.category.includes("Refill"));
   const priceTag = photos.find(p => p.category && p.category.includes("Price Tag"));
 
-  function updateStatus(cardId, badgeId, subInfoId, submission) {
+  function updateStatus(cardId, badgeId, subInfoId, submission, defaultCat) {
     const badge = document.getElementById(badgeId);
     const subInfo = document.getElementById(subInfoId);
     const card = document.getElementById(cardId);
     if (!badge) return;
 
     if (submission) {
-      badge.innerText = "✅ Done";
-      badge.style.background = "#dcfce7";
-      badge.style.color = "#15803d";
+      const isApproved = (submission.status || '').includes("Approved");
+      badge.innerText = isApproved ? "Approved ✅" : "✅ Done";
+      badge.style.background = isApproved ? "#dcfce7" : "#e0f2fe";
+      badge.style.color = isApproved ? "#15803d" : "#0369a1";
       if (card) {
         card.style.background = "#f0fdf4";
         card.style.borderColor = "#86efac";
+        card.onclick = () => open6sReviewModal(submission);
       }
       if (subInfo) {
         subInfo.style.display = "block";
         const driveLinkHtml = submission.fileUrl 
-          ? `• <a href="${submission.fileUrl}" target="_blank" style="color:#0284c7; text-decoration: underline;">View in Drive ↗</a>`
-          : '• Photo Saved';
-        subInfo.innerHTML = `By <strong>${submission.teammate}</strong> ${driveLinkHtml}`;
+          ? `• <a href="${submission.fileUrl}" target="_blank" onclick="event.stopPropagation();" style="color:#0284c7; text-decoration: underline;">Drive ↗</a>`
+          : '• <span style="color:#059669;">Logged</span>';
+        subInfo.innerHTML = `By <strong>${submission.teammate}</strong> ${driveLinkHtml} <span style="font-size:0.65rem; color:#64748b;">(Tap to Review)</span>`;
       }
     } else {
       badge.innerText = "Pending";
@@ -4713,32 +4940,35 @@ function render6sSection() {
       if (card) {
         card.style.background = "#f8fafc";
         card.style.borderColor = "#cbd5e1";
+        card.onclick = () => open6sUploadModal(defaultCat);
       }
       if (subInfo) subInfo.style.display = "none";
     }
   }
 
-  updateStatus("sixSStatusCleaning", "badge6sCleaning", "sub6sCleaningInfo", cleaning);
-  updateStatus("sixSStatusRefill", "badge6sRefill", "sub6sRefillInfo", refill);
-  updateStatus("sixSStatusPriceTag", "badge6sPriceTag", "sub6sPriceTagInfo", priceTag);
+  updateStatus("sixSStatusCleaning", "badge6sCleaning", "sub6sCleaningInfo", cleaning, "Gondola Cleaning");
+  updateStatus("sixSStatusRefill", "badge6sRefill", "sub6sRefillInfo", refill, "Gondola Refill");
+  updateStatus("sixSStatusPriceTag", "badge6sPriceTag", "sub6sPriceTagInfo", priceTag, "Price Tag Update");
 
-  // 2. Render Gallery
+  // 2. Render Gallery Stream
   const galleryBox = document.getElementById("sixSPhotosGalleryContainer");
   const galleryGrid = document.getElementById("sixSPhotosGalleryGrid");
   if (photos.length > 0 && galleryBox && galleryGrid) {
     galleryBox.style.display = "block";
-    galleryGrid.innerHTML = photos.map(p => {
-      const href = p.fileUrl || '#';
-      const targetAttr = p.fileUrl ? 'target="_blank"' : '';
-      const badgeText = p.fileUrl ? '↗ Drive' : '📷 App';
+    galleryGrid.innerHTML = photos.map((p, idx) => {
+      const isApproved = (p.status || '').includes("Approved");
+      const badgeText = isApproved ? 'Approved ✅' : (p.fileUrl ? '↗ Drive' : '📷 App');
+      const badgeBg = isApproved ? 'rgba(21,128,61,0.85)' : 'rgba(0,0,0,0.65)';
+      const imgSrc = p.thumbUrl || p.fileUrl || './favicon.ico';
       return `
-        <div style="min-width: 130px; max-width: 140px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-          <a href="${href}" ${targetAttr} style="display: block; position: relative;">
-            <img src="${p.thumbUrl || p.fileUrl || './favicon.ico'}" alt="${p.category}" style="width: 100%; height: 90px; object-fit: cover; border-radius: 6px;" onerror="this.src='./favicon.ico'">
-            <span style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.65); color: white; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px;">${badgeText}</span>
-          </a>
+        <div style="min-width: 130px; max-width: 140px; background: white; border: 1.5px solid ${isApproved ? '#86efac' : '#e2e8f0'}; border-radius: 8px; padding: 6px; text-align: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="open6sReviewModal(${idx})">
+          <div style="position: relative;">
+            <img src="${imgSrc}" alt="${p.category}" style="width: 100%; height: 90px; object-fit: cover; border-radius: 6px;" onerror="this.src='./favicon.ico'">
+            <span style="position: absolute; bottom: 4px; right: 4px; background: ${badgeBg}; color: white; font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; font-weight: 700;">${badgeText}</span>
+          </div>
           <div style="font-size: 0.68rem; font-weight: 800; color: #1e3a8a; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.category}</div>
-          <div style="font-size: 0.62rem; color: #64748b;">${p.teammate}</div>
+          <div style="font-size: 0.62rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.teammate}</div>
+          <div style="font-size: 0.6rem; color: #0284c7; margin-top: 2px; font-weight: 700;">🔍 Review Photo</div>
         </div>
       `;
     }).join('');

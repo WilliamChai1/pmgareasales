@@ -1523,9 +1523,23 @@
     const lang = state.quizLang || 'en';
     if (lang === 'en') return raw;
 
-    const topicKey = (state.currentWeek && state.currentWeek.topic) || "active";
+    const topicTitle = ((state.currentWeek && state.currentWeek.topic) || "").toLowerCase();
 
-    // 1. Check pre-translated in state.currentWeek (e.g. Week 1 Osteoarthritis)
+    // 1. Check window.DPOS_LOCALIZED_QUIZZES by topic keyword (Zero delay & zero option shuffling)
+    if (typeof window !== 'undefined' && window.DPOS_LOCALIZED_QUIZZES) {
+      let key = null;
+      if (topicTitle.includes('insomnia') || topicTitle.includes('sleep') || topicTitle.includes('失眠')) key = 'insomnia';
+      else if (topicTitle.includes('diarrhea') || topicTitle.includes('dehydration') || topicTitle.includes('腹泻')) key = 'diarrhea';
+      else if (topicTitle.includes('calcaneal') || topicTitle.includes('heel') || topicTitle.includes('xerosis') || topicTitle.includes('脚跟')) key = 'calcaneal';
+      else if (topicTitle.includes('gastric') || topicTitle.includes('dyspepsia') || topicTitle.includes('胃痛')) key = 'gastric';
+      else if (topicTitle.includes('joint') || topicTitle.includes('osteoarthritis') || topicTitle.includes('关节')) key = 'joint';
+
+      if (key && window.DPOS_LOCALIZED_QUIZZES[key] && Array.isArray(window.DPOS_LOCALIZED_QUIZZES[key][lang])) {
+        return window.DPOS_LOCALIZED_QUIZZES[key][lang];
+      }
+    }
+
+    // 2. Check pre-translated in state.currentWeek (e.g. Week 1 Osteoarthritis)
     if (lang === 'zh' && state.currentWeek && Array.isArray(state.currentWeek.quizZh) && state.currentWeek.quizZh.length === raw.length) {
       return state.currentWeek.quizZh;
     }
@@ -1533,7 +1547,8 @@
       return state.currentWeek.quizMs;
     }
 
-    // 2. Check cached dynamic AI translation
+    // 3. Check cached dynamic AI translation
+    const topicKey = (state.currentWeek && state.currentWeek.topic) || "active";
     if (state.quizTranslations[topicKey] && state.quizTranslations[topicKey][lang]) {
       return state.quizTranslations[topicKey][lang];
     }
@@ -1605,7 +1620,14 @@ ${JSON.stringify(rawQuestions, null, 2)}`;
     }
 
     const topicKey = (state.currentWeek && state.currentWeek.topic) || "active";
-    const hasPre = (lang === 'zh' && state.currentWeek && state.currentWeek.quizZh) || (lang === 'ms' && state.currentWeek && state.currentWeek.quizMs);
+    const topicTitle = ((state.currentWeek && state.currentWeek.topic) || "").toLowerCase();
+    let hasStatic = false;
+    if (typeof window !== 'undefined' && window.DPOS_LOCALIZED_QUIZZES) {
+      if (topicTitle.includes('insomnia') || topicTitle.includes('sleep') || topicTitle.includes('diarrhea') || topicTitle.includes('calcaneal') || topicTitle.includes('heel') || topicTitle.includes('gastric') || topicTitle.includes('joint')) {
+        hasStatic = true;
+      }
+    }
+    const hasPre = hasStatic || (lang === 'zh' && state.currentWeek && state.currentWeek.quizZh) || (lang === 'ms' && state.currentWeek && state.currentWeek.quizMs);
     const hasCached = state.quizTranslations[topicKey] && state.quizTranslations[topicKey][lang];
 
     if (!hasPre && !hasCached) {
@@ -3960,8 +3982,9 @@ Output strictly in JSON:
     if (state.quizAnswered) return;
     state.quizSelectedOption = idx;
     state.quizAnswered = true;
-    const cur = state.quizQuestions[state.quizIndex];
-    const isCorrect = idx === cur.answer;
+    const qList = getActiveQuizList();
+    const cur = (qList && qList[state.quizIndex]) || state.quizQuestions[state.quizIndex];
+    const isCorrect = (cur && idx === cur.answer);
     state.quizUserAnswers.push({
       questionIdx: state.quizIndex,
       selectedOption: idx,
