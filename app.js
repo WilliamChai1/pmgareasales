@@ -271,26 +271,45 @@ window.addEventListener('DOMContentLoaded', initSession);
 function switchMainTab(tab) {
   const dashView = document.getElementById("dashboardView");
   const academyView = document.getElementById("academyView");
+  const leadersView = document.getElementById("leadersView");
   const btnDash = document.getElementById("btnNavDashboard");
   const btnAcad = document.getElementById("btnNavAcademy");
+  const btnLead = document.getElementById("btnNavLeaders");
 
   if (tab === 'academy') {
     if (dashView) dashView.style.display = "none";
     if (academyView) academyView.style.display = "block";
+    if (leadersView) leadersView.style.display = "none";
     if (btnDash) btnDash.classList.remove("active");
     if (btnAcad) btnAcad.classList.add("active");
+    if (btnLead) btnLead.classList.remove("active");
     if (window.DPOS && typeof window.DPOS.init === 'function') {
       window.DPOS.init();
+    }
+  } else if (tab === 'leaders') {
+    if (dashView) dashView.style.display = "none";
+    if (academyView) academyView.style.display = "none";
+    if (leadersView) leadersView.style.display = "block";
+    if (btnDash) btnDash.classList.remove("active");
+    if (btnAcad) btnAcad.classList.remove("active");
+    if (btnLead) btnLead.classList.add("active");
+    if (typeof renderLeadersView === 'function') {
+      renderLeadersView();
     }
   } else {
     if (dashView) dashView.style.display = "block";
     if (academyView) academyView.style.display = "none";
+    if (leadersView) leadersView.style.display = "none";
     if (btnDash) btnDash.classList.add("active");
     if (btnAcad) btnAcad.classList.remove("active");
+    if (btnLead) btnLead.classList.remove("active");
     if (window.DPOS && typeof window.DPOS.dposReset === 'function') {
       window.DPOS.dposReset();
     }
-  }
+    if (typeof render6sSection === 'function') {
+      render6sSection();
+    }
+    }
 }
 
 async function loadDashboardData() {
@@ -847,6 +866,11 @@ function renderDashboard() {
       </tr>
     `;
   });
+
+  // Render 6S Gondola Daily Photo Verification Section
+  if (typeof render6sSection === 'function') {
+    render6sSection();
+  }
 
   // Render 5-Point Daily Briefing directly on App Dashboard
   if (typeof renderDashboardDailyBriefing === 'function') {
@@ -1998,7 +2022,7 @@ function openDailyBriefingModal(targetDateStr, activeStaffSales) {
 
   const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(sec1Data.mtdHb).toLocaleString()} / RM ${Math.round(sec1Data.targetHb).toLocaleString()} (${sec1Data.mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!\n`;
 
-  const sec4Default = `• Make sure follow FEFO\n• Clean gondola from front to back and snap photo to google chat.\n• Refill stock and snap photo to google chat.\n• Update price gondola and snap photo into google chat.`;
+  const sec4Default = `• Make sure follow FEFO\n• Clean gondola from front to back and snap photo in 6S section.\n• Refill stock and snap photo in 6S section.\n• Update price gondola and snap photo in 6S section.\n\n(⭐ Detailed Future Leaders jobscopes are managed in the dedicated 'Future Leaders' tab)`;
 
   // Preserve PIC custom notes if existing briefing exists, while synchronizing incentive tracking line
   let existingBriefing = window.activeDailyBriefing || (currentData && currentData.dailyBriefing);
@@ -2916,7 +2940,7 @@ function buildDefaultBriefingObject(branch) {
 
   const sec2Default = `• [Sales Focus]: Daily store target TS RM ${dailyTargetTs.toLocaleString()}, HB target RM ${dailyTargetHb.toLocaleString()} (pushing for 40%+ HB ratio). Yesterday achieved ${sec1Data.hbPct}%—let's build on this momentum today!`;
   const sec3Default = `• [HQ Incentive Tracking]: Outlet MTD HB is RM ${Math.round(sec1Data.mtdHb).toLocaleString()} / RM ${Math.round(sec1Data.targetHb).toLocaleString()} (${sec1Data.mtdHbPct}%), steadily pacing toward the FY2027 Tier 3 incentive (RM 500/pax reward)!`;
-  const sec4Default = `• Make sure follow FEFO\n• Clean gondola from front to back and snap photo to google chat.\n• Refill stock and snap photo to google chat.\n• Update price gondola and snap photo into google chat.`;
+  const sec4Default = `• Make sure follow FEFO\n• Clean gondola from front to back and snap photo in 6S section.\n• Refill stock and snap photo in 6S section.\n• Update price gondola and snap photo in 6S section.\n\n(⭐ Detailed Future Leaders jobscopes are managed in the dedicated 'Future Leaders' tab)`;
 
   const sortedStaff = [...staff].sort((a, b) => Number(b.dailyHb || 0) - Number(a.dailyHb || 0));
   let rankingLines = [];
@@ -4109,3 +4133,508 @@ async function openLockscreenAlertSubscribe() {
   }
 }
 window.openLockscreenAlertSubscribe = openLockscreenAlertSubscribe;
+
+
+// ─── FUTURE LEADERS PORTFOLIO & JOBSCOPE ENGINE ─────────────────────────────
+const DEFAULT_LEADERS_JOBSCOPE = [
+  {
+    role: "Admin",
+    quota: 1,
+    assigned: "Christina",
+    icon: "📋",
+    color: "#2563eb",
+    bg: "#eff6ff",
+    border: "#bfdbfe",
+    tasks: [
+      "Monitor Poison C and pseudoephedrine balance register daily.",
+      "Monitor cold-chain and room temperature recording (2-8°C / <25°C).",
+      "Monitor Prescription Book recording and dispensing stamps.",
+      "Pack up dispensing & audit documents to send back monthly.",
+      "Manage branch document archive and systematic storage.",
+      "SCHB scanning and upload to HQ compliance folder."
+    ]
+  },
+  {
+    role: "Stock Expiry & Aging",
+    quota: 1,
+    assigned: "Fiona",
+    icon: "⏳",
+    color: "#d97706",
+    bg: "#fffbeb",
+    border: "#fde68a",
+    tasks: [
+      "Extract invoices and input into PMG Hub Management before 15th of the month to HQ (action plan required).",
+      "Extract monthly aging stock list and provide clearance action plan.",
+      "Track Credit Notes (CN) from suppliers for returned goods."
+    ]
+  },
+  {
+    role: "Invoices and CN",
+    quota: 1,
+    assigned: "Muhammad Nur Farizin",
+    icon: "📑",
+    color: "#0891b2",
+    bg: "#ecfeff",
+    border: "#a5f3fc",
+    tasks: [
+      "Cross-examine supplier invoices against purchase orders and physical stock received.",
+      "Track pending CNs with supplier sales reps and match against returns.",
+      "Organize monthly invoice binders systematically for audit readiness."
+    ]
+  },
+  {
+    role: "Gondola Merchandising & 6S",
+    quota: 1,
+    assigned: "Chai Yee Sian",
+    icon: "🧹",
+    color: "#16a34a",
+    bg: "#f0fdf4",
+    border: "#bbf7d0",
+    tasks: [
+      "Enforce FEFO (First-Expired, First-Out) shelf rotation across all gondolas.",
+      "Supervise daily front-to-back gondola cleaning and photo upload to Google Drive.",
+      "Supervise stock refilling and front-facing before peak shifts.",
+      "Audit shelf price tags daily and print replacements for missing/damaged tags."
+    ]
+  },
+  {
+    role: "Chronic Care & DPOS Champion",
+    quota: 1,
+    assigned: "Jong Pei Choo",
+    icon: "🩺",
+    color: "#9333ea",
+    bg: "#faf5ff",
+    border: "#e9d5ff",
+    tasks: [
+      "Drive daily DPOS customer triage and House Brand acute pairing practice.",
+      "Educate and enroll eligible seniors into Senior Care Plus (55+).",
+      "Promote and manage the 28th monthly free blood glucose test event.",
+      "Mentor junior assistants on OTC-to-House Brand clinical pairing dialogues."
+    ]
+  }
+];
+
+function getActiveLeadersJobscope() {
+  const branchKey = (selectedBranch || DEFAULT_BRANCH).toUpperCase();
+  if (currentData && currentData.leadersJobscope && Array.isArray(currentData.leadersJobscope) && currentData.leadersJobscope.length > 0) {
+    return currentData.leadersJobscope;
+  }
+  try {
+    const local = localStorage.getItem("pmg_leaders_jobscope_" + branchKey);
+    if (local) return JSON.parse(local);
+  } catch (e) {}
+  return DEFAULT_LEADERS_JOBSCOPE;
+}
+
+function renderLeadersView() {
+  const container = document.getElementById("leadersCardsContainer");
+  const branchLabel = document.getElementById("leadersBranchLabel");
+  const editBtn = document.getElementById("btnEditLeadersJobscope");
+  if (!container) return;
+
+  const bName = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
+  if (branchLabel) branchLabel.innerText = bName.toUpperCase();
+  if (editBtn) {
+    editBtn.style.display = isManagementOrPharmacist(currentUser) ? "inline-block" : "none";
+  }
+
+  const tasks = getActiveLeadersJobscope();
+  container.innerHTML = tasks.map((item, idx) => {
+    const taskListHtml = (item.tasks || []).map((t, tIdx) => `
+      <li style="margin-bottom: 6px; line-height: 1.45; color: #334155;">
+        ${t}
+      </li>
+    `).join('');
+
+    const color = item.color || "#0f766e";
+    const bg = item.bg || "#f0fdfa";
+    const border = item.border || "#99f6e4";
+    const icon = item.icon || "⭐";
+
+    return `
+      <div class="card" style="background: ${bg}; border: 1.5px solid ${border}; border-radius: 12px; padding: 14px; margin: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.04);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+          <div>
+            <div style="font-size: 0.95rem; font-weight: 800; color: ${color}; display: flex; align-items: center; gap: 6px;">
+              <span>${icon}</span>
+              <span>[${item.role}] x ${item.quota || 1}</span>
+            </div>
+            <div style="font-size: 0.76rem; font-weight: 700; color: #475569; margin-top: 3px;">
+              👤 Assigned Teammate: <span style="color: ${color}; font-weight: 800;">${item.assigned || 'Pending Assignment'}</span>
+            </div>
+          </div>
+          <span style="background: white; border: 1px solid ${border}; color: ${color}; font-weight: 800; font-size: 0.68rem; padding: 2px 8px; border-radius: 12px;">
+            Role #${idx + 1}
+          </span>
+        </div>
+        <div style="border-top: 1px dashed ${border}; padding-top: 8px; margin-top: 4px;">
+          <div style="font-size: 0.72rem; font-weight: 800; color: #475569; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+            Key Responsibilities & Deliverables:
+          </div>
+          <ol style="margin: 0; padding-left: 20px; font-size: 0.78rem;">
+            ${taskListHtml}
+          </ol>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openLeadersEditModal() {
+  if (!isManagementOrPharmacist(currentUser)) {
+    alert("Access restricted: Only Management and Pharmacists can edit leadership job scopes.");
+    return;
+  }
+  const modal = document.getElementById("leadersEditModal");
+  const form = document.getElementById("leadersEditFormContainer");
+  if (!modal || !form) return;
+
+  const tasks = getActiveLeadersJobscope();
+  form.innerHTML = tasks.map((item, idx) => `
+    <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px;">
+      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
+        <span style="font-size: 1.2rem;">${item.icon || '⭐'}</span>
+        <input type="text" class="input-field" id="editLeaderRole_${idx}" value="${item.role}" placeholder="Role Title" style="flex: 1.5; margin: 0; font-weight: 800; font-size: 0.82rem;">
+        <input type="text" class="input-field" id="editLeaderAssigned_${idx}" value="${item.assigned || ''}" placeholder="Assigned Teammate Name" style="flex: 1.2; margin: 0; font-weight: 700; font-size: 0.82rem; border-color: #0f766e;">
+      </div>
+      <div>
+        <label style="font-size: 0.7rem; font-weight: 700; color: #475569;">Tasks (one per line):</label>
+        <textarea class="input-field" id="editLeaderTasks_${idx}" rows="4" style="margin: 2px 0 0 0; font-size: 0.78rem; line-height: 1.4;">${(item.tasks || []).join('\n')}</textarea>
+      </div>
+    </div>
+  `).join('');
+
+  modal.style.display = "flex";
+  history.pushState({ modal: 'leadersEditModal' }, '');
+}
+
+function closeLeadersEditModal(shouldPop = true) {
+  const modal = document.getElementById("leadersEditModal");
+  if (modal) modal.style.display = "none";
+  if (shouldPop && history.state && history.state.modal === 'leadersEditModal') {
+    history.back();
+  }
+}
+
+async function saveLeadersJobscopeFromModal() {
+  const currentList = getActiveLeadersJobscope();
+  const updatedList = currentList.map((item, idx) => {
+    const roleInput = document.getElementById(`editLeaderRole_${idx}`);
+    const assignedInput = document.getElementById(`editLeaderAssigned_${idx}`);
+    const tasksInput = document.getElementById(`editLeaderTasks_${idx}`);
+
+    const role = roleInput ? roleInput.value.trim() : item.role;
+    const assigned = assignedInput ? assignedInput.value.trim() : item.assigned;
+    const tasksRaw = tasksInput ? tasksInput.value : '';
+    const tasks = tasksRaw.split('\n').map(l => l.replace(/^[•\-\*\d\.]+\s*/, '').trim()).filter(Boolean);
+
+    return {
+      ...item,
+      role: role || item.role,
+      assigned: assigned || item.assigned,
+      tasks: tasks.length > 0 ? tasks : item.tasks
+    };
+  });
+
+  const branchKey = (selectedBranch || DEFAULT_BRANCH).toUpperCase();
+
+  // 1. Optimistic Local Save (<10ms)
+  if (!currentData) currentData = {};
+  currentData.leadersJobscope = updatedList;
+  try {
+    localStorage.setItem("pmg_leaders_jobscope_" + branchKey, JSON.stringify(updatedList));
+  } catch (e) {}
+
+  renderLeadersView();
+  closeLeadersEditModal();
+
+  // 2. Background Save to Google Sheets
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'saveLeadersJobscope',
+        branch: selectedBranch || DEFAULT_BRANCH,
+        tasks: updatedList,
+        updatedBy: (currentUser && currentUser.name) || 'PIC'
+      })
+    });
+    const data = await res.json();
+    console.log("Leaders jobscope cloud save:", data);
+    alert("✅ Future Leaders jobscope saved and published successfully!");
+  } catch (err) {
+    console.warn("Background leaders save notice:", err);
+    alert("✅ Jobscope saved locally! (Cloud sync will complete in background)");
+  }
+}
+
+// ─── 6S GONDOLA OPERATIONS & GOOGLE DRIVE PHOTO SYSTEM ───────────────────────
+let selected6sCompressedBase64 = null;
+let selected6sMimeType = 'image/jpeg';
+
+function open6sUploadModal(defaultCategory) {
+  const modal = document.getElementById("sixSUploadModal");
+  if (!modal) return;
+
+  const catSel = document.getElementById("sixSUploadCategory");
+  if (catSel && defaultCategory) {
+    for (let i = 0; i < catSel.options.length; i++) {
+      if (catSel.options[i].value === defaultCategory || catSel.options[i].text.includes(defaultCategory)) {
+        catSel.selectedIndex = i;
+        break;
+      }
+    }
+  }
+
+  const nameInput = document.getElementById("sixSUploadTeammate");
+  if (nameInput) {
+    nameInput.value = (currentUser && currentUser.name) || "";
+  }
+
+  const notesInput = document.getElementById("sixSUploadNotes");
+  if (notesInput) notesInput.value = "";
+
+  const fileInput = document.getElementById("sixSFileInput");
+  if (fileInput) fileInput.value = "";
+
+  const previewBox = document.getElementById("sixSImagePreviewBox");
+  if (previewBox) previewBox.style.display = "none";
+  selected6sCompressedBase64 = null;
+
+  modal.style.display = "flex";
+  history.pushState({ modal: 'sixSUploadModal' }, '');
+}
+
+function close6sUploadModal(shouldPop = true) {
+  const modal = document.getElementById("sixSUploadModal");
+  if (modal) modal.style.display = "none";
+  if (shouldPop && history.state && history.state.modal === 'sixSUploadModal') {
+    history.back();
+  }
+}
+
+function preview6sSelectedPhoto(input) {
+  if (!input || !input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const previewBox = document.getElementById("sixSImagePreviewBox");
+  const previewImg = document.getElementById("sixSPreviewImg");
+  const notice = document.getElementById("sixSImageSizeNotice");
+
+  const originalMb = (file.size / (1024 * 1024)).toFixed(2);
+  if (notice) notice.innerText = `Original: ${originalMb} MB • Compressing for fast Drive upload...`;
+  if (previewBox) previewBox.style.display = "block";
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      // Downscale to max 1280px maintaining aspect ratio
+      const maxDim = 1280;
+      let width = img.width;
+      let height = img.height;
+      if (width > height) {
+        if (width > maxDim) {
+          height = Math.round(height * (maxDim / width));
+          width = maxDim;
+        }
+      } else {
+        if (height > maxDim) {
+          width = Math.round(width * (maxDim / height));
+          height = maxDim;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Compress to 0.75 JPEG
+      const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+      selected6sCompressedBase64 = compressedDataUrl;
+      selected6sMimeType = "image/jpeg";
+
+      if (previewImg) previewImg.src = compressedDataUrl;
+
+      const approxKb = Math.round((compressedDataUrl.length * 3 / 4) / 1024);
+      if (notice) notice.innerText = `Compressed: ~${approxKb} KB (Ready for fast Google Drive upload) ✅`;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submit6sPhotoToDrive() {
+  const btn = document.getElementById("btnSubmit6sPhoto");
+  if (!selected6sCompressedBase64) {
+    alert("Please snap or select a photo first.");
+    return;
+  }
+
+  const category = (document.getElementById("sixSUploadCategory") && document.getElementById("sixSUploadCategory").value) || "Gondola Cleaning";
+  const teammate = (document.getElementById("sixSUploadTeammate") && document.getElementById("sixSUploadTeammate").value.trim()) || ((currentUser && currentUser.name) || "Staff");
+  const notes = (document.getElementById("sixSUploadNotes") && document.getElementById("sixSUploadNotes").value.trim()) || "";
+  const branch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
+  const branchKey = branch.toUpperCase();
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "⏳ Uploading to Google Drive...";
+  }
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: 'upload6sPhoto',
+        branch: branch,
+        teammate: teammate,
+        category: category,
+        notes: notes,
+        photoBase64: selected6sCompressedBase64,
+        mimeType: selected6sMimeType
+      })
+    });
+
+    let result = null;
+    try {
+      result = await res.json();
+    } catch(e) {}
+
+    const newEntry = {
+      timestamp: (result && result.timestamp) || new Date().toLocaleString(),
+      teammate: teammate,
+      category: category,
+      fileUrl: (result && result.fileUrl) || "",
+      thumbUrl: (result && result.thumbUrl) || selected6sCompressedBase64,
+      notes: notes
+    };
+
+    if (!currentData) currentData = {};
+    if (!currentData.sixSPhotos) currentData.sixSPhotos = [];
+    currentData.sixSPhotos.unshift(newEntry);
+
+    try {
+      localStorage.setItem("pmg_recent_6s_photos_" + branchKey, JSON.stringify(currentData.sixSPhotos.slice(0, 10)));
+    } catch(e) {}
+
+    render6sSection();
+    close6sUploadModal();
+
+    if (result && result.success) {
+      alert(`🎉 Photo uploaded to Google Drive successfully!\n• Category: ${category}\n• Submitter: ${teammate}\n• Saved in Google Drive: PMG_6S_Gondola_Photos/${branch}`);
+    } else {
+      alert(`✅ 6S Photo recorded in app!\n• Category: ${category}\n• Submitter: ${teammate}\n(Note: To complete automatic Google Drive folder sync, publish the updated Code.gs in Apps Script).`);
+    }
+  } catch (err) {
+    console.warn("6S photo network notice:", err);
+    // Fallback: save locally
+    const fallbackEntry = {
+      timestamp: new Date().toLocaleString(),
+      teammate: teammate,
+      category: category,
+      fileUrl: "",
+      thumbUrl: selected6sCompressedBase64,
+      notes: notes
+    };
+    if (!currentData) currentData = {};
+    if (!currentData.sixSPhotos) currentData.sixSPhotos = [];
+    currentData.sixSPhotos.unshift(fallbackEntry);
+    try {
+      localStorage.setItem("pmg_recent_6s_photos_" + branchKey, JSON.stringify(currentData.sixSPhotos.slice(0, 10)));
+    } catch(e) {}
+    render6sSection();
+    close6sUploadModal();
+    alert(`✅ 6S Photo saved locally!\n• Category: ${category}\n• Submitter: ${teammate}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = "☁️ Upload to Google Drive";
+    }
+  }
+}
+
+function render6sSection() {
+  const container = document.getElementById("sixSGondolaSection");
+  if (!container) return;
+
+  const branchKey = (selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH).toUpperCase();
+  let photos = (currentData && currentData.sixSPhotos) || [];
+  if (photos.length === 0) {
+    try {
+      const local = localStorage.getItem("pmg_recent_6s_photos_" + branchKey);
+      if (local) photos = JSON.parse(local);
+    } catch (e) {}
+  }
+  
+  // 1. Update status cards (Cleaning, Refill, Price Tag)
+  const cleaning = photos.find(p => p.category && p.category.includes("Cleaning"));
+  const refill = photos.find(p => p.category && p.category.includes("Refill"));
+  const priceTag = photos.find(p => p.category && p.category.includes("Price Tag"));
+
+  function updateStatus(cardId, badgeId, subInfoId, submission) {
+    const badge = document.getElementById(badgeId);
+    const subInfo = document.getElementById(subInfoId);
+    const card = document.getElementById(cardId);
+    if (!badge) return;
+
+    if (submission) {
+      badge.innerText = "✅ Done";
+      badge.style.background = "#dcfce7";
+      badge.style.color = "#15803d";
+      if (card) {
+        card.style.background = "#f0fdf4";
+        card.style.borderColor = "#86efac";
+      }
+      if (subInfo) {
+        subInfo.style.display = "block";
+        const driveLinkHtml = submission.fileUrl 
+          ? `• <a href="${submission.fileUrl}" target="_blank" style="color:#0284c7; text-decoration: underline;">View in Drive ↗</a>`
+          : '• Photo Saved';
+        subInfo.innerHTML = `By <strong>${submission.teammate}</strong> ${driveLinkHtml}`;
+      }
+    } else {
+      badge.innerText = "Pending";
+      badge.style.background = "#fee2e2";
+      badge.style.color = "#991b1b";
+      if (card) {
+        card.style.background = "#f8fafc";
+        card.style.borderColor = "#cbd5e1";
+      }
+      if (subInfo) subInfo.style.display = "none";
+    }
+  }
+
+  updateStatus("sixSStatusCleaning", "badge6sCleaning", "sub6sCleaningInfo", cleaning);
+  updateStatus("sixSStatusRefill", "badge6sRefill", "sub6sRefillInfo", refill);
+  updateStatus("sixSStatusPriceTag", "badge6sPriceTag", "sub6sPriceTagInfo", priceTag);
+
+  // 2. Render Gallery
+  const galleryBox = document.getElementById("sixSPhotosGalleryContainer");
+  const galleryGrid = document.getElementById("sixSPhotosGalleryGrid");
+  if (photos.length > 0 && galleryBox && galleryGrid) {
+    galleryBox.style.display = "block";
+    galleryGrid.innerHTML = photos.map(p => {
+      const href = p.fileUrl || '#';
+      const targetAttr = p.fileUrl ? 'target="_blank"' : '';
+      const badgeText = p.fileUrl ? '↗ Drive' : '📷 App';
+      return `
+        <div style="min-width: 130px; max-width: 140px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <a href="${href}" ${targetAttr} style="display: block; position: relative;">
+            <img src="${p.thumbUrl || p.fileUrl || './favicon.ico'}" alt="${p.category}" style="width: 100%; height: 90px; object-fit: cover; border-radius: 6px;" onerror="this.src='./favicon.ico'">
+            <span style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.65); color: white; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px;">${badgeText}</span>
+          </a>
+          <div style="font-size: 0.68rem; font-weight: 800; color: #1e3a8a; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.category}</div>
+          <div style="font-size: 0.62rem; color: #64748b;">${p.teammate}</div>
+        </div>
+      `;
+    }).join('');
+  } else if (galleryBox) {
+    galleryBox.style.display = "none";
+  }
+}

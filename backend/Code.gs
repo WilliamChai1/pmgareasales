@@ -98,6 +98,26 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(sendDailyBriefingPushCron(request.branch)))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    if (request.action === "upload6sPhoto") {
+      return ContentService.createTextOutput(JSON.stringify(upload6sPhoto(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "get6sPhotos") {
+      return ContentService.createTextOutput(JSON.stringify(get6sPhotos(request.branch, request.date)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "saveLeadersJobscope") {
+      return ContentService.createTextOutput(JSON.stringify(saveLeadersJobscope(request)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (request.action === "getLeadersJobscope") {
+      return ContentService.createTextOutput(JSON.stringify(getLeadersJobscope(request.branch)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: true, message: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -674,7 +694,9 @@ function getDashboardData(requestedBranch, role, username) {
     geminiKey: scriptKey,
     oneSignalAppId: PropertiesService.getScriptProperties().getProperty("ONESIGNAL_APP_ID") || "",
     dailyBriefing: getDailyBriefing(reqBranchUpper),
-    latestSalesDate: latestDateKey
+    latestSalesDate: latestDateKey,
+    leadersJobscope: getLeadersJobscope(reqBranchUpper),
+    sixSPhotos: get6sPhotos(reqBranchUpper)
   };
 }
 
@@ -1702,5 +1724,263 @@ function dposSendReminderPush(req) {
     };
   } catch (err) {
     return { success: false, message: "Reminder failed: " + err.toString() };
+  }
+}
+
+
+// ─── 6S GONDOLA PHOTO OPERATIONS & GOOGLE DRIVE STORAGE ─────────────────────────
+function upload6sPhoto(req) {
+  try {
+    const branch = String(req.branch || 'Kota Sentosa').trim();
+    const teammate = String(req.teammate || req.username || 'Staff').trim();
+    const category = String(req.category || 'Gondola Cleaning').trim();
+    const notes = String(req.notes || '').trim();
+    const base64Data = req.photoBase64;
+    const mimeType = req.mimeType || 'image/jpeg';
+
+    if (!base64Data) {
+      return { success: false, message: 'No photo data received' };
+    }
+
+    const cleanBase64 = String(base64Data).replace(/^data:image\/[a-zA-Z0-9.+]+;base64,/, '');
+    const decodedBytes = Utilities.base64Decode(cleanBase64);
+
+    const now = new Date();
+    const dateStr = Utilities.formatDate(now, "Asia/Kuala_Lumpur", "yyyy-MM-dd");
+    const timeDisplay = Utilities.formatDate(now, "Asia/Kuala_Lumpur", "hh:mm a");
+    const timeKey = Utilities.formatDate(now, "Asia/Kuala_Lumpur", "HHmmss");
+    const safeBranch = branch.replace(/[^a-zA-Z0-9]/g, '_');
+    const safeCat = category.replace(/[^a-zA-Z0-9]/g, '_');
+    const safeName = teammate.replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = `${dateStr}_${safeBranch}_${safeCat}_${safeName}_${timeKey}.jpg`;
+
+    // 1. Locate or create root Drive folder: "PMG_6S_Gondola_Photos"
+    let rootFolder;
+    const folders = DriveApp.getFoldersByName("PMG_6S_Gondola_Photos");
+    if (folders.hasNext()) {
+      rootFolder = folders.next();
+    } else {
+      rootFolder = DriveApp.createFolder("PMG_6S_Gondola_Photos");
+    }
+
+    // 2. Locate or create branch subfolder
+    let branchFolder;
+    const bFolders = rootFolder.getFoldersByName(branch);
+    if (bFolders.hasNext()) {
+      branchFolder = bFolders.next();
+    } else {
+      branchFolder = rootFolder.createFolder(branch);
+    }
+
+    // 3. Save file into Google Drive
+    const blob = Utilities.newBlob(decodedBytes, mimeType, fileName);
+    const file = branchFolder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    const fileUrl = file.getUrl();
+    const fileId = file.getId();
+    const thumbUrl = "https://drive.google.com/thumbnail?sz=w400&id=" + fileId;
+
+    // 4. Log to Google Sheet "PMG_6S_Log"
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let logSheet = ss.getSheetByName("PMG_6S_Log");
+    if (!logSheet) {
+      logSheet = ss.insertSheet("PMG_6S_Log");
+      logSheet.appendRow(["Timestamp", "Date", "Branch", "Teammate", "Category", "File Name", "Drive URL", "File ID", "Notes"]);
+      logSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#dcfce7");
+    }
+
+    const timestampFormatted = Utilities.formatDate(now, "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm:ss");
+    logSheet.appendRow([timestampFormatted, dateStr, branch, teammate, category, fileName, fileUrl, fileId, notes]);
+
+    return {
+      success: true,
+      message: "Photo uploaded to Google Drive successfully!",
+      date: dateStr,
+      timeDisplay: timeDisplay,
+      fileUrl: fileUrl,
+      fileId: fileId,
+      thumbUrl: thumbUrl,
+      category: category,
+      teammate: teammate,
+      timestamp: timestampFormatted
+    };
+  } catch (err) {
+    return { success: false, message: "Drive upload error: " + err.toString() };
+  }
+}
+
+function get6sPhotos(branch, targetDate) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const logSheet = ss.getSheetByName("PMG_6S_Log");
+    if (!logSheet) return [];
+
+    const now = new Date();
+    const dateStr = targetDate || Utilities.formatDate(now, "Asia/Kuala_Lumpur", "yyyy-MM-dd");
+    const bTarget = String(branch || 'Kota Sentosa').trim().toUpperCase();
+
+    const data = logSheet.getDataRange().getValues();
+    const results = [];
+    for (let i = 1; i < data.length; i++) {
+      let rowDate = "";
+      try {
+        rowDate = Utilities.formatDate(new Date(data[i][1]), "Asia/Kuala_Lumpur", "yyyy-MM-dd");
+      } catch(e) {
+        rowDate = String(data[i][1]).trim();
+      }
+      const rowBranch = String(data[i][2]).trim().toUpperCase();
+      if ((rowDate === dateStr || String(data[i][1]).trim() === dateStr) && (rowBranch === bTarget || bTarget === 'ALL')) {
+        const fileId = data[i][7];
+        results.push({
+          timestamp: data[i][0],
+          date: data[i][1],
+          branch: data[i][2],
+          teammate: data[i][3],
+          category: data[i][4],
+          fileName: data[i][5],
+          fileUrl: data[i][6],
+          fileId: fileId,
+          thumbUrl: fileId ? ("https://drive.google.com/thumbnail?sz=w400&id=" + fileId) : "",
+          notes: data[i][8] || ""
+        });
+      }
+    }
+    return results.reverse();
+  } catch (err) {
+    return [];
+  }
+}
+
+// ─── FUTURE LEADERS TASKS & JOBSCOPES ─────────────────────────────────────────
+function getDefaultLeadersJobscope() {
+  return [
+    {
+      role: "Admin",
+      quota: 1,
+      assigned: "Christina",
+      icon: "📋",
+      tasks: [
+        "Monitor Poison C and pseudoephedrine balance register daily.",
+        "Monitor cold-chain and room temperature recording (2-8°C / <25°C).",
+        "Monitor Prescription Book recording and dispensing stamps.",
+        "Pack up dispensing & audit documents to send back monthly.",
+        "Manage branch document archive and systematic storage.",
+        "SCHB scanning and upload to HQ compliance folder."
+      ]
+    },
+    {
+      role: "Stock Expiry & Aging",
+      quota: 1,
+      assigned: "Fiona",
+      icon: "⏳",
+      tasks: [
+        "Extract invoices and input into PMG Hub Management before 15th of the month to HQ (action plan required).",
+        "Extract monthly aging stock list and provide clearance action plan.",
+        "Track Credit Notes (CN) from suppliers for returned goods."
+      ]
+    },
+    {
+      role: "Invoices and CN",
+      quota: 1,
+      assigned: "Muhammad Nur Farizin",
+      icon: "📑",
+      tasks: [
+        "Cross-examine supplier invoices against purchase orders and physical stock received.",
+        "Track pending CNs with supplier sales reps and match against returns.",
+        "Organize monthly invoice binders systematically for audit readiness."
+      ]
+    },
+    {
+      role: "Gondola Merchandising & 6S",
+      quota: 1,
+      assigned: "Chai Yee Sian",
+      icon: "🧹",
+      tasks: [
+        "Enforce FEFO (First-Expired, First-Out) shelf rotation across all gondolas.",
+        "Supervise daily front-to-back gondola cleaning and photo upload to Google Drive.",
+        "Supervise stock refilling and front-facing before peak shifts.",
+        "Audit shelf price tags daily and print replacements for missing/damaged tags."
+      ]
+    },
+    {
+      role: "Chronic Care & DPOS Champion",
+      quota: 1,
+      assigned: "Jong Pei Choo",
+      icon: "🩺",
+      tasks: [
+        "Drive daily DPOS customer triage and House Brand acute pairing practice.",
+        "Educate and enroll eligible seniors into Senior Care Plus (55+).",
+        "Promote and manage the 28th monthly free blood glucose test event.",
+        "Mentor junior assistants on OTC-to-House Brand clinical pairing dialogues."
+      ]
+    }
+  ];
+}
+
+function saveLeadersJobscope(req) {
+  try {
+    const branch = String(req.branch || 'Kota Sentosa').trim().toUpperCase();
+    const tasks = req.tasks || getDefaultLeadersJobscope();
+    const updatedBy = req.updatedBy || 'PIC';
+
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName("PMG_Leaders_Jobscope");
+    if (!sheet) {
+      sheet = ss.insertSheet("PMG_Leaders_Jobscope");
+      sheet.appendRow(["Branch", "Tasks_JSON", "Updated_At", "Updated_By"]);
+      sheet.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#fef3c7");
+    }
+
+    const data = sheet.getDataRange().getValues();
+    let foundRow = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toUpperCase() === branch) {
+        foundRow = i + 1;
+        break;
+      }
+    }
+
+    const nowStr = Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm:ss");
+    const jsonStr = typeof tasks === 'string' ? tasks : JSON.stringify(tasks);
+
+    if (foundRow > 0) {
+      sheet.getRange(foundRow, 2).setValue(jsonStr);
+      sheet.getRange(foundRow, 3).setValue(nowStr);
+      sheet.getRange(foundRow, 4).setValue(updatedBy);
+    } else {
+      sheet.appendRow([branch, jsonStr, nowStr, updatedBy]);
+    }
+
+    return {
+      success: true,
+      message: "Leaders jobscope saved successfully!",
+      updatedAt: nowStr,
+      branch: branch
+    };
+  } catch (err) {
+    return { success: false, message: "Save error: " + err.toString() };
+  }
+}
+
+function getLeadersJobscope(branch) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName("PMG_Leaders_Jobscope");
+    if (!sheet) return getDefaultLeadersJobscope();
+
+    const bTarget = String(branch || 'Kota Sentosa').trim().toUpperCase();
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toUpperCase() === bTarget) {
+        const rawJson = data[i][1];
+        if (rawJson && typeof rawJson === 'string') {
+          return JSON.parse(rawJson);
+        }
+      }
+    }
+    return getDefaultLeadersJobscope();
+  } catch (err) {
+    return getDefaultLeadersJobscope();
   }
 }

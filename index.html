@@ -9,7 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=78.2">
+  <link rel="stylesheet" href="./styles.css?v=78.3">
   <script>
     // Register Native PMG Service Worker
     if ('serviceWorker' in navigator) {
@@ -115,6 +115,86 @@
       <p style="margin-top: 14px; font-size: 0.82rem; color: #555; text-align: center;">
         Already have an account? <a href="javascript:void(0)" onclick="toggleAuthView('login')" style="color: var(--primary); font-weight: bold; text-decoration: none;">Login Here</a>
       </p>
+    </div>
+  </div>
+
+  <!-- Leaders Jobscope Edit Modal (PIC/Manager Only) -->
+  <div id="leadersEditModal" class="overlay" style="display:none; z-index: 3000;">
+    <div class="login-box" style="width: 95%; max-width: 650px; max-height: 90vh; overflow-y: auto; text-align: left;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 8px;">
+        <div>
+          <h3 style="margin: 0; color: var(--primary-dark); font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
+            <span>⭐ Edit Future Leaders Job Scope</span>
+          </h3>
+          <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Assign roles, update task checklists, and publish updates to all teammates.</div>
+        </div>
+        <button type="button" class="btn-logout" style="padding: 4px 10px; font-size: 0.85rem;" onclick="closeLeadersEditModal()">✕</button>
+      </div>
+
+      <div id="leadersEditFormContainer" style="display: flex; flex-direction: column; gap: 14px;">
+        <!-- Dynamically rendered editable forms for each role -->
+      </div>
+
+      <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn-logout" style="padding: 10px 16px;" onclick="closeLeadersEditModal()">Cancel</button>
+        <button type="button" class="btn" id="btnSaveLeadersModal" style="background: #0f766e; color: white; padding: 10px 20px; font-weight: 800;" onclick="saveLeadersJobscopeFromModal()">
+          💾 Save Jobscope Updates
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6S Photo Upload Modal -->
+  <div id="sixSUploadModal" class="overlay" style="display:none; z-index: 3000;">
+    <div class="login-box" style="width: 90%; max-width: 440px; text-align: left;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+        <h3 style="margin: 0; color: #1e3a8a; font-size: 1.05rem;">📷 6S Gondola Photo Upload</h3>
+        <button type="button" class="btn-logout" style="padding: 4px 8px; font-size: 0.85rem;" onclick="close6sUploadModal()">✕</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: #334155;">Category:</label>
+          <select id="sixSUploadCategory" class="input-field" style="margin-top: 2px;">
+            <option value="Gondola Cleaning">🧹 Gondola Cleaning (Front-to-Back Wipe)</option>
+            <option value="Gondola Refill">📦 Shelf Refilling (Stock Replenish & Face-Up)</option>
+            <option value="Price Tag Update">🏷️ Price Tag Audit (Updated Shelf Labels)</option>
+            <option value="General 6S / SOP">📋 General 6S / Other Shelf SOP</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: #334155;">Teammate Name:</label>
+          <input type="text" id="sixSUploadTeammate" class="input-field" placeholder="Your Name" style="margin-top: 2px;">
+        </div>
+
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: #334155;">Snap / Select Photo:</label>
+          <input type="file" id="sixSFileInput" accept="image/*" capture="environment" class="input-field" style="margin-top: 2px; padding: 6px;" onchange="preview6sSelectedPhoto(this)">
+        </div>
+
+        <!-- Image Preview Card -->
+        <div id="sixSImagePreviewBox" style="display: none; text-align: center; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 8px;">
+          <img id="sixSPreviewImg" src="" alt="Preview" style="max-height: 180px; max-width: 100%; border-radius: 6px; object-fit: contain;">
+          <div id="sixSImageSizeNotice" style="font-size: 0.68rem; color: #64748b; margin-top: 4px;"></div>
+        </div>
+
+        <div>
+          <label style="font-size: 0.75rem; font-weight: 700; color: #334155;">Notes (Optional):</label>
+          <input type="text" id="sixSUploadNotes" class="input-field" placeholder="e.g. Aisle 3 supplement gondola completed" style="margin-top: 2px;">
+        </div>
+
+        <div style="font-size: 0.68rem; color: #0369a1; background: #f0f9ff; padding: 6px 8px; border-radius: 6px; border: 1px solid #bae6fd;">
+          ☁️ Photos are automatically compressed and saved permanently into Google Drive folder <strong>PMG_6S_Gondola_Photos</strong>.
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; display: flex; gap: 8px; justify-content: flex-end;">
+        <button type="button" class="btn-logout" style="padding: 8px 14px;" onclick="close6sUploadModal()">Cancel</button>
+        <button type="button" class="btn" id="btnSubmit6sPhoto" style="background: #2563eb; color: white; font-weight: 800; padding: 8px 16px;" onclick="submit6sPhotoToDrive()">
+          ☁️ Upload to Google Drive
+        </button>
+      </div>
     </div>
   </div>
 
@@ -386,6 +466,9 @@
     <button class="main-nav-btn" id="btnNavAcademy" onclick="switchMainTab('academy')">
       🎓 DPOS Academy
     </button>
+    <button class="main-nav-btn" id="btnNavLeaders" onclick="switchMainTab('leaders')">
+      ⭐ Future Leaders
+    </button>
   </div>
 
   <!-- Main Dashboard -->
@@ -408,6 +491,65 @@
           <button type="button" class="btn-logout" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 10px; font-size: 0.8rem; margin: 0; border: none;" onclick="dismissPushBanner()">
             ✕
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6S GONDOLA DAILY PHOTO VERIFICATION SECTION -->
+    <div class="card" id="sixSGondolaSection" style="margin-bottom: 16px; border-top: 4px solid #2563eb;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.5rem;">🧼</span>
+          <div>
+            <div style="font-size: 1rem; font-weight: 800; color: #1e3a8a;">Daily 6S Gondola Photo Verification</div>
+            <div style="font-size: 0.72rem; color: #475569;">Upload daily front-to-back cleaning, refilling & price tag photos. Auto-saved to Google Drive.</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" class="btn" style="background: #2563eb; color: white; font-size: 0.75rem; font-weight: 800; padding: 7px 12px; border-radius: 6px; display: flex; align-items: center; gap: 4px;" onclick="open6sUploadModal()">
+            📷 Snap / Upload Photo
+          </button>
+        </div>
+      </div>
+
+      <!-- 6S Tasks Checklist Cards -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px;">
+        <!-- Card 1: Cleaning -->
+        <div id="sixSStatusCleaning" class="sixs-status-box" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px; cursor: pointer;" onclick="open6sUploadModal('Gondola Cleaning')">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 800; font-size: 0.8rem; color: #334155;">🧹 Gondola Cleaning</span>
+            <span class="badge" id="badge6sCleaning" style="background: #fee2e2; color: #991b1b; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px;">Pending</span>
+          </div>
+          <div style="font-size: 0.68rem; color: #64748b; margin-top: 4px;">Front-to-back wipe clean verification</div>
+          <div id="sub6sCleaningInfo" style="font-size: 0.7rem; color: #15803d; font-weight: 700; margin-top: 4px; display: none;"></div>
+        </div>
+
+        <!-- Card 2: Refill -->
+        <div id="sixSStatusRefill" class="sixs-status-box" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px; cursor: pointer;" onclick="open6sUploadModal('Gondola Refill')">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 800; font-size: 0.8rem; color: #334155;">📦 Shelf Refilling</span>
+            <span class="badge" id="badge6sRefill" style="background: #fee2e2; color: #991b1b; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px;">Pending</span>
+          </div>
+          <div style="font-size: 0.68rem; color: #64748b; margin-top: 4px;">Restock items & front-facing alignment</div>
+          <div id="sub6sRefillInfo" style="font-size: 0.7rem; color: #15803d; font-weight: 700; margin-top: 4px; display: none;"></div>
+        </div>
+
+        <!-- Card 3: Price Tag -->
+        <div id="sixSStatusPriceTag" class="sixs-status-box" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px; cursor: pointer;" onclick="open6sUploadModal('Price Tag Update')">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 800; font-size: 0.8rem; color: #334155;">🏷️ Price Tag Audit</span>
+            <span class="badge" id="badge6sPriceTag" style="background: #fee2e2; color: #991b1b; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px;">Pending</span>
+          </div>
+          <div style="font-size: 0.68rem; color: #64748b; margin-top: 4px;">Audit price labels & shelf tags</div>
+          <div id="sub6sPriceTagInfo" style="font-size: 0.7rem; color: #15803d; font-weight: 700; margin-top: 4px; display: none;"></div>
+        </div>
+      </div>
+
+      <!-- Today's Photos Gallery Stream -->
+      <div id="sixSPhotosGalleryContainer" style="display: none; border-top: 1px dashed #cbd5e1; padding-top: 10px; margin-top: 10px;">
+        <div style="font-size: 0.75rem; font-weight: 800; color: #334155; margin-bottom: 8px;">📸 Today's Uploaded Photos (Saved in Google Drive):</div>
+        <div id="sixSPhotosGalleryGrid" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;">
+          <!-- Dynamically populated thumbnails -->
         </div>
       </div>
     </div>
@@ -684,11 +826,43 @@
     <div id="academyRoot"></div>
   </div>
 
+  <!-- FUTURE LEADERS TASK & JOBSCOPE VIEW -->
+  <div id="leadersView" style="display:none; padding: 0 10px 40px 10px; max-width: 1000px; margin: 0 auto;">
+    <!-- Leaders Header Card -->
+    <div class="card" style="background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%); border: 1.5px solid #fcd34d; border-radius: 14px; padding: 16px; margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 2rem;">⭐</span>
+          <div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #78350f;">PMG Future Leaders Task & Job Scope</div>
+            <div style="font-size: 0.78rem; color: #92400e; margin-top: 2px;">
+              Empowering frontline teammates with operational ownership, systematic audits, and management portfolios.
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" class="btn" id="btnEditLeadersJobscope" style="display:none; background: #0f766e; color: white; padding: 8px 14px; font-weight: 800; font-size: 0.82rem; border-radius: 8px;" onclick="openLeadersEditModal()">
+            ✏️ Edit Leaders Jobscope
+          </button>
+        </div>
+      </div>
+      <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: #b45309; border-top: 1px dashed #fde68a; padding-top: 8px;">
+        <span>Branch: <strong id="leadersBranchLabel">KOTA SENTOSA</strong></span>
+        <span id="leadersUpdatedLabel">🟢 Live Synchronized</span>
+      </div>
+    </div>
+
+    <!-- Future Leaders Cards Grid -->
+    <div id="leadersCardsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 20px;">
+      <!-- Populated dynamically by renderLeadersView() -->
+    </div>
+  </div>
+
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=78.2"></script>
-  <script src="./data/dpos_week1.js?v=78.2"></script>
-  <script src="./data/dpos_catalog.js?v=78.2"></script>
-  <script src="./dpos.js?v=78.2"></script>
-  <script src="./app.js?v=78.2"></script>
+  <script src="./data/clinical_upsell_modules.js?v=78.3"></script>
+  <script src="./data/dpos_week1.js?v=78.3"></script>
+  <script src="./data/dpos_catalog.js?v=78.3"></script>
+  <script src="./dpos.js?v=78.3"></script>
+  <script src="./app.js?v=78.3"></script>
 </body>
 </html>
