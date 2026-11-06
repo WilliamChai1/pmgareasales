@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pmg-hub-v78.7';
+const CACHE_NAME = 'pmg-hub-v78.8';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -19,9 +19,28 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  );
+  const req = event.request;
+  if (req.method !== 'GET') {
+    return;
+  }
+  const isSameOrigin = req.url.startsWith(self.location.origin);
+  if (isSameOrigin) {
+    event.respondWith(
+      fetch(req, { cache: 'no-cache' })
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+  } else {
+    event.respondWith(
+      fetch(req).catch(() => caches.match(req))
+    );
+  }
 });
 
 // Client postMessage notification handler

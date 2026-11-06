@@ -10,14 +10,21 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=78.7">
+  <link rel="stylesheet" href="./styles.css?v=78.8">
   <script>
-    // Register Native PMG Service Worker
+    // Register Native PMG Service Worker with immediate cache-bypassing update check
     if ('serviceWorker' in navigator) {
+      let hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (hadController && !window.__pmgSwReloaded) {
+          window.__pmgSwReloaded = true;
+          window.location.reload();
+        }
+      });
       window.addEventListener('load', function() {
         const isGhPages = window.location.hostname.includes("github.io");
         const swScope = isGhPages ? "/pmgareasales/" : "/";
-        navigator.serviceWorker.register('./sw.js', { scope: swScope })
+        navigator.serviceWorker.register('./sw.js?v=78.8', { scope: swScope, updateViaCache: 'none' })
           .then(function(reg) {
             console.log("Native PMG Service Worker active on scope:", reg.scope);
             try { reg.update(); } catch(e) {}
@@ -28,7 +35,6 @@
       });
     }
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -521,6 +527,7 @@
     <div id="lastUpdated" class="sync-status">Waiting for login...</div>
     <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
       <button class="btn-logout" id="pushNotifyBtn" style="background:#0284c7; display:flex; align-items:center; gap:5px;" onclick="openPushModal()">🔔 Alerts</button>
+      <button class="btn-logout" style="background:#0f766e;" onclick="forceUpdatePmgApp()">🔄 v78.8</button>
       <button class="btn-logout" id="installAppBtn" style="display:none; background:#2e7d32;" onclick="installPWA()">📲 Install App</button>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
@@ -943,11 +950,11 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=78.7"></script>
-  <script src="./data/dpos_week1.js?v=78.7"></script>
-  <script src="./data/dpos_localized_quizzes.js?v=78.7"></script>
-  <script src="./data/dpos_catalog.js?v=78.7"></script>
-  <script src="./dpos.js?v=78.7"></script>
-  <script src="./app.js?v=78.7"></script>
+  <script src="./data/clinical_upsell_modules.js?v=78.8"></script>
+  <script src="./data/dpos_week1.js?v=78.8"></script>
+  <script src="./data/dpos_localized_quizzes.js?v=78.8"></script>
+  <script src="./data/dpos_catalog.js?v=78.8"></script>
+  <script src="./dpos.js?v=78.8"></script>
+  <script src="./app.js?v=78.8"></script>
 </body>
 </html>

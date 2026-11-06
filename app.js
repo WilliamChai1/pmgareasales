@@ -2405,13 +2405,33 @@ function getConstructiveComment(ts, hb) {
   return `HB ratio needs attention (${hbPct.toFixed(1)}%). Action: Mandate 1 House Brand recommendation for every symptomatic customer today.`;
 }
 
+let currentReportDataModel = null;
+let activeReportBlobCache = null;
+
+async function forceUpdatePmgApp() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) {
+        try { await r.update(); } catch (e) {}
+      }
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch (e) {}
+  const base = window.location.href.split('?')[0].split('#')[0];
+  window.location.replace(base + '?v=' + Date.now());
+}
+
 function openReportModal(type) {
   if (!isManagementOrPharmacist(currentUser)) {
     alert("Access restricted: Reports are only available to Pharmacist and Management.");
     return;
   }
   currentReportType = type;
-  if (typeof resetReportDownloadPreview === 'function') resetReportDownloadPreview();
+  resetReportDownloadPreview();
   document.getElementById("reportModal").style.display = "flex";
   history.pushState({ modal: 'reportModal' }, '');
   const content = document.getElementById("reportContent");
@@ -2433,7 +2453,7 @@ function openReportModal(type) {
   const currentYear = todayMyt.year;
   const todayDay = todayMyt.day;
 
-  // Filter history strictly to current month (October 2026) in Malaysia Time
+  // Filter history strictly to current month in Malaysia Time
   const currentMonthHistory = historyData.filter(h => {
     const md = parseMytDate(h.date);
     return md && md.month === currentMonth && md.year === currentYear;
@@ -2459,9 +2479,6 @@ function openReportModal(type) {
 
     const activePmgApp = getActivePmgApp(selectedBranch);
 
-    // Director 7-Day Picture Report columns:
-    // During month transitions (e.g. October 1-7), strictly render Oct 1, Oct 2, Oct 3
-    // without blending any days from September.
     const buildDirectorCols = () => {
       const cols = [];
       let startDay, endDay;
@@ -2506,10 +2523,52 @@ function openReportModal(type) {
     };
 
     const directorCols = buildDirectorCols();
+    const reportTitle = `PMG PHARMACY ${selectedBranch.toUpperCase()} - DIRECTORS' DAILY SALES REPORT (${reportDateDisplay})`;
+
+    currentReportDataModel = {
+      type: 'director',
+      title: reportTitle,
+      reportDateDisplay,
+      monthLabel: months[currentMonth],
+      leftTable1: [
+        ["Sales Vs Target", `${tsGap < 0 ? '' : '+'}${formatRM(tsGap)}`, `${tsPct}%`],
+        ["Sales Vs LY", `${tsLyGap < 0 ? '' : '+'}${formatRM(tsLyGap)}`, `${tsLyGrowth >= 0 ? '+' : ''}${tsLyGrowth}%`],
+        ["HB Vs Target", `${hbGap < 0 ? '' : '+'}${formatRM(hbGap)}`, `${hbPct}%`],
+        ["HB Vs LY", `${hbLyGap < 0 ? '' : '+'}${formatRM(hbLyGap)}`, `${hbLyGrowth >= 0 ? '+' : ''}${hbLyGrowth}%`],
+        ["HM Vs Target", `${hmGap < 0 ? '' : '+'}${formatRM(hmGap)}`, `${hmPct}%`],
+        ["HM Vs LY", `${hmLyGap < 0 ? '' : '+'}${formatRM(hmLyGap)}`, `${hmLyGrowth >= 0 ? '+' : ''}${hmLyGrowth}%`]
+      ],
+      leftTable2: [
+        [{ text: "Total", bold: true }, formatRM(summary.mtdTs), formatRM(summary.lyMtd), formatRM(targets.ts)],
+        ["HB", formatRM(summary.mtdHb), formatRM(summary.lyMtdHb || 0), formatRM(targets.hb)],
+        ["HM", formatRM(summary.mtdHm), formatRM(summary.lyMtdHm || 0), formatRM(targets.hm)],
+        ["Public Medicare App", String(activePmgApp), "-", "-"]
+      ],
+      actionPlan: [
+        { prefix: "Week 1: ", body: ap.w1 || "-" },
+        { prefix: "Week 2: ", body: ap.w2 || "-" },
+        { prefix: "Week 3: ", body: ap.w3 || "-" },
+        { prefix: "Week 4: ", body: ap.w4 || "-" }
+      ],
+      directorCols: directorCols.map(c => ({
+        header: `${c.label}${c.isLast ? ' *' : ''}`,
+        isLast: c.isLast,
+        ts: c.hasData ? formatRM(c.data.ts) : '-',
+        hb: c.hasData ? formatRM(c.data.hb) : '-',
+        hbPct: c.hasData && c.data.ts > 0 ? ((c.data.hb / c.data.ts) * 100).toFixed(1) + '%' : '-',
+        hm: c.hasData ? formatRM(c.data.hm) : '-',
+        hmPct: c.hasData && c.data.ts > 0 ? ((c.data.hm / c.data.ts) * 100).toFixed(1) + '%' : '-',
+        cust: c.hasData ? String(c.data.cust) : '-',
+        tsBs: c.hasData && c.data.cust > 0 ? formatRM(c.data.ts / c.data.cust) : '-',
+        hbBs: c.hasData && c.data.cust > 0 ? formatRM(c.data.hb / c.data.cust) : '-',
+        pmgApp: c.hasData ? String(c.data.pmgApp || 0) : '-',
+        comment: c.hasData ? getConstructiveComment(c.data.ts, c.data.hb) : 'Pending daily close'
+      }))
+    };
 
     let html = `
     <div class="excel-report" id="captureArea" style="min-width: 860px; width: max-content;">
-      <div class="excel-title">PMG PHARMACY ${selectedBranch.toUpperCase()} - DIRECTORS' DAILY SALES REPORT (${reportDateDisplay})</div>
+      <div class="excel-title">${reportTitle}</div>
       
       <div class="excel-grid">
         <div class="excel-col-left">
@@ -2564,17 +2623,17 @@ function openReportModal(type) {
     content.innerHTML = html;
   } 
   else if (type === 'teammates') {
-    // Teammate Target Achievement Table & Daily Quota Run-Rate for current month
     const fullMonths = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
     const curMonShort = months[currentMonth] || "MTD";
     const curMonFull = fullMonths[currentMonth] || "MONTHLY";
     const daysInMonth = currentData.daysInMonth || 31;
     const currentDay = Math.min(daysInMonth, Math.max(1, todayDay));
     const remainingDays = Math.max(1, daysInMonth - currentDay + 1);
+    const reportTitle = `PMG ${selectedBranch.toUpperCase()} - TEAMMATE ${curMonFull} TARGET ACHIEVEMENT & DAILY RUN-RATE (${reportDateDisplay})`;
 
     let html = `
     <div class="excel-report" id="captureArea" style="min-width: 860px; width: max-content;">
-      <div class="excel-title">PMG ${selectedBranch.toUpperCase()} - TEAMMATE ${curMonFull} TARGET ACHIEVEMENT & DAILY RUN-RATE (${reportDateDisplay})</div>
+      <div class="excel-title">${reportTitle}</div>
       <table class="excel-table">
         <tr class="header-red">
           <th style="text-align:left;">Teammate Name</th>
@@ -2590,6 +2649,7 @@ function openReportModal(type) {
     
     let totalCust = 0, totalOctTs = 0, totalOctHb = 0, totalTargetTs = 0, totalTargetHb = 0;
     let totalDailyQuotaTs = 0, totalDailyQuotaHb = 0;
+    const modelRows = [];
 
     staff.forEach(s => {
       const octTotalTsTarget = (s.targetTs || 0) * daysInMonth;
@@ -2605,6 +2665,19 @@ function openReportModal(type) {
       totalTargetHb += octTotalHbTarget;
       totalDailyQuotaTs += dailyQuotaTs;
       totalDailyQuotaHb += dailyQuotaHb;
+
+      modelRows.push({
+        name: s.name || '-',
+        role: s.role || 'Staff',
+        cust: String(s.octMtdCust || 0),
+        mtdTs: formatRM(s.octMtdTs),
+        targetTs: formatRM(octTotalTsTarget),
+        dailyQuotaTs: `${formatRM(dailyQuotaTs)}/day`,
+        mtdHb: formatRM(s.octMtdHb),
+        targetHb: formatRM(octTotalHbTarget),
+        dailyQuotaHb: `${formatRM(dailyQuotaHb)}/day`,
+        hbPct: `${hbPct}%`
+      });
 
       html += `<tr>
         <td style="text-align:left;"><b>${s.name}</b><br><span style="font-size:0.6rem; color:#666;">${s.role}</span></td>
@@ -2625,6 +2698,34 @@ function openReportModal(type) {
     const storeQuotaHb = Math.max(0, (storeTargetHb - (summary.mtdHb || totalOctHb)) / remainingDays);
     const outletHbPct = (summary.mtdTs || totalOctTs) > 0 ? (((summary.mtdHb || totalOctHb) / (summary.mtdTs || totalOctTs)) * 100).toFixed(1) : "0.0";
 
+    currentReportDataModel = {
+      type: 'teammates',
+      title: reportTitle,
+      headers: [
+        "Teammate Name",
+        "Cust",
+        `${curMonShort} MTD Sales`,
+        `${curMonShort} TS Target`,
+        `Daily TS Quota (${remainingDays}d left)`,
+        `${curMonShort} MTD HB`,
+        `${curMonShort} HB Target`,
+        `Daily HB Quota (${remainingDays}d left)`,
+        "HB %"
+      ],
+      rows: modelRows,
+      footer: {
+        label: "OUTLET CUMULATIVE",
+        cust: String(summary.mtdCust || totalCust),
+        mtdTs: formatRM(summary.mtdTs || totalOctTs),
+        targetTs: formatRM(storeTargetTs),
+        dailyQuotaTs: `${formatRM(storeQuotaTs)}/day`,
+        mtdHb: formatRM(summary.mtdHb || totalOctHb),
+        targetHb: formatRM(storeTargetHb),
+        dailyQuotaHb: `${formatRM(storeQuotaHb)}/day`,
+        hbPct: `${outletHbPct}%`
+      }
+    };
+
     html += `<tr style="background:#f5f5f5; font-weight:bold;">
       <td style="text-align:left;">OUTLET CUMULATIVE</td>
       <td>${summary.mtdCust || totalCust}</td>
@@ -2640,13 +2741,18 @@ function openReportModal(type) {
     html += `</table></div>`;
     content.innerHTML = html;
   }
+
+  // Pre-build Ultra-HD PNG synchronously (<15ms) so Download & Share buttons respond with 0ms gesture delay
+  try {
+    buildReportExportSynchronously();
+  } catch (preErr) {
+    console.warn("Report pre-render notice:", preErr);
+  }
 }
 
 function formatRM(num) {
   return "RM " + Number(num).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
 }
-
-let activeReportBlobCache = null;
 
 function resetReportDownloadPreview() {
   if (activeReportBlobCache && activeReportBlobCache.blobUrl) {
@@ -2667,61 +2773,6 @@ function closeReportModal(shouldPop = true) {
   }
 }
 
-async function ensureHtml2CanvasLoaded() {
-  if (typeof window.html2canvas === "function") return window.html2canvas;
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
-    script.async = true;
-    const timer = setTimeout(() => reject(new Error("Timed out loading image engine")), 8000);
-    script.onload = () => {
-      clearTimeout(timer);
-      if (typeof window.html2canvas === "function") resolve(window.html2canvas);
-      else reject(new Error("html2canvas unavailable"));
-    };
-    script.onerror = () => {
-      clearTimeout(timer);
-      reject(new Error("Failed to load image generator script"));
-    };
-    document.head.appendChild(script);
-  });
-}
-
-function canvasToPngBlob(canvas) {
-  return new Promise((resolve, reject) => {
-    const fallbackFromDataUrl = () => {
-      try {
-        const dataUrl = canvas.toDataURL("image/png");
-        if (!dataUrl || dataUrl === "data:,") {
-          return reject(new Error("Empty canvas output"));
-        }
-        const byteString = atob(dataUrl.split(",")[1]);
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-          ia[i] = byteString.charCodeAt(i);
-        }
-        resolve(new Blob([ab], { type: "image/png" }));
-      } catch (err) {
-        reject(err);
-      }
-    };
-
-    if (typeof canvas.toBlob === "function") {
-      try {
-        canvas.toBlob((blob) => {
-          if (blob && blob.size > 0) resolve(blob);
-          else fallbackFromDataUrl();
-        }, "image/png");
-      } catch (e) {
-        fallbackFromDataUrl();
-      }
-    } else {
-      fallbackFromDataUrl();
-    }
-  });
-}
-
 function buildReportFileName() {
   const cleanBranch = String(selectedBranch || DEFAULT_BRANCH).trim().replace(/[^a-zA-Z0-9]+/g, "_");
   const reportSlug = currentReportType === "director" ? "Director_7Day_Report" : "Teammate_Gap_Report";
@@ -2731,142 +2782,372 @@ function buildReportFileName() {
   return `PMG_${cleanBranch}_${reportSlug}_${datePart}.png`;
 }
 
-async function generateReportPngBlob() {
+// ─── ZERO-DEPENDENCY SYNCHRONOUS NATIVE 2D CANVAS REPORT RENDERER ───────────
+function wrapTextLines2D(ctx, text, maxWidth) {
+  const rawParagraphs = String(text === undefined || text === null ? "" : text).split("\n");
+  const lines = [];
+  for (const para of rawParagraphs) {
+    const words = para.split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push("");
+      continue;
+    }
+    let currentLine = words[0];
+    for (let i = 1; i < words.length; i++) {
+      const candidate = currentLine + " " + words[i];
+      if (ctx.measureText(candidate).width <= maxWidth) {
+        currentLine = candidate;
+      } else {
+        lines.push(currentLine);
+        currentLine = words[i];
+      }
+    }
+    lines.push(currentLine);
+  }
+  return lines.length > 0 ? lines : [""];
+}
+
+function drawTable2D(ctx, startX, startY, colWidths, rows, dryRun) {
+  const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+  let curY = startY;
+  const padX = 7;
+  const padY = 6;
+
+  for (const row of rows) {
+    if (row.fullSpanText !== undefined) {
+      const fontSize = row.fontSize || 12;
+      const lineHeight = Math.round(fontSize * 1.35);
+      ctx.font = `${row.bold !== false ? "bold " : ""}${fontSize}px Arial, sans-serif`;
+      const lines = wrapTextLines2D(ctx, row.fullSpanText, totalWidth - padX * 2);
+      const rowH = Math.max(row.minHeight || 28, lines.length * lineHeight + padY * 2);
+
+      if (!dryRun) {
+        ctx.fillStyle = row.bg || "#ffffff";
+        ctx.fillRect(startX, curY, totalWidth, rowH);
+        ctx.strokeStyle = "#cccccc";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(startX + 0.5, curY + 0.5, totalWidth - 1, rowH - 1);
+
+        ctx.fillStyle = row.color || "#000000";
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        const blockH = lines.length * lineHeight;
+        let ty = curY + (rowH - blockH) / 2 + lineHeight / 2;
+        for (const ln of lines) {
+          ctx.fillText(ln, startX + totalWidth / 2, ty);
+          ty += lineHeight;
+        }
+      }
+      curY += rowH;
+      continue;
+    }
+
+    const cells = row.cells || [];
+    const prepared = cells.map((rawCell, idx) => {
+      const cell = (rawCell && typeof rawCell === "object" && !Array.isArray(rawCell)) ? rawCell : { text: String(rawCell ?? "") };
+      const cw = colWidths[idx] || 100;
+      const fontSize = cell.fontSize || row.fontSize || 12;
+      const isBold = cell.bold !== undefined ? cell.bold : !!row.bold;
+      const lineHeight = Math.round(fontSize * 1.32);
+
+      if (cell.subtitle !== undefined) {
+        ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+        const mainLines = wrapTextLines2D(ctx, cell.text, cw - padX * 2);
+        const subFontSize = 10;
+        const subLineH = 13;
+        ctx.font = `${subFontSize}px Arial, sans-serif`;
+        const subLines = wrapTextLines2D(ctx, cell.subtitle, cw - padX * 2);
+        const contentH = mainLines.length * lineHeight + 2 + subLines.length * subLineH;
+        return { cell, cw, fontSize, isBold, lineHeight, mainLines, subLines, subFontSize, subLineH, contentH };
+      } else {
+        ctx.font = `${isBold ? "bold " : ""}${fontSize}px Arial, sans-serif`;
+        const lines = wrapTextLines2D(ctx, cell.text, cw - padX * 2);
+        const contentH = lines.length * lineHeight;
+        return { cell, cw, fontSize, isBold, lineHeight, lines, contentH };
+      }
+    });
+
+    const maxContentH = prepared.reduce((m, p) => Math.max(m, p.contentH), 0);
+    const rowH = Math.max(row.minHeight || 28, maxContentH + padY * 2);
+
+    if (!dryRun) {
+      let cx = startX;
+      prepared.forEach((p, idx) => {
+        const bg = p.cell.bg || row.bg || "#ffffff";
+        ctx.fillStyle = bg;
+        ctx.fillRect(cx, curY, p.cw, rowH);
+        ctx.strokeStyle = "#cccccc";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cx + 0.5, curY + 0.5, p.cw - 1, rowH - 1);
+
+        const align = p.cell.align || (idx === 0 ? (row.firstColAlign || "left") : "center");
+        const valign = p.cell.valign || row.valign || "middle";
+        const tx = align === "left" ? (cx + padX) : (align === "right" ? (cx + p.cw - padX) : (cx + p.cw / 2));
+        ctx.textAlign = align;
+
+        if (p.subLines) {
+          ctx.textBaseline = "top";
+          let ty = valign === "top" ? (curY + padY) : (curY + (rowH - p.contentH) / 2);
+          ctx.font = `bold ${p.fontSize}px Arial, sans-serif`;
+          ctx.fillStyle = p.cell.color || row.color || "#000000";
+          for (const ln of p.mainLines) {
+            ctx.fillText(ln, tx, ty);
+            ty += p.lineHeight;
+          }
+          ty += 2;
+          ctx.font = `${p.subFontSize}px Arial, sans-serif`;
+          ctx.fillStyle = "#666666";
+          for (const sln of p.subLines) {
+            ctx.fillText(sln, tx, ty);
+            ty += p.subLineH;
+          }
+        } else {
+          ctx.font = `${p.isBold ? "bold " : ""}${p.fontSize}px Arial, sans-serif`;
+          ctx.fillStyle = p.cell.color || row.color || "#000000";
+          ctx.textBaseline = "top";
+          let ty = valign === "top" ? (curY + padY) : (curY + (rowH - p.contentH) / 2);
+          for (const ln of p.lines) {
+            ctx.fillText(ln, tx, ty);
+            ty += p.lineHeight;
+          }
+        }
+        cx += p.cw;
+      });
+    }
+
+    curY += rowH;
+  }
+
+  return { bottomY: curY, totalWidth };
+}
+
+function renderReportCanvasNative(model) {
+  if (!model) throw new Error("No report data loaded");
+
+  const padOuter = 20;
+  const scale = 2.2;
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const drawPass = (dryRun, totalW, totalH) => {
+    if (!dryRun) {
+      canvas.width = Math.ceil(totalW * scale);
+      canvas.height = Math.ceil(totalH * scale);
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, totalW, totalH);
+
+      ctx.font = "bold 16px Arial, sans-serif";
+      ctx.fillStyle = "#000000";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(model.title, totalW / 2, padOuter);
+    }
+
+    const contentTopY = padOuter + 32;
+
+    if (model.type === "director") {
+      const leftW = 340;
+      const gap = 18;
+      const leftCol1Widths = [138, 122, 80];
+      const leftRows1 = [
+        { bg: "#c9daf8", bold: true, firstColAlign: "center", cells: ["Monthly Sales", "Amount", "%"] },
+        ...model.leftTable1.map(r => ({ cells: r }))
+      ];
+      const t1 = drawTable2D(ctx, padOuter, contentTopY, leftCol1Widths, leftRows1, dryRun);
+
+      const leftCol2Widths = [96, 82, 82, 80];
+      const leftRows2 = [
+        { bg: "#fff2cc", bold: true, fullSpanText: `From 1st to ${model.reportDateDisplay}` },
+        { bg: "#fff2cc", bold: true, firstColAlign: "center", fontSize: 11, cells: ["", "MTD Sales", "Last Year Sales", "Target"] },
+        ...model.leftTable2.map(r => ({ fontSize: 11.5, cells: r }))
+      ];
+      const t2 = drawTable2D(ctx, padOuter, t1.bottomY + 12, leftCol2Widths, leftRows2, dryRun);
+
+      // Action Plan Green Box
+      const apX = padOuter;
+      const apY = t2.bottomY + 12;
+      const apPad = 10;
+      const apLineH = 17;
+      ctx.font = "12px Arial, sans-serif";
+      const apWrappedItems = model.actionPlan.map(item => {
+        const fullStr = item.prefix + item.body;
+        return { prefix: item.prefix, lines: wrapTextLines2D(ctx, fullStr, leftW - apPad * 2) };
+      });
+      const totalApLines = 1 + apWrappedItems.reduce((acc, it) => acc + it.lines.length, 0);
+      const apH = apPad * 2 + totalApLines * apLineH + 4;
+
+      if (!dryRun) {
+        ctx.fillStyle = "#d9ead3";
+        ctx.fillRect(apX, apY, leftW, apH);
+        ctx.strokeStyle = "#93c47d";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(apX + 0.5, apY + 0.5, leftW - 1, apH - 1);
+
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillStyle = "#274e13";
+        let curApY = apY + apPad;
+        ctx.font = "bold 12px Arial, sans-serif";
+        ctx.fillText(`Action Plan (${model.monthLabel}):`, apX + apPad, curApY);
+        curApY += apLineH + 2;
+
+        for (const it of apWrappedItems) {
+          it.lines.forEach((ln, lIdx) => {
+            if (lIdx === 0 && ln.startsWith(it.prefix)) {
+              ctx.font = "bold 12px Arial, sans-serif";
+              ctx.fillText(it.prefix, apX + apPad, curApY);
+              const pWidth = ctx.measureText(it.prefix).width;
+              ctx.font = "12px Arial, sans-serif";
+              ctx.fillText(ln.slice(it.prefix.length), apX + apPad + pWidth, curApY);
+            } else {
+              ctx.font = "12px Arial, sans-serif";
+              ctx.fillText(ln, apX + apPad, curApY);
+            }
+            curApY += apLineH;
+          });
+        }
+      }
+      const leftBottomY = apY + apH;
+
+      // Right 7-Day Table
+      const rightX = padOuter + leftW + gap;
+      const dayCols = model.directorCols || [];
+      const dayColWidth = 124;
+      const rightColWidths = [110, ...dayCols.map(() => dayColWidth)];
+
+      const rightRows = [
+        {
+          bg: "#c9daf8",
+          bold: true,
+          firstColAlign: "center",
+          cells: [
+            "Metric",
+            ...dayCols.map(c => ({
+              text: c.header,
+              bold: true,
+              bg: c.isLast ? "#fce5cd" : "#c9daf8",
+              color: c.isLast ? "#c62828" : "#000000"
+            }))
+          ]
+        },
+        { cells: [{ text: "Total Sales", bold: true }, ...dayCols.map(c => c.ts)] },
+        { cells: [{ text: "HB", bold: true }, ...dayCols.map(c => c.hb)] },
+        { cells: [{ text: "HB%", bold: true }, ...dayCols.map(c => c.hbPct)] },
+        { cells: [{ text: "HM", bold: true }, ...dayCols.map(c => c.hm)] },
+        { cells: [{ text: "HM%", bold: true }, ...dayCols.map(c => c.hmPct)] },
+        { cells: [{ text: "No. of tranx", bold: true }, ...dayCols.map(c => c.cust)] },
+        { cells: [{ text: "Total Sales BS", bold: true }, ...dayCols.map(c => c.tsBs)] },
+        { cells: [{ text: "HB BS", bold: true }, ...dayCols.map(c => c.hbBs)] },
+        { cells: [{ text: "PMG APP", bold: true }, ...dayCols.map(c => c.pmgApp)] },
+        {
+          bg: "#fff2cc",
+          valign: "top",
+          cells: [
+            { text: "Daily Comment:", bold: true, align: "left", valign: "top" },
+            ...dayCols.map(c => ({
+              text: c.comment,
+              fontSize: 10.5,
+              align: "left",
+              valign: "top"
+            }))
+          ]
+        }
+      ];
+
+      const rt = drawTable2D(ctx, rightX, contentTopY, rightColWidths, rightRows, dryRun);
+      const calcW = rightX + rt.totalWidth + padOuter;
+      const calcH = Math.max(leftBottomY, rt.bottomY) + padOuter;
+      return { width: calcW, height: calcH };
+    } else {
+      // Teammates Gap Report
+      const colWidths = [196, 58, 110, 110, 150, 110, 110, 150, 68];
+      const rows = [
+        {
+          bg: "#8e24aa",
+          color: "#ffffff",
+          bold: true,
+          firstColAlign: "left",
+          fontSize: 11.5,
+          minHeight: 34,
+          cells: model.headers
+        },
+        ...(model.rows || []).map(r => ({
+          minHeight: 40,
+          cells: [
+            { text: r.name, subtitle: r.role, align: "left" },
+            r.cust,
+            r.mtdTs,
+            r.targetTs,
+            { text: r.dailyQuotaTs, bold: true, color: "#c62828" },
+            r.mtdHb,
+            r.targetHb,
+            { text: r.dailyQuotaHb, bold: true, color: "#00796b" },
+            r.hbPct
+          ]
+        })),
+        {
+          bg: "#f5f5f5",
+          bold: true,
+          minHeight: 32,
+          cells: [
+            { text: model.footer.label, bold: true, align: "left" },
+            model.footer.cust,
+            model.footer.mtdTs,
+            model.footer.targetTs,
+            { text: model.footer.dailyQuotaTs, bold: true, color: "#c62828" },
+            model.footer.mtdHb,
+            model.footer.targetHb,
+            { text: model.footer.dailyQuotaHb, bold: true, color: "#00796b" },
+            model.footer.hbPct
+          ]
+        }
+      ];
+
+      const tt = drawTable2D(ctx, padOuter, contentTopY, colWidths, rows, dryRun);
+      return { width: padOuter * 2 + tt.totalWidth, height: tt.bottomY + padOuter };
+    }
+  };
+
+  const measured = drawPass(true, 1200, 800);
+  drawPass(false, measured.width, measured.height);
+  return canvas;
+}
+
+function buildReportExportSynchronously() {
   if (activeReportBlobCache && activeReportBlobCache.blob && activeReportBlobCache.type === currentReportType) {
     return activeReportBlobCache;
   }
 
-  const element = document.getElementById("captureArea");
-  if (!element) throw new Error("Report table not found");
-
-  const h2c = await ensureHtml2CanvasLoaded();
-
-  const existingStage = document.getElementById("pmgReportCaptureStage");
-  if (existingStage) existingStage.remove();
-
-  const stage = document.createElement("div");
-  stage.id = "pmgReportCaptureStage";
-  stage.style.cssText = "position:fixed; left:0; top:0; z-index:-9999; opacity:0; pointer-events:none; background:#ffffff; padding:16px; margin:0; width:max-content; height:auto; overflow:visible;";
-
-  const clone = element.cloneNode(true);
-  clone.id = "pmgReportCaptureClone";
-  clone.style.width = "max-content";
-  clone.style.minWidth = "860px";
-  clone.style.maxWidth = "none";
-  clone.style.overflow = "visible";
-  clone.style.background = "#ffffff";
-
-  stage.appendChild(clone);
-  document.body.appendChild(stage);
-
-  try {
-    // Force layout reflow and yield briefly so button UI updates immediately
-    void stage.offsetHeight;
-    await new Promise(r => setTimeout(r, 25));
-
-    const fullWidth = Math.max(Math.ceil(stage.scrollWidth), 880);
-    const fullHeight = Math.max(Math.ceil(stage.scrollHeight), 200);
-    stage.style.width = fullWidth + "px";
-    stage.style.height = fullHeight + "px";
-
-    let safeScale = 2.5;
-    if (fullWidth * safeScale > 3840) safeScale = 3840 / fullWidth;
-    if (fullHeight * safeScale > 3840) safeScale = Math.min(safeScale, 3840 / fullHeight);
-    if ((fullWidth * safeScale) * (fullHeight * safeScale) > 10000000) {
-      safeScale = Math.sqrt(10000000 / (fullWidth * fullHeight));
-    }
-    safeScale = Math.max(1.5, Math.round(safeScale * 100) / 100);
-
-    const runRender = (scaleVal) => {
-      const renderPromise = h2c(stage, {
-        scale: scaleVal,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        imageTimeout: 3000,
-        logging: false,
-        x: 0,
-        y: 0,
-        width: fullWidth,
-        height: fullHeight,
-        windowWidth: fullWidth + 40,
-        windowHeight: fullHeight + 40,
-        scrollX: 0,
-        scrollY: 0,
-        ignoreElements: (el) => {
-          if (!el || !el.tagName) return false;
-          const tag = el.tagName.toUpperCase();
-          if (tag === "HTML" || tag === "HEAD" || tag === "BODY" || tag === "STYLE" || tag === "META") {
-            return false;
-          }
-          if (tag === "LINK") {
-            const rel = (el.getAttribute("rel") || "").toLowerCase();
-            return rel !== "stylesheet";
-          }
-          if (tag === "SCRIPT" || tag === "NOSCRIPT" || tag === "IFRAME") {
-            return true;
-          }
-          if (el === stage || stage.contains(el)) {
-            return false;
-          }
-          return true;
-        },
-        onclone: (clonedDoc) => {
-          if (clonedDoc && clonedDoc.body) {
-            clonedDoc.body.style.margin = "0";
-            clonedDoc.body.style.padding = "0";
-            clonedDoc.body.style.background = "#ffffff";
-            clonedDoc.body.style.overflow = "visible";
-          }
-          const clonedStage = clonedDoc.getElementById("pmgReportCaptureStage");
-          if (clonedStage) {
-            clonedStage.style.position = "absolute";
-            clonedStage.style.left = "0px";
-            clonedStage.style.top = "0px";
-            clonedStage.style.opacity = "1";
-            clonedStage.style.zIndex = "1";
-            clonedStage.style.width = fullWidth + "px";
-            clonedStage.style.height = fullHeight + "px";
-          }
-        }
-      });
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Report rendering timed out")), 10000)
-      );
-
-      return Promise.race([renderPromise, timeoutPromise]);
-    };
-
-    let canvas;
-    try {
-      canvas = await runRender(safeScale);
-      if (!canvas || canvas.width === 0 || canvas.height === 0) {
-        canvas = await runRender(1.5);
-      }
-    } catch (firstErr) {
-      console.warn("Retrying report capture at fallback scale 1.5:", firstErr);
-      canvas = await runRender(1.5);
-    }
-
-    const blob = await canvasToPngBlob(canvas);
-    const fileName = buildReportFileName();
-    const blobUrl = URL.createObjectURL(blob);
-
-    activeReportBlobCache = {
-      type: currentReportType,
-      blob,
-      blobUrl,
-      fileName
-    };
-    return activeReportBlobCache;
-  } finally {
-    if (stage && stage.parentNode) {
-      stage.parentNode.removeChild(stage);
-    }
+  const canvas = renderReportCanvasNative(currentReportDataModel);
+  const dataUrl = canvas.toDataURL("image/png");
+  const base64Part = dataUrl.split(",")[1];
+  const byteStr = atob(base64Part);
+  const bytes = new Uint8Array(byteStr.length);
+  for (let i = 0; i < byteStr.length; i++) {
+    bytes[i] = byteStr.charCodeAt(i);
   }
+
+  const fileName = buildReportFileName();
+  const blob = new Blob([bytes], { type: "image/png" });
+  const blobUrl = URL.createObjectURL(blob);
+  let file = null;
+  try {
+    file = new File([blob], fileName, { type: "image/png" });
+  } catch (e) {}
+
+  activeReportBlobCache = {
+    type: currentReportType,
+    dataUrl,
+    blob,
+    blobUrl,
+    file,
+    fileName
+  };
+  return activeReportBlobCache;
 }
 
-function showReportPreviewBanner(blobUrl, fileName, statusMsg) {
+function showReportPreviewBanner(exportObj, statusMsg) {
   const previewBox = document.getElementById("reportDownloadPreviewBox");
   const statusEl = document.getElementById("reportDownloadStatusText");
   const directLink = document.getElementById("reportDirectDownloadLink");
@@ -2874,11 +3155,12 @@ function showReportPreviewBanner(blobUrl, fileName, statusMsg) {
 
   if (statusEl && statusMsg) statusEl.innerText = statusMsg;
   if (directLink) {
-    directLink.href = blobUrl;
-    directLink.download = fileName;
+    // Use compact dataUrl (<200KB) on backup anchor so even Android WebViews without blob: support save cleanly
+    directLink.href = exportObj.dataUrl || exportObj.blobUrl;
+    directLink.download = exportObj.fileName;
   }
   if (previewImg) {
-    previewImg.src = blobUrl;
+    previewImg.src = exportObj.blobUrl || exportObj.dataUrl;
   }
   if (previewBox) {
     previewBox.style.display = "block";
@@ -2888,23 +3170,16 @@ function showReportPreviewBanner(blobUrl, fileName, statusMsg) {
   }
 }
 
-async function downloadReportAsImage() {
-  const element = document.getElementById("captureArea");
-  if (!element) return;
-
+function downloadReportAsImage() {
   const btn = document.getElementById("btnDownloadReportPng") || document.querySelector("#reportModal button[onclick*='downloadReportAsImage']");
-  const originalText = "📸 Download Ultra-HD PNG";
-  if (btn) {
-    btn.disabled = true;
-    btn.innerText = "⏳ Generating Ultra-HD PNG...";
-  }
-
   try {
-    const { blobUrl, fileName } = await generateReportPngBlob();
+    // 100% Synchronous (<15ms) — preserves mobile/PWA user gesture activation!
+    const exportObj = buildReportExportSynchronously();
 
+    // Trigger immediate browser download
     const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = fileName;
+    link.href = exportObj.blobUrl;
+    link.download = exportObj.fileName;
     link.rel = "noopener";
     link.style.display = "none";
     document.body.appendChild(link);
@@ -2914,69 +3189,54 @@ async function downloadReportAsImage() {
     }, 1500);
 
     showReportPreviewBanner(
-      blobUrl,
-      fileName,
-      `✅ ${fileName} ready! Download started — or tap link / long-press image below:`
+      exportObj,
+      `✅ ${exportObj.fileName} ready! If using an installed phone app, you can also tap "📤 Share / WhatsApp" or long-press the image below:`
     );
-  } catch (err) {
-    console.error("Screenshot generation error:", err);
-    alert("Failed to generate image report: " + (err && err.message ? err.message : "Please try again."));
-  } finally {
+
     if (btn) {
-      btn.disabled = false;
-      btn.innerText = originalText;
+      btn.innerText = "✅ Downloaded PNG!";
+      setTimeout(() => {
+        if (btn) btn.innerText = "📸 Download Ultra-HD PNG";
+      }, 2000);
     }
+
+    // On iOS Standalone Home Screen PWA where <a download> is silently ignored, also open native Save Image sheet
+    const isStandalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "");
+    if (isStandalone && isIOS && exportObj.file && navigator.canShare && navigator.canShare({ files: [exportObj.file] })) {
+      navigator.share({ files: [exportObj.file], title: exportObj.fileName }).catch(() => {});
+    }
+  } catch (err) {
+    console.error("Report PNG export error:", err);
+    alert("Failed to export report PNG: " + (err && err.message ? err.message : "Please try again."));
+    if (btn) btn.innerText = "📸 Download Ultra-HD PNG";
   }
 }
 
-async function shareReportAsImage() {
-  const element = document.getElementById("captureArea");
-  if (!element) return;
-
-  const btn = document.getElementById("btnShareReportPng");
-  const originalText = "📤 Share / WhatsApp";
-  if (btn) {
-    btn.disabled = true;
-    btn.innerText = "⏳ Preparing PNG...";
-  }
-
+function shareReportAsImage() {
   try {
-    const { blob, blobUrl, fileName } = await generateReportPngBlob();
+    // 100% Synchronous before navigator.share() so mobile OS never rejects user gesture!
+    const exportObj = buildReportExportSynchronously();
     showReportPreviewBanner(
-      blobUrl,
-      fileName,
-      `✅ ${fileName} ready! Choose an app to share or tap link below to save:`
+      exportObj,
+      `✅ ${exportObj.fileName} ready! Choose WhatsApp / Chat / Save to Device:`
     );
 
-    const file = new File([blob], fileName, { type: "image/png" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        title: fileName.replace(/\.png$/i, "").replace(/_/g, " "),
-        files: [file]
+    if (exportObj.file && navigator.canShare && navigator.canShare({ files: [exportObj.file] })) {
+      navigator.share({
+        title: exportObj.fileName.replace(/\.png$/i, "").replace(/_/g, " "),
+        files: [exportObj.file]
+      }).catch((err) => {
+        if (err && err.name !== "AbortError") {
+          console.warn("Share sheet notice:", err);
+        }
       });
     } else {
-      // Fallback on desktop / unsupported WebViews: trigger direct blob download
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        if (link.parentNode) link.parentNode.removeChild(link);
-      }, 1500);
+      downloadReportAsImage();
     }
   } catch (err) {
-    if (err && err.name === "AbortError") {
-      // User dismissed share sheet — normal behavior
-      return;
-    }
     console.error("Share report error:", err);
-    alert("Could not open system share sheet. Your PNG is ready in the preview box above — tap 'Tap here to Save PNG directly' or long-press the image.");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerText = originalText;
-    }
+    alert("Could not share image: " + (err && err.message ? err.message : "Please use the preview box to save."));
   }
 }
 
