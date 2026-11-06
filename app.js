@@ -2411,6 +2411,7 @@ function openReportModal(type) {
     return;
   }
   currentReportType = type;
+  if (typeof resetReportDownloadPreview === 'function') resetReportDownloadPreview();
   document.getElementById("reportModal").style.display = "flex";
   history.pushState({ modal: 'reportModal' }, '');
   const content = document.getElementById("reportContent");
@@ -2563,23 +2564,26 @@ function openReportModal(type) {
     content.innerHTML = html;
   } 
   else if (type === 'teammates') {
-    // Teammate Target Achievement Table & Daily Quota Run-Rate for October 2026
+    // Teammate Target Achievement Table & Daily Quota Run-Rate for current month
+    const fullMonths = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+    const curMonShort = months[currentMonth] || "MTD";
+    const curMonFull = fullMonths[currentMonth] || "MONTHLY";
     const daysInMonth = currentData.daysInMonth || 31;
     const currentDay = Math.min(daysInMonth, Math.max(1, todayDay));
     const remainingDays = Math.max(1, daysInMonth - currentDay + 1);
 
     let html = `
     <div class="excel-report" id="captureArea" style="min-width: 860px; width: max-content;">
-      <div class="excel-title">PMG ${selectedBranch.toUpperCase()} - TEAMMATE OCTOBER TARGET ACHIEVEMENT & DAILY RUN-RATE (${reportDateDisplay})</div>
+      <div class="excel-title">PMG ${selectedBranch.toUpperCase()} - TEAMMATE ${curMonFull} TARGET ACHIEVEMENT & DAILY RUN-RATE (${reportDateDisplay})</div>
       <table class="excel-table">
         <tr class="header-red">
           <th style="text-align:left;">Teammate Name</th>
           <th>Cust</th>
-          <th>Oct MTD Sales</th>
-          <th>Oct TS Target</th>
+          <th>${curMonShort} MTD Sales</th>
+          <th>${curMonShort} TS Target</th>
           <th>Daily TS Quota (${remainingDays}d left)</th>
-          <th>Oct MTD HB</th>
-          <th>Oct HB Target</th>
+          <th>${curMonShort} MTD HB</th>
+          <th>${curMonShort} HB Target</th>
           <th>Daily HB Quota (${remainingDays}d left)</th>
           <th>HB %</th>
         </tr>`;
@@ -2642,61 +2646,337 @@ function formatRM(num) {
   return "RM " + Number(num).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
 }
 
+let activeReportBlobCache = null;
+
+function resetReportDownloadPreview() {
+  if (activeReportBlobCache && activeReportBlobCache.blobUrl) {
+    try { URL.revokeObjectURL(activeReportBlobCache.blobUrl); } catch (e) {}
+  }
+  activeReportBlobCache = null;
+  const previewBox = document.getElementById("reportDownloadPreviewBox");
+  if (previewBox) previewBox.style.display = "none";
+  const previewImg = document.getElementById("reportGeneratedPreviewImg");
+  if (previewImg) previewImg.removeAttribute("src");
+}
+
 function closeReportModal(shouldPop = true) {
   document.getElementById("reportModal").style.display = "none";
+  resetReportDownloadPreview();
   if (shouldPop && history.state && history.state.modal === 'reportModal') {
     history.back();
   }
 }
 
-async function downloadReportAsImage() {
-  const element = document.getElementById('captureArea');
-  if (!element) return;
+async function ensureHtml2CanvasLoaded() {
+  if (typeof window.html2canvas === "function") return window.html2canvas;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+    script.async = true;
+    const timer = setTimeout(() => reject(new Error("Timed out loading image engine")), 8000);
+    script.onload = () => {
+      clearTimeout(timer);
+      if (typeof window.html2canvas === "function") resolve(window.html2canvas);
+      else reject(new Error("html2canvas unavailable"));
+    };
+    script.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error("Failed to load image generator script"));
+    };
+    document.head.appendChild(script);
+  });
+}
 
-  const btn = document.querySelector("#reportModal button[onclick*='downloadReportAsImage']");
-  const originalText = btn ? btn.innerText : "";
-  if (btn) btn.innerText = "⏳ Generating Ultra-HD PNG...";
+function canvasToPngBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    const fallbackFromDataUrl = () => {
+      try {
+        const dataUrl = canvas.toDataURL("image/png");
+        if (!dataUrl || dataUrl === "data:,") {
+          return reject(new Error("Empty canvas output"));
+        }
+        const byteString = atob(dataUrl.split(",")[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        resolve(new Blob([ab], { type: "image/png" }));
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    if (typeof canvas.toBlob === "function") {
+      try {
+        canvas.toBlob((blob) => {
+          if (blob && blob.size > 0) resolve(blob);
+          else fallbackFromDataUrl();
+        }, "image/png");
+      } catch (e) {
+        fallbackFromDataUrl();
+      }
+    } else {
+      fallbackFromDataUrl();
+    }
+  });
+}
+
+function buildReportFileName() {
+  const cleanBranch = String(selectedBranch || DEFAULT_BRANCH).trim().replace(/[^a-zA-Z0-9]+/g, "_");
+  const reportSlug = currentReportType === "director" ? "Director_7Day_Report" : "Teammate_Gap_Report";
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const md = parseMytDate(new Date());
+  const datePart = md ? `${String(md.day).padStart(2, "0")}-${months[md.month]}-${md.year}` : "Latest";
+  return `PMG_${cleanBranch}_${reportSlug}_${datePart}.png`;
+}
+
+async function generateReportPngBlob() {
+  if (activeReportBlobCache && activeReportBlobCache.blob && activeReportBlobCache.type === currentReportType) {
+    return activeReportBlobCache;
+  }
+
+  const element = document.getElementById("captureArea");
+  if (!element) throw new Error("Report table not found");
+
+  const h2c = await ensureHtml2CanvasLoaded();
+
+  const existingStage = document.getElementById("pmgReportCaptureStage");
+  if (existingStage) existingStage.remove();
+
+  const stage = document.createElement("div");
+  stage.id = "pmgReportCaptureStage";
+  stage.style.cssText = "position:fixed; left:0; top:0; z-index:-9999; opacity:0; pointer-events:none; background:#ffffff; padding:16px; margin:0; width:max-content; height:auto; overflow:visible;";
+
+  const clone = element.cloneNode(true);
+  clone.id = "pmgReportCaptureClone";
+  clone.style.width = "max-content";
+  clone.style.minWidth = "860px";
+  clone.style.maxWidth = "none";
+  clone.style.overflow = "visible";
+  clone.style.background = "#ffffff";
+
+  stage.appendChild(clone);
+  document.body.appendChild(stage);
 
   try {
-    const origWidth = element.style.width;
-    const origMaxWidth = element.style.maxWidth;
-    const origOverflow = element.style.overflow;
+    // Force layout reflow and yield briefly so button UI updates immediately
+    void stage.offsetHeight;
+    await new Promise(r => setTimeout(r, 25));
 
-    // Expand element to its full scroll dimensions so 100% of columns and rows are captured
-    const fullWidth = Math.max(element.scrollWidth, 860);
-    const fullHeight = element.scrollHeight;
+    const fullWidth = Math.max(Math.ceil(stage.scrollWidth), 880);
+    const fullHeight = Math.max(Math.ceil(stage.scrollHeight), 200);
+    stage.style.width = fullWidth + "px";
+    stage.style.height = fullHeight + "px";
 
-    element.style.width = fullWidth + "px";
-    element.style.maxWidth = "none";
-    element.style.overflow = "visible";
+    let safeScale = 2.5;
+    if (fullWidth * safeScale > 3840) safeScale = 3840 / fullWidth;
+    if (fullHeight * safeScale > 3840) safeScale = Math.min(safeScale, 3840 / fullHeight);
+    if ((fullWidth * safeScale) * (fullHeight * safeScale) > 10000000) {
+      safeScale = Math.sqrt(10000000 / (fullWidth * fullHeight));
+    }
+    safeScale = Math.max(1.5, Math.round(safeScale * 100) / 100);
 
-    const canvas = await html2canvas(element, {
-      scale: 3,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-      width: fullWidth,
-      height: fullHeight,
-      windowWidth: fullWidth + 100,
-      windowHeight: fullHeight + 100,
-      scrollX: 0,
-      scrollY: 0
-    });
+    const runRender = (scaleVal) => {
+      const renderPromise = h2c(stage, {
+        scale: scaleVal,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        imageTimeout: 3000,
+        logging: false,
+        x: 0,
+        y: 0,
+        width: fullWidth,
+        height: fullHeight,
+        windowWidth: fullWidth + 40,
+        windowHeight: fullHeight + 40,
+        scrollX: 0,
+        scrollY: 0,
+        ignoreElements: (el) => {
+          if (!el || !el.tagName) return false;
+          const tag = el.tagName.toUpperCase();
+          if (tag === "HTML" || tag === "HEAD" || tag === "BODY" || tag === "STYLE" || tag === "META") {
+            return false;
+          }
+          if (tag === "LINK") {
+            const rel = (el.getAttribute("rel") || "").toLowerCase();
+            return rel !== "stylesheet";
+          }
+          if (tag === "SCRIPT" || tag === "NOSCRIPT" || tag === "IFRAME") {
+            return true;
+          }
+          if (el === stage || stage.contains(el)) {
+            return false;
+          }
+          return true;
+        },
+        onclone: (clonedDoc) => {
+          if (clonedDoc && clonedDoc.body) {
+            clonedDoc.body.style.margin = "0";
+            clonedDoc.body.style.padding = "0";
+            clonedDoc.body.style.background = "#ffffff";
+            clonedDoc.body.style.overflow = "visible";
+          }
+          const clonedStage = clonedDoc.getElementById("pmgReportCaptureStage");
+          if (clonedStage) {
+            clonedStage.style.position = "absolute";
+            clonedStage.style.left = "0px";
+            clonedStage.style.top = "0px";
+            clonedStage.style.opacity = "1";
+            clonedStage.style.zIndex = "1";
+            clonedStage.style.width = fullWidth + "px";
+            clonedStage.style.height = fullHeight + "px";
+          }
+        }
+      });
 
-    // Restore original styles
-    element.style.width = origWidth;
-    element.style.maxWidth = origMaxWidth;
-    element.style.overflow = origOverflow;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Report rendering timed out")), 10000)
+      );
 
-    const imgData = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `PMG_${selectedBranch}_${currentReportType}_Report.png`;
-    link.href = imgData;
+      return Promise.race([renderPromise, timeoutPromise]);
+    };
+
+    let canvas;
+    try {
+      canvas = await runRender(safeScale);
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        canvas = await runRender(1.5);
+      }
+    } catch (firstErr) {
+      console.warn("Retrying report capture at fallback scale 1.5:", firstErr);
+      canvas = await runRender(1.5);
+    }
+
+    const blob = await canvasToPngBlob(canvas);
+    const fileName = buildReportFileName();
+    const blobUrl = URL.createObjectURL(blob);
+
+    activeReportBlobCache = {
+      type: currentReportType,
+      blob,
+      blobUrl,
+      fileName
+    };
+    return activeReportBlobCache;
+  } finally {
+    if (stage && stage.parentNode) {
+      stage.parentNode.removeChild(stage);
+    }
+  }
+}
+
+function showReportPreviewBanner(blobUrl, fileName, statusMsg) {
+  const previewBox = document.getElementById("reportDownloadPreviewBox");
+  const statusEl = document.getElementById("reportDownloadStatusText");
+  const directLink = document.getElementById("reportDirectDownloadLink");
+  const previewImg = document.getElementById("reportGeneratedPreviewImg");
+
+  if (statusEl && statusMsg) statusEl.innerText = statusMsg;
+  if (directLink) {
+    directLink.href = blobUrl;
+    directLink.download = fileName;
+  }
+  if (previewImg) {
+    previewImg.src = blobUrl;
+  }
+  if (previewBox) {
+    previewBox.style.display = "block";
+    try {
+      previewBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch (e) {}
+  }
+}
+
+async function downloadReportAsImage() {
+  const element = document.getElementById("captureArea");
+  if (!element) return;
+
+  const btn = document.getElementById("btnDownloadReportPng") || document.querySelector("#reportModal button[onclick*='downloadReportAsImage']");
+  const originalText = "📸 Download Ultra-HD PNG";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "⏳ Generating Ultra-HD PNG...";
+  }
+
+  try {
+    const { blobUrl, fileName } = await generateReportPngBlob();
+
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = fileName;
+    link.rel = "noopener";
+    link.style.display = "none";
+    document.body.appendChild(link);
     link.click();
+    setTimeout(() => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+    }, 1500);
+
+    showReportPreviewBanner(
+      blobUrl,
+      fileName,
+      `✅ ${fileName} ready! Download started — or tap link / long-press image below:`
+    );
   } catch (err) {
     console.error("Screenshot generation error:", err);
-    alert("Failed to generate image report. Please try again.");
+    alert("Failed to generate image report: " + (err && err.message ? err.message : "Please try again."));
   } finally {
-    if (btn) btn.innerText = originalText;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = originalText;
+    }
+  }
+}
+
+async function shareReportAsImage() {
+  const element = document.getElementById("captureArea");
+  if (!element) return;
+
+  const btn = document.getElementById("btnShareReportPng");
+  const originalText = "📤 Share / WhatsApp";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "⏳ Preparing PNG...";
+  }
+
+  try {
+    const { blob, blobUrl, fileName } = await generateReportPngBlob();
+    showReportPreviewBanner(
+      blobUrl,
+      fileName,
+      `✅ ${fileName} ready! Choose an app to share or tap link below to save:`
+    );
+
+    const file = new File([blob], fileName, { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        title: fileName.replace(/\.png$/i, "").replace(/_/g, " "),
+        files: [file]
+      });
+    } else {
+      // Fallback on desktop / unsupported WebViews: trigger direct blob download
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        if (link.parentNode) link.parentNode.removeChild(link);
+      }, 1500);
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      // User dismissed share sheet — normal behavior
+      return;
+    }
+    console.error("Share report error:", err);
+    alert("Could not open system share sheet. Your PNG is ready in the preview box above — tap 'Tap here to Save PNG directly' or long-press the image.");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = originalText;
+    }
   }
 }
 
@@ -3878,8 +4158,8 @@ function triggerNativeAlertNotification(title, message, url) {
       try {
         new Notification(title, {
           body: message,
-          icon: "./favicon.ico",
-          badge: "./favicon.ico"
+          icon: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
+          badge: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png"
         });
       } catch(e) {}
     }
@@ -4764,8 +5044,16 @@ ${driveMsg}
   }
 }
 
+const PMG_6S_PLACEHOLDER_SVG = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160" viewBox="0 0 240 160">' +
+  '<rect width="240" height="160" fill="#f1f5f9"/>' +
+  '<text x="120" y="72" font-family="Arial,sans-serif" font-size="28" text-anchor="middle" fill="#64748b">📷</text>' +
+  '<text x="120" y="102" font-family="Arial,sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#475569">6S Logged</text>' +
+  '</svg>'
+);
+
 function open6sFullscreenLightbox(imgUrl) {
-  if (!imgUrl || imgUrl.includes('favicon.ico')) return;
+  if (!imgUrl || imgUrl.includes('favicon.ico') || imgUrl.startsWith('data:image/svg+xml')) return;
   const modal = document.getElementById("sixSLightboxModal");
   const img = document.getElementById("sixSLightboxImg");
   if (!modal || !img) return;
@@ -4803,7 +5091,8 @@ function open6sReviewModal(photoOrIdx) {
   const img = document.getElementById("sixSReviewImg");
   const noImgCard = document.getElementById("sixSNoImageCard");
   const imgHint = document.getElementById("sixSReviewImgHint");
-  const activeSrc = (photo.thumbUrl && !photo.thumbUrl.includes('favicon.ico')) ? photo.thumbUrl : ((photo.fileUrl && !photo.fileUrl.includes('favicon.ico')) ? photo.fileUrl : "");
+  const isValid6sImg = (u) => u && !u.includes('favicon.ico') && !u.startsWith('data:image/svg+xml');
+  const activeSrc = isValid6sImg(photo.thumbUrl) ? photo.thumbUrl : (isValid6sImg(photo.fileUrl) ? photo.fileUrl : "");
 
   if (activeSrc) {
     if (img) {
@@ -4814,7 +5103,10 @@ function open6sReviewModal(photoOrIdx) {
     if (noImgCard) noImgCard.style.display = "none";
     if (imgHint) imgHint.style.display = "block";
   } else {
-    if (img) img.style.display = "none";
+    if (img) {
+      img.style.display = "none";
+      img.removeAttribute("src");
+    }
     if (noImgCard) noImgCard.style.display = "block";
     if (imgHint) imgHint.style.display = "none";
   }
@@ -5018,11 +5310,11 @@ function render6sSection() {
       const isApproved = (p.status || '').includes("Approved");
       const badgeText = isApproved ? 'Approved ✅' : (p.fileUrl ? '↗ Drive' : '📷 App');
       const badgeBg = isApproved ? 'rgba(21,128,61,0.85)' : 'rgba(0,0,0,0.65)';
-      const imgSrc = p.thumbUrl || p.fileUrl || './favicon.ico';
+      const imgSrc = p.thumbUrl || p.fileUrl || PMG_6S_PLACEHOLDER_SVG;
       return `
         <div style="min-width: 130px; max-width: 140px; background: white; border: 1.5px solid ${isApproved ? '#86efac' : '#e2e8f0'}; border-radius: 8px; padding: 6px; text-align: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="open6sReviewModal(${idx})">
           <div style="position: relative;">
-            <img src="${imgSrc}" alt="${p.category}" style="width: 100%; height: 90px; object-fit: cover; border-radius: 6px;" onerror="this.src='./favicon.ico'">
+            <img src="${imgSrc}" alt="${p.category}" style="width: 100%; height: 90px; object-fit: cover; border-radius: 6px;" onerror="this.onerror=null; this.src=PMG_6S_PLACEHOLDER_SVG;">
             <span style="position: absolute; bottom: 4px; right: 4px; background: ${badgeBg}; color: white; font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; font-weight: 700;">${badgeText}</span>
           </div>
           <div style="font-size: 0.68rem; font-weight: 800; color: #1e3a8a; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.category}</div>

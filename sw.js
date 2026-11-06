@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pmg-hub-v78.6';
+const CACHE_NAME = 'pmg-hub-v78.7';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -30,8 +30,8 @@ self.addEventListener('message', (event) => {
     const title = event.data.title || "⚡ PMG Performance Hub";
     const options = {
       body: event.data.body || "New update in PMG Sales Hub.",
-      icon: "./favicon.ico",
-      badge: "./favicon.ico",
+      icon: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
+      badge: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
       vibrate: [200, 100, 200],
       data: { url: event.data.url || "./index.html" }
     };
@@ -64,8 +64,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: body,
-    icon: "./favicon.ico",
-    badge: "./favicon.ico",
+    icon: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
+    badge: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
     vibrate: [200, 100, 200],
     data: { url: url },
     tag: "pmg-alert-" + Date.now(),
