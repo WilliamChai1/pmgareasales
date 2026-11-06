@@ -1734,6 +1734,12 @@ function dposSendReminderPush(req) {
 
 
 // ─── 6S GONDOLA PHOTO OPERATIONS & GOOGLE DRIVE STORAGE ─────────────────────────
+function authorizeGoogleDrive() {
+  const root = DriveApp.getRootFolder();
+  Logger.log("✅ Google Drive authorized successfully! Root: " + root.getName());
+  return "Google Drive authorized successfully! Root: " + root.getName();
+}
+
 function upload6sPhoto(req) {
   try {
     const branch = String(req.branch || 'Kota Sentosa').trim();
@@ -1741,13 +1747,14 @@ function upload6sPhoto(req) {
     const category = String(req.category || 'Gondola Cleaning').trim();
     const notes = String(req.notes || '').trim();
     const base64Data = req.photoBase64;
+    const thumbBase64 = String(req.thumbBase64 || '').trim();
     const mimeType = req.mimeType || 'image/jpeg';
 
-    if (!base64Data) {
+    if (!base64Data && !thumbBase64) {
       return { success: false, message: 'No photo data received' };
     }
 
-    const cleanBase64 = String(base64Data).replace(/^data:image\/[a-zA-Z0-9.+]+;base64,/, '');
+    const cleanBase64 = String(base64Data || thumbBase64).replace(/^data:image\/[a-zA-Z0-9.+]+;base64,/, '');
     const decodedBytes = Utilities.base64Decode(cleanBase64);
 
     const now = new Date();
@@ -1799,11 +1806,20 @@ function upload6sPhoto(req) {
     let logSheet = ss.getSheetByName("PMG_6S_Log");
     if (!logSheet) {
       logSheet = ss.insertSheet("PMG_6S_Log");
-      logSheet.appendRow(["Timestamp", "Date", "Branch", "Teammate", "Category", "File Name", "Drive URL", "File ID", "Notes", "Status", "Audited By"]);
-      logSheet.getRange(1, 1, 1, 11).setFontWeight("bold").setBackground("#dcfce7");
+      logSheet.appendRow(["Timestamp", "Date", "Branch", "Teammate", "Category", "File Name", "Drive URL", "File ID", "Notes", "Status", "Audited By", "Thumbnail_Base64"]);
+      logSheet.getRange(1, 1, 1, 12).setFontWeight("bold").setBackground("#dcfce7");
     }
 
     const timestampFormatted = Utilities.formatDate(now, "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm:ss");
+    
+    // Store compact thumbnail base64 in Sheet (under 48k chars cell limit) as instant backup
+    let safeThumbStore = "";
+    if (thumbBase64 && thumbBase64.length <= 48000) {
+      safeThumbStore = thumbBase64;
+    } else if (base64Data && base64Data.length <= 48000) {
+      safeThumbStore = base64Data;
+    }
+
     logSheet.appendRow([
       timestampFormatted, 
       dateStr, 
@@ -1815,18 +1831,22 @@ function upload6sPhoto(req) {
       fileId, 
       notes,
       "Pending Review",
-      ""
+      "",
+      safeThumbStore
     ]);
+
+    // Use Drive thumbnail if available, otherwise fallback to stored thumbnail base64
+    const finalThumbUrl = thumbUrl || safeThumbStore;
 
     return {
       success: true,
-      message: fileUrl ? "Photo uploaded to Google Drive & logged successfully!" : "Photo logged to Google Sheet! (Drive upload pending permissions)",
+      message: fileUrl ? "Photo uploaded to Google Drive & logged successfully!" : "Photo logged to Google Sheet with instant image preview! (Drive upload pending permissions)",
       driveWarning: driveWarning || null,
       date: dateStr,
       timeDisplay: timeDisplay,
       fileUrl: fileUrl,
       fileId: fileId,
-      thumbUrl: thumbUrl,
+      thumbUrl: finalThumbUrl,
       category: category,
       teammate: teammate,
       timestamp: timestampFormatted,
@@ -1860,6 +1880,10 @@ function get6sPhotos(branch, targetDate) {
       if (bTarget === 'ALL' || rowBranch === bTarget || rowBranch.includes(bTarget) || bTarget.includes(rowBranch)) {
         const fileId = data[i][7];
         const isToday = (rowDate === dateStr || String(data[i][1]).trim() === dateStr);
+        const storedThumb = String(data[i][11] || "").trim();
+        const driveThumb = fileId ? ("https://drive.google.com/thumbnail?sz=w400&id=" + fileId) : "";
+        const finalThumb = driveThumb || storedThumb || data[i][6] || "";
+
         results.push({
           timestamp: data[i][0],
           date: data[i][1],
@@ -1869,7 +1893,7 @@ function get6sPhotos(branch, targetDate) {
           fileName: data[i][5],
           fileUrl: data[i][6] || "",
           fileId: fileId || "",
-          thumbUrl: fileId ? ("https://drive.google.com/thumbnail?sz=w400&id=" + fileId) : "",
+          thumbUrl: finalThumb,
           notes: data[i][8] || "",
           status: data[i][9] || "Pending Review",
           auditedBy: data[i][10] || "",

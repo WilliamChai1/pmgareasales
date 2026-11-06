@@ -9,7 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=78.5">
+  <link rel="stylesheet" href="./styles.css?v=78.6">
   <script>
     // Register Native PMG Service Worker
     if ('serviceWorker' in navigator) {
@@ -210,7 +210,13 @@
       </div>
 
       <div style="text-align: center; background: #0f172a; border-radius: 8px; padding: 6px; margin-bottom: 10px;">
-        <img id="sixSReviewImg" src="" alt="6S Inspection Photo" style="max-height: 320px; max-width: 100%; border-radius: 6px; object-fit: contain;">
+        <img id="sixSReviewImg" src="" alt="6S Inspection Photo" style="max-height: 320px; max-width: 100%; border-radius: 6px; object-fit: contain; cursor: zoom-in;" onclick="open6sFullscreenLightbox(this.src)">
+        <div id="sixSNoImageCard" style="display:none; padding: 25px 15px; text-align: center; color: #cbd5e1;">
+          <div style="font-size: 2rem; margin-bottom: 6px;">📷</div>
+          <div style="font-weight: 700; color: #e2e8f0; font-size: 0.9rem;">Photo Recorded in Google Sheet</div>
+          <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Direct image preview will appear automatically on new submissions. Full Google Drive sync requires 1-time Drive authorization.</div>
+        </div>
+        <div id="sixSReviewImgHint" style="font-size: 0.68rem; color: #94a3b8; margin-top: 4px;">🔍 Tap image to zoom full screen</div>
       </div>
 
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; font-size: 0.78rem; line-height: 1.6; margin-bottom: 10px;">
@@ -235,6 +241,15 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 6S Fullscreen Lightbox Modal -->
+  <div id="sixSLightboxModal" class="overlay" style="display:none; z-index: 3500; background: rgba(0,0,0,0.92); align-items: center; justify-content: center;" onclick="close6sLightboxModal()">
+    <div style="position: relative; max-width: 96vw; max-height: 96vh; display: flex; flex-direction: column; align-items: center;" onclick="event.stopPropagation()">
+      <button type="button" style="position: absolute; top: -38px; right: 0; background: rgba(255,255,255,0.25); color: white; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="close6sLightboxModal()">✕</button>
+      <img id="sixSLightboxImg" src="" alt="Full Screen Inspection" style="max-width: 95vw; max-height: 85vh; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+      <div style="color: #94a3b8; font-size: 0.75rem; margin-top: 8px;">Tap anywhere outside or ✕ to close</div>
     </div>
   </div>
 
@@ -915,11 +930,11 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=78.5"></script>
-  <script src="./data/dpos_week1.js?v=78.5"></script>
-  <script src="./data/dpos_localized_quizzes.js?v=78.5"></script>
-  <script src="./data/dpos_catalog.js?v=78.5"></script>
-  <script src="./dpos.js?v=78.5"></script>
-  <script src="./app.js?v=78.5"></script>
+  <script src="./data/clinical_upsell_modules.js?v=78.6"></script>
+  <script src="./data/dpos_week1.js?v=78.6"></script>
+  <script src="./data/dpos_localized_quizzes.js?v=78.6"></script>
+  <script src="./data/dpos_catalog.js?v=78.6"></script>
+  <script src="./dpos.js?v=78.6"></script>
+  <script src="./app.js?v=78.6"></script>
 </body>
 </html>

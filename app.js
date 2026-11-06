@@ -4563,21 +4563,45 @@ function preview6sSelectedPhoto(input) {
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Compress to 0.75 JPEG
+      // 1. Full image for Google Drive: max 1280px, quality 0.75
       const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.75);
       selected6sCompressedBase64 = compressedDataUrl;
       selected6sMimeType = "image/jpeg";
 
+      // 2. Compact thumbnail for instant Google Sheet storage: max 360px, quality 0.5 (~15KB)
+      const thumbMaxDim = 360;
+      let tWidth = img.width;
+      let tHeight = img.height;
+      if (tWidth > tHeight) {
+        if (tWidth > thumbMaxDim) {
+          tHeight = Math.round(tHeight * (thumbMaxDim / tWidth));
+          tWidth = thumbMaxDim;
+        }
+      } else {
+        if (tHeight > thumbMaxDim) {
+          tWidth = Math.round(tWidth * (thumbMaxDim / tHeight));
+          tHeight = thumbMaxDim;
+        }
+      }
+      const thumbCanvas = document.createElement("canvas");
+      thumbCanvas.width = tWidth;
+      thumbCanvas.height = tHeight;
+      const tCtx = thumbCanvas.getContext("2d");
+      tCtx.drawImage(img, 0, 0, tWidth, tHeight);
+      const thumbDataUrl = thumbCanvas.toDataURL("image/jpeg", 0.5);
+      selected6sThumbBase64 = thumbDataUrl;
+
       if (previewImg) previewImg.src = compressedDataUrl;
 
       const approxKb = Math.round((compressedDataUrl.length * 3 / 4) / 1024);
-      if (notice) notice.innerText = `Compressed: ~${approxKb} KB (Ready for fast Google Drive upload) ✅`;
+      if (notice) notice.innerText = `Compressed: ~${approxKb} KB (Auto-saved to Sheet + Drive) ✅`;
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
+let selected6sThumbBase64 = null;
 let current6sReviewPhoto = null;
 
 async function syncPending6sPhotosToCloud() {
@@ -4659,6 +4683,7 @@ async function submit6sPhotoToDrive() {
         category: category,
         notes: notes,
         photoBase64: selected6sCompressedBase64,
+        thumbBase64: selected6sThumbBase64,
         mimeType: selected6sMimeType
       })
     });
@@ -4739,6 +4764,24 @@ ${driveMsg}
   }
 }
 
+function open6sFullscreenLightbox(imgUrl) {
+  if (!imgUrl || imgUrl.includes('favicon.ico')) return;
+  const modal = document.getElementById("sixSLightboxModal");
+  const img = document.getElementById("sixSLightboxImg");
+  if (!modal || !img) return;
+  img.src = imgUrl;
+  modal.style.display = "flex";
+  history.pushState({ modal: 'sixSLightboxModal' }, '');
+}
+
+function close6sLightboxModal(shouldPop = true) {
+  const modal = document.getElementById("sixSLightboxModal");
+  if (modal) modal.style.display = "none";
+  if (shouldPop && history.state && history.state.modal === 'sixSLightboxModal') {
+    history.back();
+  }
+}
+
 function open6sReviewModal(photoOrIdx) {
   let photo = null;
   if (typeof photoOrIdx === 'number') {
@@ -4758,7 +4801,23 @@ function open6sReviewModal(photoOrIdx) {
   if (title) title.innerText = `6S Inspection: ${photo.category || 'Gondola'}`;
 
   const img = document.getElementById("sixSReviewImg");
-  if (img) img.src = photo.thumbUrl || photo.fileUrl || "./favicon.ico";
+  const noImgCard = document.getElementById("sixSNoImageCard");
+  const imgHint = document.getElementById("sixSReviewImgHint");
+  const activeSrc = (photo.thumbUrl && !photo.thumbUrl.includes('favicon.ico')) ? photo.thumbUrl : ((photo.fileUrl && !photo.fileUrl.includes('favicon.ico')) ? photo.fileUrl : "");
+
+  if (activeSrc) {
+    if (img) {
+      img.src = activeSrc;
+      img.style.display = "inline-block";
+      img.onclick = () => open6sFullscreenLightbox(activeSrc);
+    }
+    if (noImgCard) noImgCard.style.display = "none";
+    if (imgHint) imgHint.style.display = "block";
+  } else {
+    if (img) img.style.display = "none";
+    if (noImgCard) noImgCard.style.display = "block";
+    if (imgHint) imgHint.style.display = "none";
+  }
 
   const cat = document.getElementById("sixSReviewCategory");
   if (cat) cat.innerText = photo.category || "-";
