@@ -5071,7 +5071,67 @@ function close6sUploadModal(shouldPop = true) {
 }
 
 const PMG_6S_IMG_DELIMITER = "||PMG6S_IMG||";
+const PMG_6S_AUDIT_DELIMITER = "||PMG6S_AUDIT||";
 const PMG_6S_MAX_SHEET_CHARS = 38000;
+
+function format6sTimestampForGasAudit(rawTs) {
+  if (!rawTs) return "";
+  const str = String(rawTs).trim();
+  if (str.includes("GMT+0800")) return str;
+  const d = new Date(str.includes("T") ? str : str.replace(" ", "T") + "+08:00");
+  if (isNaN(d.getTime())) return str;
+  const utc8 = new Date(d.getTime() + 8 * 3600 * 1000);
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const dow = days[utc8.getUTCDay()];
+  const mon = months[utc8.getUTCMonth()];
+  const dd = String(utc8.getUTCDate()).padStart(2, "0");
+  const yyyy = utc8.getUTCFullYear();
+  const hh = String(utc8.getUTCHours()).padStart(2, "0");
+  const mm = String(utc8.getUTCMinutes()).padStart(2, "0");
+  const ss = String(utc8.getUTCSeconds()).padStart(2, "0");
+  return `${dow} ${mon} ${dd} ${yyyy} ${hh}:${mm}:${ss} GMT+0800 (Singapore Standard Time)`;
+}
+
+function format6sDisplayTimestamp(rawTs) {
+  if (!rawTs) return "-";
+  const str = String(rawTs).trim();
+  if (!str.includes("T") && !str.includes("GMT")) return str;
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
+  const utc8 = new Date(d.getTime() + 8 * 3600 * 1000);
+  const yyyy = utc8.getUTCFullYear();
+  const mo = String(utc8.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(utc8.getUTCDate()).padStart(2, "0");
+  const hh = String(utc8.getUTCHours()).padStart(2, "0");
+  const mm = String(utc8.getUTCMinutes()).padStart(2, "0");
+  const ss = String(utc8.getUTCSeconds()).padStart(2, "0");
+  return `${yyyy}-${mo}-${dd} ${hh}:${mm}:${ss}`;
+}
+
+function getLocal6sApprovalsMap() {
+  const branchKey = (selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH).toUpperCase();
+  try {
+    const raw = localStorage.getItem("pmg_6s_approvals_" + branchKey);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveLocal6sApproval(photo, status, auditedBy) {
+  if (!photo) return;
+  const branchKey = (selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH).toUpperCase();
+  const map = getLocal6sApprovalsMap();
+  const record = { status: status, auditedBy: auditedBy, updatedAt: Date.now() };
+  const catMateKey = `${String(photo.category || "").trim().toLowerCase()}||${String(photo.teammate || "").trim().toLowerCase()}`;
+  map[catMateKey] = record;
+  if (photo.timestamp) map[String(photo.timestamp).trim()] = record;
+  if (photo.fileName) map[String(photo.fileName).trim()] = record;
+  try {
+    localStorage.setItem("pmg_6s_approvals_" + branchKey, JSON.stringify(map));
+  } catch (e) {}
+}
 
 function compressImageElementForSheet(img, maxChars = PMG_6S_MAX_SHEET_CHARS) {
   const attempts = [
@@ -5136,9 +5196,12 @@ function compressDataUrlForSheet(srcDataUrl, maxChars = PMG_6S_MAX_SHEET_CHARS) 
 
 function strip6sEmbeddedImageFromNotes(rawNotes) {
   if (!rawNotes) return "";
-  const str = String(rawNotes);
+  let str = String(rawNotes);
   if (str.includes(PMG_6S_IMG_DELIMITER)) {
-    return str.split(PMG_6S_IMG_DELIMITER)[0].trim();
+    str = str.split(PMG_6S_IMG_DELIMITER)[0].trim();
+  }
+  if (str.includes(PMG_6S_AUDIT_DELIMITER)) {
+    str = str.split(PMG_6S_AUDIT_DELIMITER)[0].trim();
   }
   if (str.trim().startsWith("data:image/")) {
     return "";
@@ -5146,15 +5209,19 @@ function strip6sEmbeddedImageFromNotes(rawNotes) {
   return str.trim();
 }
 
-function pack6sNotesWithImage(cleanNotes, imgDataUrl) {
+function pack6sNotesWithImage(cleanNotes, imgDataUrl, auditStatus = "", auditedBy = "") {
   const baseNotes = strip6sEmbeddedImageFromNotes(cleanNotes);
+  let header = baseNotes;
+  if (auditStatus && auditStatus.includes("Approved")) {
+    header = (header ? header + " " : "") + `${PMG_6S_AUDIT_DELIMITER}${auditStatus}||${auditedBy || ""}`;
+  }
   if (imgDataUrl && typeof imgDataUrl === "string" && imgDataUrl.startsWith("data:image/")) {
-    const combined = (baseNotes ? baseNotes + " " : "") + PMG_6S_IMG_DELIMITER + imgDataUrl;
+    const combined = (header ? header + " " : "") + PMG_6S_IMG_DELIMITER + imgDataUrl;
     if (combined.length <= 48500) {
       return combined;
     }
   }
-  return baseNotes;
+  return header;
 }
 
 function isValid6sImgUrl(u) {
@@ -5163,10 +5230,10 @@ function isValid6sImgUrl(u) {
 
 function unpack6sPhotoEntry(p) {
   if (!p || typeof p !== "object") return p;
-  const rawNotes = String(p.notes || "");
+  let rawNotes = String(p.notes || "");
   if (rawNotes.includes(PMG_6S_IMG_DELIMITER)) {
     const parts = rawNotes.split(PMG_6S_IMG_DELIMITER);
-    p.notes = parts[0].trim();
+    rawNotes = parts[0].trim();
     const embedded = (parts[1] || "").trim();
     if (embedded.startsWith("data:image/")) {
       if (!isValid6sImgUrl(p.thumbUrl)) p.thumbUrl = embedded;
@@ -5175,11 +5242,21 @@ function unpack6sPhotoEntry(p) {
     }
   } else if (rawNotes.trim().startsWith("data:image/")) {
     const embedded = rawNotes.trim();
-    p.notes = "";
+    rawNotes = "";
     if (!isValid6sImgUrl(p.thumbUrl)) p.thumbUrl = embedded;
     if (!isValid6sImgUrl(p.fileUrl)) p.fileUrl = embedded;
     p.notesImgSynced = true;
   }
+
+  if (rawNotes.includes(PMG_6S_AUDIT_DELIMITER)) {
+    const auditParts = rawNotes.split(PMG_6S_AUDIT_DELIMITER);
+    rawNotes = auditParts[0].trim();
+    const meta = (auditParts[1] || "").split("||");
+    if (meta[0]) p.status = meta[0].trim();
+    if (meta[1]) p.auditedBy = meta[1].trim();
+  }
+  p.notes = rawNotes;
+
   if (isValid6sImgUrl(p.thumbUrl) && !isValid6sImgUrl(p.fileUrl)) {
     p.fileUrl = p.thumbUrl;
   } else if (isValid6sImgUrl(p.fileUrl) && !isValid6sImgUrl(p.thumbUrl)) {
@@ -5190,13 +5267,30 @@ function unpack6sPhotoEntry(p) {
 
 function normalize6sPhotosList(list) {
   if (!Array.isArray(list)) return [];
+  const approvalsMap = getLocal6sApprovalsMap();
   const unpacked = list
     .filter(p => p && (String(p.category || "").trim() || String(p.teammate || "").trim()))
-    .map(p => unpack6sPhotoEntry({ ...p }));
-  // Deduplicate so entries with valid images take priority over legacy blank retry rows
+    .map(p => {
+      const entry = unpack6sPhotoEntry({ ...p });
+      const catMateKey = `${String(entry.category || "").trim().toLowerCase()}||${String(entry.teammate || "").trim().toLowerCase()}`;
+      const savedApproval =
+        (entry.timestamp && approvalsMap[String(entry.timestamp).trim()]) ||
+        (entry.fileName && approvalsMap[String(entry.fileName).trim()]) ||
+        approvalsMap[catMateKey];
+      if (savedApproval && !(entry.status || "").includes("Approved")) {
+        entry.status = savedApproval.status || "Approved ✅";
+        if (savedApproval.auditedBy && !entry.auditedBy) {
+          entry.auditedBy = savedApproval.auditedBy;
+        }
+      }
+      return entry;
+    });
+
+  // Deduplicate so entries with valid images & approvals merge cleanly across rows
   const result = [];
   for (const item of unpacked) {
     const hasImg = isValid6sImgUrl(item.thumbUrl) || isValid6sImgUrl(item.fileUrl);
+    const isApproved = (item.status || "").includes("Approved");
     const catKey = String(item.category || "").trim().toLowerCase();
     const mateKey = String(item.teammate || "").trim().toLowerCase();
     const existingIdx = result.findIndex(r =>
@@ -5206,9 +5300,20 @@ function normalize6sPhotosList(list) {
     if (existingIdx === -1) {
       result.push(item);
     } else {
-      const existingHasImg = isValid6sImgUrl(result[existingIdx].thumbUrl) || isValid6sImgUrl(result[existingIdx].fileUrl);
+      const existing = result[existingIdx];
+      const existingHasImg = isValid6sImgUrl(existing.thumbUrl) || isValid6sImgUrl(existing.fileUrl);
+      const existingApproved = (existing.status || "").includes("Approved");
       if (hasImg && !existingHasImg) {
-        result[existingIdx] = item;
+        existing.thumbUrl = item.thumbUrl;
+        existing.fileUrl = item.fileUrl;
+        existing.notesImgSynced = item.notesImgSynced;
+      }
+      if (isApproved && !existingApproved) {
+        existing.status = item.status;
+        existing.auditedBy = item.auditedBy || existing.auditedBy;
+      }
+      if (!existing.notes && item.notes) {
+        existing.notes = item.notes;
       }
     }
   }
@@ -5529,7 +5634,7 @@ function open6sReviewModal(photoOrIdx) {
   if (name) name.innerText = photo.teammate || "-";
 
   const time = document.getElementById("sixSReviewTimestamp");
-  if (time) time.innerText = photo.timestamp || "-";
+  if (time) time.innerText = format6sDisplayTimestamp(photo.timestamp);
 
   const notesRow = document.getElementById("sixSReviewNotesRow");
   const notes = document.getElementById("sixSReviewNotes");
@@ -5556,6 +5661,12 @@ function open6sReviewModal(photoOrIdx) {
     if (auditedBy) auditedBy.innerText = photo.auditedBy;
   } else if (auditedRow) {
     auditedRow.style.display = "none";
+  }
+
+  const btnApprove = document.getElementById("btnAuditApprove6s");
+  if (btnApprove) {
+    btnApprove.innerText = isApproved ? "✅ Approved (Update Remark)" : "✅ Confirm & Approve 6S";
+    btnApprove.style.background = isApproved ? "#0f766e" : "#059669";
   }
 
   const driveBox = document.getElementById("sixSReviewDriveLinkBox");
@@ -5607,28 +5718,35 @@ async function confirmAudit6sPhoto(statusToSet = 'Approved ✅') {
   const remarkInput = document.getElementById("sixSAuditRemarkInput");
   const remark = (remarkInput && remarkInput.value.trim()) || "Inspected & Approved";
   const auditorName = (currentUser && currentUser.name) || "Manager";
+  const auditedByStr = `${auditorName} (${new Date().toLocaleTimeString()}) ${remark}`.trim();
 
   if (btn) {
     btn.disabled = true;
-    btn.innerText = "⏳ Confirming Audit...";
+    btn.innerText = "⏳ Saving Approval...";
   }
 
   try {
     current6sReviewPhoto.status = statusToSet;
-    current6sReviewPhoto.auditedBy = `${auditorName} (${new Date().toLocaleTimeString()}) ${remark}`.trim();
+    current6sReviewPhoto.auditedBy = auditedByStr;
+    saveLocal6sApproval(current6sReviewPhoto, statusToSet, auditedByStr);
 
-    fetch(API_URL, {
-      method: 'POST',
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        action: 'audit6sPhoto',
-        timestamp: current6sReviewPhoto.timestamp,
-        fileId: current6sReviewPhoto.fileId,
-        auditor: auditorName,
-        status: statusToSet,
-        remark: remark
-      })
-    }).catch(e => console.warn("Audit log notice:", e));
+    const targetCat = String(current6sReviewPhoto.category || "").trim().toLowerCase();
+    const targetMate = String(current6sReviewPhoto.teammate || "").trim().toLowerCase();
+    const targetTs = String(current6sReviewPhoto.timestamp || "").trim();
+
+    if (currentData && Array.isArray(currentData.sixSPhotos)) {
+      currentData.sixSPhotos.forEach(p => {
+        if (!p) return;
+        const sameTs = targetTs && String(p.timestamp || "").trim() === targetTs;
+        const sameCatMate =
+          String(p.category || "").trim().toLowerCase() === targetCat &&
+          String(p.teammate || "").trim().toLowerCase() === targetMate;
+        if (sameTs || sameCatMate) {
+          p.status = statusToSet;
+          p.auditedBy = auditedByStr;
+        }
+      });
+    }
 
     const branchKey = (selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH).toUpperCase();
     try {
@@ -5636,8 +5754,82 @@ async function confirmAudit6sPhoto(statusToSet = 'Approved ✅') {
     } catch(e) {}
 
     render6sSection();
-    alert(`✅ 6S Submission marked as ${statusToSet}!
-Audited by: ${auditorName}`);
+
+    // Sync approval to Google Sheet (using exact V8 Date.toString() format expected by Apps Script)
+    const gasTimestamp = format6sTimestampForGasAudit(current6sReviewPhoto.timestamp);
+    let sheetMatched = false;
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: 'audit6sPhoto',
+          timestamp: gasTimestamp || current6sReviewPhoto.timestamp,
+          rawTimestamp: current6sReviewPhoto.timestamp,
+          fileName: current6sReviewPhoto.fileName || '',
+          category: current6sReviewPhoto.category || '',
+          teammate: current6sReviewPhoto.teammate || '',
+          fileId: current6sReviewPhoto.fileId || '',
+          auditor: auditorName,
+          status: statusToSet,
+          remark: remark
+        })
+      });
+      const data = await res.json();
+      if (data && String(data.message || "").includes("successfully")) {
+        sheetMatched = true;
+      }
+    } catch (e) {
+      console.warn("Primary audit6sPhoto notice:", e);
+    }
+
+    // Fallback: if row timestamp was plain text or didn't match V8 Date format, try raw timestamp or append audit tag
+    if (!sheetMatched && gasTimestamp !== String(current6sReviewPhoto.timestamp || "").trim()) {
+      try {
+        const res2 = await fetch(API_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: 'audit6sPhoto',
+            timestamp: current6sReviewPhoto.timestamp,
+            fileId: current6sReviewPhoto.fileId || '',
+            auditor: auditorName,
+            status: statusToSet,
+            remark: remark
+          })
+        });
+        const data2 = await res2.json();
+        if (data2 && String(data2.message || "").includes("successfully")) {
+          sheetMatched = true;
+        }
+      } catch (e) {}
+    }
+
+    if (!sheetMatched) {
+      const activeImg = isValid6sImgUrl(current6sReviewPhoto.thumbUrl) && String(current6sReviewPhoto.thumbUrl).startsWith("data:image/")
+        ? current6sReviewPhoto.thumbUrl
+        : "";
+      const packedAuditNotes = pack6sNotesWithImage(current6sReviewPhoto.notes || "", activeImg, statusToSet, auditedByStr);
+      fetch(API_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: 'upload6sPhoto',
+          branch: selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH,
+          teammate: current6sReviewPhoto.teammate || 'Staff',
+          category: current6sReviewPhoto.category || 'Gondola Cleaning',
+          notes: packedAuditNotes,
+          photoBase64: activeImg,
+          thumbBase64: activeImg,
+          mimeType: 'image/jpeg'
+        })
+      }).catch(() => {});
+    }
+
+    alert(`✅ 6S Submission permanently approved (${statusToSet})!\nAudited by: ${auditorName}`);
     close6sReviewModal();
   } finally {
     if (btn) {
@@ -5671,8 +5863,24 @@ function render6sSection() {
       const parsed = JSON.parse(local);
       if (Array.isArray(parsed) && parsed.length > 0) {
         parsed.forEach(lp => {
-          if (!photos.some(p => (p.timestamp && p.timestamp === lp.timestamp) || (p.fileId && lp.fileId && p.fileId === lp.fileId))) {
+          const existing = photos.find(p =>
+            (p.timestamp && lp.timestamp && String(p.timestamp) === String(lp.timestamp)) ||
+            (p.fileId && lp.fileId && p.fileId === lp.fileId) ||
+            (String(p.category || "").toLowerCase() === String(lp.category || "").toLowerCase() &&
+             String(p.teammate || "").toLowerCase() === String(lp.teammate || "").toLowerCase())
+          );
+          if (!existing) {
             photos.push(lp);
+          } else {
+            if ((lp.status || "").includes("Approved") && !(existing.status || "").includes("Approved")) {
+              existing.status = lp.status;
+              existing.auditedBy = lp.auditedBy || existing.auditedBy;
+            }
+            if ((isValid6sImgUrl(lp.thumbUrl) || isValid6sImgUrl(lp.fileUrl)) &&
+                !(isValid6sImgUrl(existing.thumbUrl) || isValid6sImgUrl(existing.fileUrl))) {
+              existing.thumbUrl = lp.thumbUrl || lp.fileUrl;
+              existing.fileUrl = lp.fileUrl || lp.thumbUrl;
+            }
           }
         });
       }
@@ -5682,9 +5890,11 @@ function render6sSection() {
   photos = normalize6sPhotosList(photos);
   if (currentData) currentData.sixSPhotos = photos;
 
-  // 1. Update status cards (Cleaning, Refill, Price Tag) — prioritize submissions that contain a viewable image
+  // 1. Update status cards (Cleaning, Refill, Price Tag) — prioritize approved & viewable submissions
   const findBestByCat = (kw) =>
+    photos.find(p => p.category && p.category.includes(kw) && (p.status || '').includes('Approved') && (isValid6sImgUrl(p.thumbUrl) || isValid6sImgUrl(p.fileUrl))) ||
     photos.find(p => p.category && p.category.includes(kw) && (isValid6sImgUrl(p.thumbUrl) || isValid6sImgUrl(p.fileUrl))) ||
+    photos.find(p => p.category && p.category.includes(kw) && (p.status || '').includes('Approved')) ||
     photos.find(p => p.category && p.category.includes(kw));
 
   const cleaning = findBestByCat("Cleaning");

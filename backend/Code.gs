@@ -1914,22 +1914,36 @@ function audit6sPhoto(req) {
     if (!logSheet) return { success: false, message: "PMG_6S_Log sheet not found" };
 
     const targetTimestamp = String(req.timestamp || '').trim();
+    const targetRawTs = String(req.rawTimestamp || '').trim();
+    const targetFileName = String(req.fileName || '').trim();
+    const targetCategory = String(req.category || '').trim().toLowerCase();
+    const targetTeammate = String(req.teammate || '').trim().toLowerCase();
     const targetFileId = String(req.fileId || '').trim();
     const auditor = String(req.auditor || 'Manager').trim();
     const status = String(req.status || 'Approved ✅').trim();
     const auditRemark = String(req.remark || '').trim();
     const nowStr = Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm:ss");
+    const targetEpoch = targetTimestamp ? new Date(targetTimestamp).getTime() : (targetRawTs ? new Date(targetRawTs).getTime() : NaN);
 
     const data = logSheet.getDataRange().getValues();
     let found = false;
     for (let i = 1; i < data.length; i++) {
       const rowTimestamp = String(data[i][0]).trim();
+      const rowEpoch = data[i][0] ? new Date(data[i][0]).getTime() : NaN;
+      const rowTeammate = String(data[i][3] || '').trim().toLowerCase();
+      const rowCategory = String(data[i][4] || '').trim().toLowerCase();
+      const rowFileName = String(data[i][5] || '').trim();
       const rowFileId = String(data[i][7]).trim();
-      if ((targetTimestamp && rowTimestamp === targetTimestamp) || (targetFileId && rowFileId === targetFileId)) {
+
+      const tsMatch = (targetTimestamp && (rowTimestamp === targetTimestamp || rowTimestamp === targetRawTs)) ||
+                      (!isNaN(targetEpoch) && !isNaN(rowEpoch) && Math.abs(targetEpoch - rowEpoch) < 2000);
+      const fileMatch = (targetFileId && rowFileId === targetFileId) || (targetFileName && rowFileName === targetFileName);
+      const catMateMatch = targetCategory && targetTeammate && rowCategory === targetCategory && rowTeammate === targetTeammate;
+
+      if (tsMatch || fileMatch || catMateMatch) {
         logSheet.getRange(i + 1, 10).setValue(status);
         logSheet.getRange(i + 1, 11).setValue(`${auditor} (${nowStr}) ${auditRemark}`.trim());
         found = true;
-        break;
       }
     }
     return { success: true, message: found ? "6S photo audited successfully!" : "Recorded audit." };
