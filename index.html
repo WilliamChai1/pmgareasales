@@ -10,7 +10,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=78.8">
+  <link rel="stylesheet" href="./styles.css?v=78.9">
   <script>
     // Register Native PMG Service Worker with immediate cache-bypassing update check
     if ('serviceWorker' in navigator) {
@@ -24,7 +24,7 @@
       window.addEventListener('load', function() {
         const isGhPages = window.location.hostname.includes("github.io");
         const swScope = isGhPages ? "/pmgareasales/" : "/";
-        navigator.serviceWorker.register('./sw.js?v=78.8', { scope: swScope, updateViaCache: 'none' })
+        navigator.serviceWorker.register('./sw.js?v=78.9', { scope: swScope, updateViaCache: 'none' })
           .then(function(reg) {
             console.log("Native PMG Service Worker active on scope:", reg.scope);
             try { reg.update(); } catch(e) {}
@@ -192,14 +192,14 @@
         </div>
 
         <div style="font-size: 0.68rem; color: #0369a1; background: #f0f9ff; padding: 6px 8px; border-radius: 6px; border: 1px solid #bae6fd;">
-          ☁️ Photos are automatically compressed and saved permanently into Google Drive folder <strong>PMG_6S_Gondola_Photos</strong>.
+          ☁️ Photos are automatically compressed and saved permanently to your Google Sheet &amp; Cloud Log (no Drive permission setup needed).
         </div>
       </div>
 
       <div style="margin-top: 14px; display: flex; gap: 8px; justify-content: flex-end;">
         <button type="button" class="btn-logout" style="padding: 8px 14px;" onclick="close6sUploadModal()">Cancel</button>
         <button type="button" class="btn" id="btnSubmit6sPhoto" style="background: #2563eb; color: white; font-weight: 800; padding: 8px 16px;" onclick="submit6sPhotoToDrive()">
-          ☁️ Upload to Google Drive
+          ☁️ Upload 6S Photo
         </button>
       </div>
     </div>
@@ -218,10 +218,13 @@
 
       <div style="text-align: center; background: #0f172a; border-radius: 8px; padding: 6px; margin-bottom: 10px;">
         <img id="sixSReviewImg" alt="6S Inspection Photo" style="display:none; max-height: 320px; max-width: 100%; border-radius: 6px; object-fit: contain; cursor: zoom-in;" onclick="open6sFullscreenLightbox(this.src)">
-        <div id="sixSNoImageCard" style="display:none; padding: 25px 15px; text-align: center; color: #cbd5e1;">
+        <div id="sixSNoImageCard" style="display:none; padding: 22px 15px; text-align: center; color: #cbd5e1;">
           <div style="font-size: 2rem; margin-bottom: 6px;">📷</div>
-          <div style="font-weight: 700; color: #e2e8f0; font-size: 0.9rem;">Photo Recorded in Google Sheet</div>
-          <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Direct image preview will appear automatically on new submissions. Full Google Drive sync requires 1-time Drive authorization.</div>
+          <div style="font-weight: 700; color: #e2e8f0; font-size: 0.9rem;">Legacy Entry (Uploaded Before Photo Sync)</div>
+          <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px; margin-bottom: 10px;">All new 6S photo uploads automatically embed and sync the photo directly into your Google Sheet (zero Drive setup needed).</div>
+          <button type="button" class="btn" style="background: #2563eb; color: white; font-size: 0.76rem; font-weight: 800; padding: 6px 14px; border-radius: 6px; width: auto; display: inline-block;" onclick="close6sReviewModal(); open6sUploadModal(current6sReviewPhoto ? current6sReviewPhoto.category : 'Gondola Cleaning')">
+            📷 Re-Upload / Attach Photo Now
+          </button>
         </div>
         <div id="sixSReviewImgHint" style="font-size: 0.68rem; color: #94a3b8; margin-top: 4px;">🔍 Tap image to zoom full screen</div>
       </div>
@@ -527,7 +530,7 @@
     <div id="lastUpdated" class="sync-status">Waiting for login...</div>
     <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
       <button class="btn-logout" id="pushNotifyBtn" style="background:#0284c7; display:flex; align-items:center; gap:5px;" onclick="openPushModal()">🔔 Alerts</button>
-      <button class="btn-logout" style="background:#0f766e;" onclick="forceUpdatePmgApp()">🔄 v78.8</button>
+      <button class="btn-logout" style="background:#0f766e;" onclick="forceUpdatePmgApp()">🔄 v78.9</button>
       <button class="btn-logout" id="installAppBtn" style="display:none; background:#2e7d32;" onclick="installPWA()">📲 Install App</button>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
@@ -950,11 +953,11 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=78.8"></script>
-  <script src="./data/dpos_week1.js?v=78.8"></script>
-  <script src="./data/dpos_localized_quizzes.js?v=78.8"></script>
-  <script src="./data/dpos_catalog.js?v=78.8"></script>
-  <script src="./dpos.js?v=78.8"></script>
-  <script src="./app.js?v=78.8"></script>
+  <script src="./data/clinical_upsell_modules.js?v=78.9"></script>
+  <script src="./data/dpos_week1.js?v=78.9"></script>
+  <script src="./data/dpos_localized_quizzes.js?v=78.9"></script>
+  <script src="./data/dpos_catalog.js?v=78.9"></script>
+  <script src="./dpos.js?v=78.9"></script>
+  <script src="./app.js?v=78.9"></script>
 </body>
 </html>

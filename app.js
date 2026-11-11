@@ -338,6 +338,10 @@ async function loadDashboardData() {
       throw new Error(currentData.message);
     }
 
+    if (currentData && Array.isArray(currentData.sixSPhotos) && typeof normalize6sPhotosList === 'function') {
+      currentData.sixSPhotos = normalize6sPhotosList(currentData.sixSPhotos);
+    }
+
     // Auto-seed Gemini Key if provided by backend
     if (currentData.geminiKey && String(currentData.geminiKey).trim().length >= 10) {
       const serverKey = String(currentData.geminiKey).trim();
@@ -5066,6 +5070,151 @@ function close6sUploadModal(shouldPop = true) {
   }
 }
 
+const PMG_6S_IMG_DELIMITER = "||PMG6S_IMG||";
+const PMG_6S_MAX_SHEET_CHARS = 38000;
+
+function compressImageElementForSheet(img, maxChars = PMG_6S_MAX_SHEET_CHARS) {
+  const attempts = [
+    { dim: 540, q: 0.56 },
+    { dim: 480, q: 0.50 },
+    { dim: 420, q: 0.45 },
+    { dim: 360, q: 0.40 },
+    { dim: 300, q: 0.35 }
+  ];
+  let lastDataUrl = "";
+  for (const att of attempts) {
+    let w = img.width || 400;
+    let h = img.height || 400;
+    if (w > h) {
+      if (w > att.dim) {
+        h = Math.max(1, Math.round(h * (att.dim / w)));
+        w = att.dim;
+      }
+    } else {
+      if (h > att.dim) {
+        w = Math.max(1, Math.round(w * (att.dim / h)));
+        h = att.dim;
+      }
+    }
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const cx = c.getContext("2d");
+    cx.drawImage(img, 0, 0, w, h);
+    lastDataUrl = c.toDataURL("image/jpeg", att.q);
+    if (lastDataUrl.length <= maxChars) {
+      return lastDataUrl;
+    }
+  }
+  return lastDataUrl;
+}
+
+function compressDataUrlForSheet(srcDataUrl, maxChars = PMG_6S_MAX_SHEET_CHARS) {
+  return new Promise((resolve) => {
+    if (!srcDataUrl || typeof srcDataUrl !== "string" || !srcDataUrl.startsWith("data:image/")) {
+      resolve("");
+      return;
+    }
+    if (srcDataUrl.length <= maxChars) {
+      resolve(srcDataUrl);
+      return;
+    }
+    const img = new Image();
+    img.onload = function() {
+      try {
+        resolve(compressImageElementForSheet(img, maxChars));
+      } catch (e) {
+        resolve(srcDataUrl.length <= 47000 ? srcDataUrl : "");
+      }
+    };
+    img.onerror = function() {
+      resolve(srcDataUrl.length <= 47000 ? srcDataUrl : "");
+    };
+    img.src = srcDataUrl;
+  });
+}
+
+function strip6sEmbeddedImageFromNotes(rawNotes) {
+  if (!rawNotes) return "";
+  const str = String(rawNotes);
+  if (str.includes(PMG_6S_IMG_DELIMITER)) {
+    return str.split(PMG_6S_IMG_DELIMITER)[0].trim();
+  }
+  if (str.trim().startsWith("data:image/")) {
+    return "";
+  }
+  return str.trim();
+}
+
+function pack6sNotesWithImage(cleanNotes, imgDataUrl) {
+  const baseNotes = strip6sEmbeddedImageFromNotes(cleanNotes);
+  if (imgDataUrl && typeof imgDataUrl === "string" && imgDataUrl.startsWith("data:image/")) {
+    const combined = (baseNotes ? baseNotes + " " : "") + PMG_6S_IMG_DELIMITER + imgDataUrl;
+    if (combined.length <= 48500) {
+      return combined;
+    }
+  }
+  return baseNotes;
+}
+
+function isValid6sImgUrl(u) {
+  return typeof u === "string" && u.length > 20 && !u.includes("favicon.ico") && !u.startsWith("data:image/svg+xml");
+}
+
+function unpack6sPhotoEntry(p) {
+  if (!p || typeof p !== "object") return p;
+  const rawNotes = String(p.notes || "");
+  if (rawNotes.includes(PMG_6S_IMG_DELIMITER)) {
+    const parts = rawNotes.split(PMG_6S_IMG_DELIMITER);
+    p.notes = parts[0].trim();
+    const embedded = (parts[1] || "").trim();
+    if (embedded.startsWith("data:image/")) {
+      if (!isValid6sImgUrl(p.thumbUrl)) p.thumbUrl = embedded;
+      if (!isValid6sImgUrl(p.fileUrl)) p.fileUrl = embedded;
+      p.notesImgSynced = true;
+    }
+  } else if (rawNotes.trim().startsWith("data:image/")) {
+    const embedded = rawNotes.trim();
+    p.notes = "";
+    if (!isValid6sImgUrl(p.thumbUrl)) p.thumbUrl = embedded;
+    if (!isValid6sImgUrl(p.fileUrl)) p.fileUrl = embedded;
+    p.notesImgSynced = true;
+  }
+  if (isValid6sImgUrl(p.thumbUrl) && !isValid6sImgUrl(p.fileUrl)) {
+    p.fileUrl = p.thumbUrl;
+  } else if (isValid6sImgUrl(p.fileUrl) && !isValid6sImgUrl(p.thumbUrl)) {
+    p.thumbUrl = p.fileUrl;
+  }
+  return p;
+}
+
+function normalize6sPhotosList(list) {
+  if (!Array.isArray(list)) return [];
+  const unpacked = list
+    .filter(p => p && (String(p.category || "").trim() || String(p.teammate || "").trim()))
+    .map(p => unpack6sPhotoEntry({ ...p }));
+  // Deduplicate so entries with valid images take priority over legacy blank retry rows
+  const result = [];
+  for (const item of unpacked) {
+    const hasImg = isValid6sImgUrl(item.thumbUrl) || isValid6sImgUrl(item.fileUrl);
+    const catKey = String(item.category || "").trim().toLowerCase();
+    const mateKey = String(item.teammate || "").trim().toLowerCase();
+    const existingIdx = result.findIndex(r =>
+      String(r.category || "").trim().toLowerCase() === catKey &&
+      String(r.teammate || "").trim().toLowerCase() === mateKey
+    );
+    if (existingIdx === -1) {
+      result.push(item);
+    } else {
+      const existingHasImg = isValid6sImgUrl(result[existingIdx].thumbUrl) || isValid6sImgUrl(result[existingIdx].fileUrl);
+      if (hasImg && !existingHasImg) {
+        result[existingIdx] = item;
+      }
+    }
+  }
+  return result;
+}
+
 function preview6sSelectedPhoto(input) {
   if (!input || !input.files || !input.files[0]) return;
   const file = input.files[0];
@@ -5074,14 +5223,14 @@ function preview6sSelectedPhoto(input) {
   const notice = document.getElementById("sixSImageSizeNotice");
 
   const originalMb = (file.size / (1024 * 1024)).toFixed(2);
-  if (notice) notice.innerText = `Original: ${originalMb} MB • Compressing for fast Drive upload...`;
+  if (notice) notice.innerText = `Original: ${originalMb} MB • Compressing for instant cloud sync...`;
   if (previewBox) previewBox.style.display = "block";
 
   const reader = new FileReader();
   reader.onload = function(e) {
     const img = new Image();
     img.onload = function() {
-      // Downscale to max 1280px maintaining aspect ratio
+      // 1. High-clarity image for local display & optional Drive: max 1280px, quality 0.75
       const maxDim = 1280;
       let width = img.width;
       let height = img.height;
@@ -5103,38 +5252,17 @@ function preview6sSelectedPhoto(input) {
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, width, height);
 
-      // 1. Full image for Google Drive: max 1280px, quality 0.75
       const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.75);
       selected6sCompressedBase64 = compressedDataUrl;
       selected6sMimeType = "image/jpeg";
 
-      // 2. Compact thumbnail for instant Google Sheet storage: max 360px, quality 0.5 (~15KB)
-      const thumbMaxDim = 360;
-      let tWidth = img.width;
-      let tHeight = img.height;
-      if (tWidth > tHeight) {
-        if (tWidth > thumbMaxDim) {
-          tHeight = Math.round(tHeight * (thumbMaxDim / tWidth));
-          tWidth = thumbMaxDim;
-        }
-      } else {
-        if (tHeight > thumbMaxDim) {
-          tWidth = Math.round(tWidth * (thumbMaxDim / tHeight));
-          tHeight = thumbMaxDim;
-        }
-      }
-      const thumbCanvas = document.createElement("canvas");
-      thumbCanvas.width = tWidth;
-      thumbCanvas.height = tHeight;
-      const tCtx = thumbCanvas.getContext("2d");
-      tCtx.drawImage(img, 0, 0, tWidth, tHeight);
-      const thumbDataUrl = thumbCanvas.toDataURL("image/jpeg", 0.5);
-      selected6sThumbBase64 = thumbDataUrl;
+      // 2. Guaranteed Sheet-compatible JPEG (<38k chars) stored directly in PMG_6S_Log (zero Drive auth needed!)
+      selected6sThumbBase64 = compressImageElementForSheet(img, PMG_6S_MAX_SHEET_CHARS);
 
       if (previewImg) previewImg.src = compressedDataUrl;
 
-      const approxKb = Math.round((compressedDataUrl.length * 3 / 4) / 1024);
-      if (notice) notice.innerText = `Compressed: ~${approxKb} KB (Auto-saved to Sheet + Drive) ✅`;
+      const approxKb = Math.round((selected6sThumbBase64.length * 3 / 4) / 1024);
+      if (notice) notice.innerText = `Ready: ~${approxKb} KB Instant Cloud Sync (No Drive Auth Needed) ✅`;
     };
     img.src = e.target.result;
   };
@@ -5154,12 +5282,27 @@ async function syncPending6sPhotosToCloud() {
 
   if (!Array.isArray(localPhotos) || localPhotos.length === 0) return;
 
-  const pending = localPhotos.filter(p => p.pendingCloudSync || (!p.fileUrl && p.thumbUrl && p.thumbUrl.startsWith("data:image/")));
+  // Sync any local photo that has a base64 image (in fileUrl or thumbUrl) but has not yet synced via the zero-auth Notes channel
+  const pending = localPhotos.filter(p => {
+    if (!p || p.notesImgSynced) return false;
+    const candidate = (isValid6sImgUrl(p.fileUrl) && String(p.fileUrl).startsWith("data:image/"))
+      ? p.fileUrl
+      : ((isValid6sImgUrl(p.thumbUrl) && String(p.thumbUrl).startsWith("data:image/")) ? p.thumbUrl : "");
+    return !!candidate;
+  });
   if (pending.length === 0) return;
 
-  console.log(`Found ${pending.length} pending 6S photos to sync to cloud...`);
+  console.log(`Syncing ${pending.length} local 6S photo(s) to cloud Sheet...`);
   for (const item of pending) {
     try {
+      const rawDataUrl = (isValid6sImgUrl(item.fileUrl) && String(item.fileUrl).startsWith("data:image/"))
+        ? item.fileUrl
+        : item.thumbUrl;
+      const sheetSafeImg = await compressDataUrlForSheet(rawDataUrl, PMG_6S_MAX_SHEET_CHARS);
+      if (!sheetSafeImg) continue;
+      const cleanNotes = strip6sEmbeddedImageFromNotes(item.notes || "");
+      const packedNotes = pack6sNotesWithImage(cleanNotes, sheetSafeImg);
+
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -5168,16 +5311,20 @@ async function syncPending6sPhotosToCloud() {
           branch: selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH,
           teammate: item.teammate || (currentUser && currentUser.name) || 'Staff',
           category: item.category || 'Gondola Cleaning',
-          notes: item.notes || '',
-          photoBase64: item.thumbUrl,
+          notes: packedNotes,
+          photoBase64: sheetSafeImg,
+          thumbBase64: sheetSafeImg,
           mimeType: 'image/jpeg'
         })
       });
       const data = await res.json();
       if (data && data.success) {
-        item.fileUrl = data.fileUrl || "";
+        item.notes = cleanNotes;
+        item.thumbUrl = sheetSafeImg;
+        item.fileUrl = data.fileUrl || sheetSafeImg;
         item.fileId = data.fileId || "";
         item.pendingCloudSync = false;
+        item.notesImgSynced = true;
         item.timestamp = data.timestamp || item.timestamp;
         item.status = data.status || "Pending Review";
       }
@@ -5195,23 +5342,27 @@ async function syncPending6sPhotosToCloud() {
 
 async function submit6sPhotoToDrive() {
   const btn = document.getElementById("btnSubmit6sPhoto");
-  if (!selected6sCompressedBase64) {
+  if (!selected6sCompressedBase64 && !selected6sThumbBase64) {
     alert("Please snap or select a photo first.");
     return;
   }
 
   const category = (document.getElementById("sixSUploadCategory") && document.getElementById("sixSUploadCategory").value) || "Gondola Cleaning";
   const teammate = (document.getElementById("sixSUploadTeammate") && document.getElementById("sixSUploadTeammate").value.trim()) || ((currentUser && currentUser.name) || "Staff");
-  const notes = (document.getElementById("sixSUploadNotes") && document.getElementById("sixSUploadNotes").value.trim()) || "";
+  const rawNotes = (document.getElementById("sixSUploadNotes") && document.getElementById("sixSUploadNotes").value.trim()) || "";
+  const cleanNotes = strip6sEmbeddedImageFromNotes(rawNotes);
   const branch = selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH;
   const branchKey = branch.toUpperCase();
 
   if (btn) {
     btn.disabled = true;
-    btn.innerText = "⏳ Uploading to Google Drive...";
+    btn.innerText = "⏳ Uploading 6S Photo...";
   }
 
   try {
+    const sheetSafeImg = selected6sThumbBase64 || (await compressDataUrlForSheet(selected6sCompressedBase64, PMG_6S_MAX_SHEET_CHARS));
+    const packedNotes = pack6sNotesWithImage(cleanNotes, sheetSafeImg);
+
     const res = await fetch(API_URL, {
       method: 'POST',
       redirect: 'follow',
@@ -5221,9 +5372,9 @@ async function submit6sPhotoToDrive() {
         branch: branch,
         teammate: teammate,
         category: category,
-        notes: notes,
-        photoBase64: selected6sCompressedBase64,
-        thumbBase64: selected6sThumbBase64,
+        notes: packedNotes,
+        photoBase64: selected6sCompressedBase64 || sheetSafeImg,
+        thumbBase64: sheetSafeImg,
         mimeType: selected6sMimeType
       })
     });
@@ -5233,22 +5384,25 @@ async function submit6sPhotoToDrive() {
       result = await res.json();
     } catch(e) {}
 
-    const isCloudSuccess = result && result.success;
+    const isCloudSuccess = !!(result && result.success);
+    const activeImgUrl = (result && isValid6sImgUrl(result.fileUrl) ? result.fileUrl : "") || sheetSafeImg || selected6sCompressedBase64;
     const newEntry = {
       timestamp: (result && result.timestamp) || new Date().toLocaleString(),
       teammate: teammate,
       category: category,
-      fileUrl: (result && result.fileUrl) || "",
+      fileUrl: activeImgUrl,
       fileId: (result && result.fileId) || "",
-      thumbUrl: (result && result.thumbUrl) || selected6sCompressedBase64,
-      notes: notes,
+      thumbUrl: sheetSafeImg || selected6sCompressedBase64,
+      notes: cleanNotes,
       status: (result && result.status) || "Pending Review",
-      pendingCloudSync: !isCloudSuccess
+      pendingCloudSync: !isCloudSuccess,
+      notesImgSynced: isCloudSuccess
     };
 
     if (!currentData) currentData = {};
     if (!currentData.sixSPhotos) currentData.sixSPhotos = [];
     currentData.sixSPhotos.unshift(newEntry);
+    currentData.sixSPhotos = normalize6sPhotosList(currentData.sixSPhotos);
 
     try {
       localStorage.setItem("pmg_recent_6s_photos_" + branchKey, JSON.stringify(currentData.sixSPhotos.slice(0, 15)));
@@ -5258,32 +5412,30 @@ async function submit6sPhotoToDrive() {
     close6sUploadModal();
 
     if (isCloudSuccess) {
-      const driveMsg = result.fileUrl 
-        ? `• Saved in Google Drive: PMG_6S_Gondola_Photos/${branch}` 
-        : `• Saved to PMG_6S_Log in Google Sheet (Drive upload pending permissions)`;
-      alert(`🎉 6S Photo uploaded and recorded successfully!
+      alert(`🎉 6S Photo uploaded and synced to Cloud!
 • Category: ${category}
 • Submitter: ${teammate}
-${driveMsg}
-• Status: Ready for Manager Review`);
+• Status: Live & Ready for Manager Review ✅`);
     } else {
-      alert(`✅ 6S Photo recorded on your device!
+      alert(`✅ 6S Photo saved on your device!
 • Category: ${category}
 • Submitter: ${teammate}
-(It will automatically sync to Google Drive when cloud endpoint confirms).`);
+(Will auto-sync to Cloud when connection resumes).`);
     }
   } catch (err) {
     console.warn("6S photo network notice:", err);
+    const fallbackImg = selected6sThumbBase64 || selected6sCompressedBase64;
     const fallbackEntry = {
       timestamp: new Date().toLocaleString(),
       teammate: teammate,
       category: category,
-      fileUrl: "",
+      fileUrl: fallbackImg,
       fileId: "",
-      thumbUrl: selected6sCompressedBase64,
-      notes: notes,
+      thumbUrl: fallbackImg,
+      notes: cleanNotes,
       status: "Saved Locally",
-      pendingCloudSync: true
+      pendingCloudSync: true,
+      notesImgSynced: false
     };
     if (!currentData) currentData = {};
     if (!currentData.sixSPhotos) currentData.sixSPhotos = [];
@@ -5295,11 +5447,11 @@ ${driveMsg}
     close6sUploadModal();
     alert(`✅ 6S Photo saved on your phone!
 • Category: ${category}
-(Will auto-sync to Google Drive once reconnected).`);
+(Will auto-sync to Cloud once reconnected).`);
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerText = "☁️ Upload to Google Drive";
+      btn.innerText = "☁️ Upload 6S Photo";
     }
   }
 }
@@ -5313,7 +5465,7 @@ const PMG_6S_PLACEHOLDER_SVG = "data:image/svg+xml;charset=UTF-8," + encodeURICo
 );
 
 function open6sFullscreenLightbox(imgUrl) {
-  if (!imgUrl || imgUrl.includes('favicon.ico') || imgUrl.startsWith('data:image/svg+xml')) return;
+  if (!isValid6sImgUrl(imgUrl)) return;
   const modal = document.getElementById("sixSLightboxModal");
   const img = document.getElementById("sixSLightboxImg");
   if (!modal || !img) return;
@@ -5333,13 +5485,13 @@ function close6sLightboxModal(shouldPop = true) {
 function open6sReviewModal(photoOrIdx) {
   let photo = null;
   if (typeof photoOrIdx === 'number') {
-    const branchKey = (selectedBranch || (currentUser && currentUser.branch) || DEFAULT_BRANCH).toUpperCase();
     const photos = (currentData && currentData.sixSPhotos) || [];
     photo = photos[photoOrIdx];
   } else {
     photo = photoOrIdx;
   }
   if (!photo) return;
+  photo = unpack6sPhotoEntry(photo);
   current6sReviewPhoto = photo;
 
   const modal = document.getElementById("sixSReviewModal");
@@ -5351,8 +5503,7 @@ function open6sReviewModal(photoOrIdx) {
   const img = document.getElementById("sixSReviewImg");
   const noImgCard = document.getElementById("sixSNoImageCard");
   const imgHint = document.getElementById("sixSReviewImgHint");
-  const isValid6sImg = (u) => u && !u.includes('favicon.ico') && !u.startsWith('data:image/svg+xml');
-  const activeSrc = isValid6sImg(photo.thumbUrl) ? photo.thumbUrl : (isValid6sImg(photo.fileUrl) ? photo.fileUrl : "");
+  const activeSrc = isValid6sImgUrl(photo.thumbUrl) ? photo.thumbUrl : (isValid6sImgUrl(photo.fileUrl) ? photo.fileUrl : "");
 
   if (activeSrc) {
     if (img) {
@@ -5382,9 +5533,10 @@ function open6sReviewModal(photoOrIdx) {
 
   const notesRow = document.getElementById("sixSReviewNotesRow");
   const notes = document.getElementById("sixSReviewNotes");
-  if (photo.notes) {
+  const cleanNotes = strip6sEmbeddedImageFromNotes(photo.notes);
+  if (cleanNotes) {
     if (notesRow) notesRow.style.display = "block";
-    if (notes) notes.innerText = photo.notes;
+    if (notes) notes.innerText = cleanNotes;
   } else if (notesRow) {
     notesRow.style.display = "none";
   }
@@ -5392,7 +5544,7 @@ function open6sReviewModal(photoOrIdx) {
   const badge = document.getElementById("sixSReviewStatusBadge");
   const isApproved = (photo.status || '').includes("Approved");
   if (badge) {
-    badge.innerText = photo.status || (photo.fileUrl ? "Uploaded to Drive" : "Recorded in App");
+    badge.innerText = photo.status || (activeSrc ? "Photo Synced ✅" : "Recorded in Sheet");
     badge.style.background = isApproved ? "#dcfce7" : "#fef3c7";
     badge.style.color = isApproved ? "#15803d" : "#92400e";
   }
@@ -5408,11 +5560,23 @@ function open6sReviewModal(photoOrIdx) {
 
   const driveBox = document.getElementById("sixSReviewDriveLinkBox");
   const driveLink = document.getElementById("sixSReviewDriveLink");
-  if (photo.fileUrl) {
+  if (activeSrc) {
     if (driveBox) driveBox.style.display = "block";
     if (driveLink) {
-      driveLink.href = photo.fileUrl;
-      driveLink.innerText = "Open Original in Google Drive ↗";
+      if (activeSrc.startsWith("http")) {
+        driveLink.href = activeSrc;
+        driveLink.target = "_blank";
+        driveLink.onclick = null;
+        driveLink.innerText = "Open Original in Google Drive ↗";
+      } else {
+        driveLink.href = "javascript:void(0)";
+        driveLink.removeAttribute("target");
+        driveLink.onclick = (e) => {
+          e.preventDefault();
+          open6sFullscreenLightbox(activeSrc);
+        };
+        driveLink.innerText = "🔍 Expand Full-Screen Photo";
+      }
     }
   } else if (driveBox) {
     driveBox.style.display = "none";
@@ -5486,7 +5650,8 @@ Audited by: ${auditorName}`);
 function open6sGalleryListModal() {
   const photos = (currentData && currentData.sixSPhotos) || [];
   if (photos.length > 0) {
-    open6sReviewModal(photos[0]);
+    const firstWithImg = photos.find(p => isValid6sImgUrl(p.thumbUrl) || isValid6sImgUrl(p.fileUrl));
+    open6sReviewModal(firstWithImg || photos[0]);
   } else {
     alert("No 6S photos uploaded yet for this branch today. Use 'Snap / Upload Photo' to add the first 6S photo!");
   }
@@ -5514,12 +5679,17 @@ function render6sSection() {
     }
   } catch (e) {}
 
+  photos = normalize6sPhotosList(photos);
   if (currentData) currentData.sixSPhotos = photos;
 
-  // 1. Update status cards (Cleaning, Refill, Price Tag)
-  const cleaning = photos.find(p => p.category && p.category.includes("Cleaning"));
-  const refill = photos.find(p => p.category && p.category.includes("Refill"));
-  const priceTag = photos.find(p => p.category && p.category.includes("Price Tag"));
+  // 1. Update status cards (Cleaning, Refill, Price Tag) — prioritize submissions that contain a viewable image
+  const findBestByCat = (kw) =>
+    photos.find(p => p.category && p.category.includes(kw) && (isValid6sImgUrl(p.thumbUrl) || isValid6sImgUrl(p.fileUrl))) ||
+    photos.find(p => p.category && p.category.includes(kw));
+
+  const cleaning = findBestByCat("Cleaning");
+  const refill = findBestByCat("Refill");
+  const priceTag = findBestByCat("Price Tag");
 
   function updateStatus(cardId, badgeId, subInfoId, submission, defaultCat) {
     const badge = document.getElementById(badgeId);
@@ -5529,7 +5699,8 @@ function render6sSection() {
 
     if (submission) {
       const isApproved = (submission.status || '').includes("Approved");
-      badge.innerText = isApproved ? "Approved ✅" : "✅ Done";
+      const hasImg = isValid6sImgUrl(submission.thumbUrl) || isValid6sImgUrl(submission.fileUrl);
+      badge.innerText = isApproved ? "Approved ✅" : (hasImg ? "📸 View Photo" : "✅ Done");
       badge.style.background = isApproved ? "#dcfce7" : "#e0f2fe";
       badge.style.color = isApproved ? "#15803d" : "#0369a1";
       if (card) {
@@ -5539,10 +5710,10 @@ function render6sSection() {
       }
       if (subInfo) {
         subInfo.style.display = "block";
-        const driveLinkHtml = submission.fileUrl 
-          ? `• <a href="${submission.fileUrl}" target="_blank" onclick="event.stopPropagation();" style="color:#0284c7; text-decoration: underline;">Drive ↗</a>`
+        const statusHtml = hasImg
+          ? '• <span style="color:#0284c7; text-decoration: underline;">View Photo 🔍</span>'
           : '• <span style="color:#059669;">Logged</span>';
-        subInfo.innerHTML = `By <strong>${submission.teammate}</strong> ${driveLinkHtml} <span style="font-size:0.65rem; color:#64748b;">(Tap to Review)</span>`;
+        subInfo.innerHTML = `By <strong>${submission.teammate}</strong> ${statusHtml} <span style="font-size:0.65rem; color:#64748b;">(Tap to Review)</span>`;
       }
     } else {
       badge.innerText = "Pending";
@@ -5568,9 +5739,10 @@ function render6sSection() {
     galleryBox.style.display = "block";
     galleryGrid.innerHTML = photos.map((p, idx) => {
       const isApproved = (p.status || '').includes("Approved");
-      const badgeText = isApproved ? 'Approved ✅' : (p.fileUrl ? '↗ Drive' : '📷 App');
-      const badgeBg = isApproved ? 'rgba(21,128,61,0.85)' : 'rgba(0,0,0,0.65)';
-      const imgSrc = p.thumbUrl || p.fileUrl || PMG_6S_PLACEHOLDER_SVG;
+      const hasImg = isValid6sImgUrl(p.thumbUrl) || isValid6sImgUrl(p.fileUrl);
+      const badgeText = isApproved ? 'Approved ✅' : (hasImg ? '📸 Photo' : '📋 Logged');
+      const badgeBg = isApproved ? 'rgba(21,128,61,0.85)' : (hasImg ? 'rgba(2,132,199,0.85)' : 'rgba(0,0,0,0.65)');
+      const imgSrc = (isValid6sImgUrl(p.thumbUrl) ? p.thumbUrl : (isValid6sImgUrl(p.fileUrl) ? p.fileUrl : "")) || PMG_6S_PLACEHOLDER_SVG;
       return `
         <div style="min-width: 130px; max-width: 140px; background: white; border: 1.5px solid ${isApproved ? '#86efac' : '#e2e8f0'}; border-radius: 8px; padding: 6px; text-align: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="open6sReviewModal(${idx})">
           <div style="position: relative;">
@@ -5579,7 +5751,7 @@ function render6sSection() {
           </div>
           <div style="font-size: 0.68rem; font-weight: 800; color: #1e3a8a; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.category}</div>
           <div style="font-size: 0.62rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.teammate}</div>
-          <div style="font-size: 0.6rem; color: #0284c7; margin-top: 2px; font-weight: 700;">🔍 Review Photo</div>
+          <div style="font-size: 0.6rem; color: #0284c7; margin-top: 2px; font-weight: 700;">🔍 ${hasImg ? 'View Photo' : 'Review Entry'}</div>
         </div>
       `;
     }).join('');
