@@ -500,7 +500,7 @@ function getDashboardData(requestedBranch, role, username) {
       targets[bNameUpper] = {
         ts: targetData[i][1], hb: hbTarget, hm: targetData[i][3],
         r1: targetData[i][4], r2: targetData[i][5], r3: targetData[i][6],
-        t1: Math.round(hbTarget * 0.889115), t2: Math.round(hbTarget * 0.942374), t3: hbTarget
+        t1: Number(targetData[i][7]) || (hbTarget == 182200 ? 161900 : Math.round(hbTarget * 0.888584)), t2: Number(targetData[i][8]) || (hbTarget == 182200 ? 171700 : Math.round(hbTarget * 0.942371)), t3: Number(targetData[i][9]) || hbTarget
       };
     }
   }

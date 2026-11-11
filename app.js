@@ -338,6 +338,10 @@ async function loadDashboardData() {
       throw new Error(currentData.message);
     }
 
+    if (typeof normalizeNovemberTargets === 'function') {
+      normalizeNovemberTargets(currentData);
+    }
+
     if (currentData && Array.isArray(currentData.sixSPhotos) && typeof normalize6sPhotosList === 'function') {
       currentData.sixSPhotos = normalize6sPhotosList(currentData.sixSPhotos);
     }
@@ -394,7 +398,25 @@ function changeBranch() {
   loadDashboardData();
 }
 
-// ─── BRANCH DATA RESOLVER ───────────────────────────────────────────────────
+// ─── BRANCH DATA RESOLVER & NOVEMBER 2026 TARGET NORMALIZER ──────────────────
+function normalizeNovemberTargets(data) {
+  if (!data || typeof data !== 'object') return;
+  if (!data.targets || typeof data.targets !== 'object') data.targets = {};
+  const bKey = findBranchKey(data.targets, DEFAULT_BRANCH) || "KOTA SENTOSA";
+  if (!data.targets[bKey]) data.targets[bKey] = {};
+  const t = data.targets[bKey];
+  // Enforce exact November 2026 Kota Sentosa targets: TS RM 350,000 | HB Tier 1 RM 161,900, Tier 2 RM 171,700, Tier 3 RM 182,200
+  t.ts = 350000;
+  t.hb = 182200;
+  t.hm = Number(t.hm) === 38000 || !t.hm ? 35000 : Number(t.hm);
+  t.t1 = 161900;
+  t.t2 = 171700;
+  t.t3 = 182200;
+  t.r1 = t.r1 || 250;
+  t.r2 = t.r2 || 375;
+  t.r3 = t.r3 || 500;
+}
+
 function findBranchKey(dict, branchName) {
   if (!dict) return null;
   const target = String(branchName || DEFAULT_BRANCH).toUpperCase().trim();
@@ -794,20 +816,86 @@ function renderDashboard() {
     document.getElementById("personalDashboard").style.display = "none";
   }
 
-  const tsPct = Math.min(100, ((summary.mtdTs || 0) / (targets.ts || 1)) * 100);
-  document.getElementById("outletTsProgressText").innerText = `RM ${(summary.mtdTs||0).toLocaleString()} / RM ${(targets.ts||0).toLocaleString()} (${tsPct.toFixed(1)}%)`;
+  const tsTargetVal = Number(targets.ts || 350000);
+  const hbTargetVal = Number(targets.hb || 182200);
+  const mtdTsVal = Number(summary.mtdTs || 0);
+  const mtdHbVal = Number(summary.mtdHb || 0);
+
+  const tsPct = Math.min(100, (mtdTsVal / (tsTargetVal || 1)) * 100);
+  document.getElementById("outletTsProgressText").innerText = `RM ${mtdTsVal.toLocaleString()} / RM ${tsTargetVal.toLocaleString()} (${tsPct.toFixed(1)}%)`;
   document.getElementById("outletTsBar").style.width = tsPct + "%";
   
-  const hbPct = Math.min(100, ((summary.mtdHb || 0) / (targets.hb || 1)) * 100);
-  document.getElementById("outletHbProgressText").innerText = `RM ${(summary.mtdHb||0).toLocaleString()} / RM ${(targets.hb||0).toLocaleString()} (${hbPct.toFixed(1)}%)`;
+  const hbPct = Math.min(100, (mtdHbVal / (hbTargetVal || 1)) * 100);
+  document.getElementById("outletHbProgressText").innerText = `RM ${mtdHbVal.toLocaleString()} / RM ${hbTargetVal.toLocaleString()} (${hbPct.toFixed(1)}%)`;
   document.getElementById("outletHbBar").style.width = hbPct + "%";
 
-  document.getElementById("t1Target").innerText = `Target: RM ${(targets.t1||0).toLocaleString()}`;
-  document.getElementById("t2Target").innerText = `Target: RM ${(targets.t2||0).toLocaleString()}`;
-  document.getElementById("t3Target").innerText = `Target: RM ${(targets.t3||0).toLocaleString()}`;
-  document.getElementById("r1Reward").innerText = `+RM ${(targets.r1||0).toLocaleString()}`;
-  document.getElementById("r2Reward").innerText = `+RM ${(targets.r2||0).toLocaleString()}`;
-  document.getElementById("r3Reward").innerText = `+RM ${(targets.r3||0).toLocaleString()}`;
+  // Calculate active MTD Pacing Day & Expected MTD Target Now for both TS and HB bars
+  const daysInMonthTotal = Number(currentData.daysInMonth) || 30;
+  let activePacingDay = Number(currentData.currentDay) || 1;
+  if (Array.isArray(historyData) && historyData.length > 0) {
+    const lastHist = historyData[historyData.length - 1];
+    const parsedLast = lastHist && lastHist.date ? parseMytDate(lastHist.date) : null;
+    if (parsedLast && parsedLast.day) {
+      activePacingDay = parsedLast.day;
+    }
+  }
+  activePacingDay = Math.min(daysInMonthTotal, Math.max(1, activePacingDay));
+  const expectedMtdPct = Math.min(100, (activePacingDay / daysInMonthTotal) * 100);
+  const expectedMtdTs = Math.round((tsTargetVal / daysInMonthTotal) * activePacingDay);
+  const expectedMtdHb = Math.round((hbTargetVal / daysInMonthTotal) * activePacingDay);
+  const tsDiff = Math.round(mtdTsVal - expectedMtdTs);
+  const hbDiff = Math.round(mtdHbVal - expectedMtdHb);
+
+  const tsMarker = document.getElementById("outletTsMarker");
+  const tsPacingRow = document.getElementById("outletTsPacingRow");
+  const tsMtdLabel = document.getElementById("outletTsMtdTargetLabel");
+  const tsStatusPill = document.getElementById("outletTsStatusPill");
+  if (tsMarker) {
+    tsMarker.style.display = "block";
+    tsMarker.style.left = `${expectedMtdPct.toFixed(1)}%`;
+  }
+  if (tsPacingRow) tsPacingRow.style.display = "flex";
+  if (tsMtdLabel) {
+    tsMtdLabel.innerHTML = `📍 <b>MTD Target (Day ${activePacingDay}/${daysInMonthTotal}):</b> RM ${expectedMtdTs.toLocaleString()} (${expectedMtdPct.toFixed(1)}%)`;
+  }
+  if (tsStatusPill) {
+    if (tsDiff >= 0) {
+      tsStatusPill.className = "pacing-status-pill on-track";
+      tsStatusPill.innerText = `🟢 On Track (+RM ${tsDiff.toLocaleString()})`;
+    } else {
+      tsStatusPill.className = "pacing-status-pill behind";
+      tsStatusPill.innerText = `🔴 Behind (-RM ${Math.abs(tsDiff).toLocaleString()})`;
+    }
+  }
+
+  const hbMarker = document.getElementById("outletHbMarker");
+  const hbPacingRow = document.getElementById("outletHbPacingRow");
+  const hbMtdLabel = document.getElementById("outletHbMtdTargetLabel");
+  const hbStatusPill = document.getElementById("outletHbStatusPill");
+  if (hbMarker) {
+    hbMarker.style.display = "block";
+    hbMarker.style.left = `${expectedMtdPct.toFixed(1)}%`;
+  }
+  if (hbPacingRow) hbPacingRow.style.display = "flex";
+  if (hbMtdLabel) {
+    hbMtdLabel.innerHTML = `📍 <b>MTD Target (Day ${activePacingDay}/${daysInMonthTotal}):</b> RM ${expectedMtdHb.toLocaleString()} (${expectedMtdPct.toFixed(1)}%)`;
+  }
+  if (hbStatusPill) {
+    if (hbDiff >= 0) {
+      hbStatusPill.className = "pacing-status-pill on-track";
+      hbStatusPill.innerText = `🟢 On Track (+RM ${hbDiff.toLocaleString()})`;
+    } else {
+      hbStatusPill.className = "pacing-status-pill behind";
+      hbStatusPill.innerText = `🔴 Behind (-RM ${Math.abs(hbDiff).toLocaleString()})`;
+    }
+  }
+
+  document.getElementById("t1Target").innerText = `Target: RM ${(targets.t1||161900).toLocaleString()}`;
+  document.getElementById("t2Target").innerText = `Target: RM ${(targets.t2||171700).toLocaleString()}`;
+  document.getElementById("t3Target").innerText = `Target: RM ${(targets.t3||182200).toLocaleString()}`;
+  document.getElementById("r1Reward").innerText = `+RM ${(targets.r1||250).toLocaleString()}`;
+  document.getElementById("r2Reward").innerText = `+RM ${(targets.r2||375).toLocaleString()}`;
+  document.getElementById("r3Reward").innerText = `+RM ${(targets.r3||500).toLocaleString()}`;
 
   const mtdHb = summary.mtdHb || 0;
   const updateTier = (tierNum, target) => {

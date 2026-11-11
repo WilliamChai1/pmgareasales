@@ -73,6 +73,60 @@ body {
 .progress-bar-bg { background: #eeeeee; border-radius: 6px; height: 12px; overflow: hidden; }
 .progress-bar-fill { background: var(--primary-gradient); height: 100%; width: 0%; transition: width 0.6s ease; }
 .progress-bar-fill.gold { background: var(--gold-gradient); }
+.progress-bar-wrapper { position: relative; padding-top: 2px; padding-bottom: 2px; }
+.progress-target-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  background: #0f172a;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  z-index: 5;
+  box-shadow: 0 0 0 1.5px #ffffff, 0 1px 4px rgba(0,0,0,0.35);
+  pointer-events: none;
+  transition: left 0.6s ease;
+}
+.progress-target-marker::before {
+  content: "▼";
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.55rem;
+  line-height: 1;
+  color: #0f172a;
+  text-shadow: 0 0 2px #ffffff;
+}
+.progress-pacing-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 0.72rem;
+  color: #475569;
+}
+.pacing-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.pacing-status-pill.on-track {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+.pacing-status-pill.behind {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
 
 .reward-ladder { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
 .tier-box { background: #fafafa; border: 2px solid #e0e0e0; border-radius: 10px; padding: 8px 4px; text-align: center; transition: all 0.3s ease; }

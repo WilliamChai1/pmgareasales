@@ -10,7 +10,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=79.0">
+  <link rel="stylesheet" href="./styles.css?v=79.1">
   <script>
     // Register Native PMG Service Worker with immediate cache-bypassing update check
     if ('serviceWorker' in navigator) {
@@ -24,7 +24,7 @@
       window.addEventListener('load', function() {
         const isGhPages = window.location.hostname.includes("github.io");
         const swScope = isGhPages ? "/pmgareasales/" : "/";
-        navigator.serviceWorker.register('./sw.js?v=79.0', { scope: swScope, updateViaCache: 'none' })
+        navigator.serviceWorker.register('./sw.js?v=79.1', { scope: swScope, updateViaCache: 'none' })
           .then(function(reg) {
             console.log("Native PMG Service Worker active on scope:", reg.scope);
             try { reg.update(); } catch(e) {}
@@ -530,7 +530,7 @@
     <div id="lastUpdated" class="sync-status">Waiting for login...</div>
     <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
       <button class="btn-logout" id="pushNotifyBtn" style="background:#0284c7; display:flex; align-items:center; gap:5px;" onclick="openPushModal()">🔔 Alerts</button>
-      <button class="btn-logout" style="background:#0f766e;" onclick="forceUpdatePmgApp()">🔄 v79.0</button>
+      <button class="btn-logout" style="background:#0f766e;" onclick="forceUpdatePmgApp()">🔄 v79.1</button>
       <button class="btn-logout" id="installAppBtn" style="display:none; background:#2e7d32;" onclick="installPWA()">📲 Install App</button>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
@@ -768,7 +768,14 @@
           <span>TOTAL SALES (MTD)</span>
           <span id="outletTsProgressText">Loading...</span>
         </div>
-        <div class="progress-bar-bg"><div class="progress-bar-fill" id="outletTsBar"></div></div>
+        <div class="progress-bar-wrapper">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="outletTsBar"></div></div>
+          <div class="progress-target-marker" id="outletTsMarker" style="left: 0%; display: none;" title="MTD Target Now"></div>
+        </div>
+        <div class="progress-pacing-row" id="outletTsPacingRow" style="display: none;">
+          <span id="outletTsMtdTargetLabel">📍 MTD Target Now: RM 0</span>
+          <span id="outletTsStatusPill" class="pacing-status-pill">Checking...</span>
+        </div>
       </div>
 
       <div class="progress-section">
@@ -776,7 +783,14 @@
           <span>HOUSE BRAND (MTD)</span>
           <span id="outletHbProgressText">Loading...</span>
         </div>
-        <div class="progress-bar-bg"><div class="progress-bar-fill gold" id="outletHbBar"></div></div>
+        <div class="progress-bar-wrapper">
+          <div class="progress-bar-bg"><div class="progress-bar-fill gold" id="outletHbBar"></div></div>
+          <div class="progress-target-marker" id="outletHbMarker" style="left: 0%; display: none;" title="MTD HB Target Now"></div>
+        </div>
+        <div class="progress-pacing-row" id="outletHbPacingRow" style="display: none;">
+          <span id="outletHbMtdTargetLabel">📍 MTD Target Now: RM 0</span>
+          <span id="outletHbStatusPill" class="pacing-status-pill">Checking...</span>
+        </div>
       </div>
 
       <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary-dark); margin-top: 15px;">
@@ -953,11 +967,11 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=79.0"></script>
-  <script src="./data/dpos_week1.js?v=79.0"></script>
-  <script src="./data/dpos_localized_quizzes.js?v=79.0"></script>
-  <script src="./data/dpos_catalog.js?v=79.0"></script>
-  <script src="./dpos.js?v=79.0"></script>
-  <script src="./app.js?v=79.0"></script>
+  <script src="./data/clinical_upsell_modules.js?v=79.1"></script>
+  <script src="./data/dpos_week1.js?v=79.1"></script>
+  <script src="./data/dpos_localized_quizzes.js?v=79.1"></script>
+  <script src="./data/dpos_catalog.js?v=79.1"></script>
+  <script src="./dpos.js?v=79.1"></script>
+  <script src="./app.js?v=79.1"></script>
 </body>
 </html>
