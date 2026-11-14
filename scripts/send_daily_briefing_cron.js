@@ -1,8 +1,8 @@
 // scripts/send_daily_briefing_cron.js
 // Automated 11:00 PM Daily Briefing Push Alert for PMG Sales Hub
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwhxfd5OQrDJw3bYPuzCd8DQqhWfOmtkQpQUTu7ke9s2bE_egFmvWeubaEtjMvBzADS/exec";
-const BRANCH = process.argv[2] || "Kota Sentosa";
+const API_URL = process.env.PMG_API_URL || "https://script.google.com/macros/s/AKfycbwhxfd5OQrDJw3bYPuzCd8DQqhWfOmtkQpQUTu7ke9s2bE_egFmvWeubaEtjMvBzADS/exec";
+const BRANCH = process.argv[2] || process.env.PMG_BRANCH || "Kota Sentosa";
 
 async function runCronPush() {
   const timestamp = new Date().toISOString();

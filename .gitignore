@@ -1,0 +1,30 @@
+# Environment variables & secrets
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+token.json
+.clasp.json
+client_secret*.json
+
+# Node & package manager artifacts
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Scratch & temporary files
+scratch/
+tmp/
+.tmp/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PDPA & sensitive patient/customer data exports
+*patient*.csv
+*patient*.xlsx
+*pdpa*

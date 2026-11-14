@@ -63,3 +63,25 @@ Automatically activate and consult these specialized agent personas based on the
     - Daily 5-point sales briefing is updated/published by the PIC.
     - A new DPOS weekly training module or clinical topic is introduced.
   - Ensure cross-platform delivery across Android Chrome, iOS Safari 16.4+ PWA, and desktop browsers.
+
+---
+
+## 3. Antigravity Cloud Workspace Map
+
+All workspace rules, agent personas, skills, and maintenance workflows are packaged inside version control for seamless execution in Antigravity Cloud:
+
+- **Cloud Agent Index**: `AGENTS.md`
+- **Agent Personas** (`.agents/agents/`):
+  - `.agents/agents/dpos-clinical-simulator.md` (`dpos-clinical-simulator`)
+  - `.agents/agents/pmg-daily-briefing.md` (`pmg-daily-briefing`)
+  - `.agents/agents/frontline-upsell-coach.md` (`frontline-upsell-coach`)
+  - `.agents/agents/operational-compliance-agent.md` (`operational-compliance-agent`)
+  - `.agents/agents/push-notification-dispatcher.md` (`push-notification-dispatcher`)
+- **Domain Skills** (`.agents/skills/`):
+  - `.agents/skills/pmg-daily-sales-briefing/SKILL.md`
+  - `.agents/skills/dpos-clinical-academy/SKILL.md`
+  - `.agents/skills/pmg-6s-gondola-audit/SKILL.md`
+  - `.agents/skills/pmg-house-brands-sync/SKILL.md`
+- **Cloud Maintenance Workflow** (`.agents/workflows/`):
+  - `.agents/workflows/cloud-workspace-guide.md`
+
