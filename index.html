@@ -10,7 +10,7 @@
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=79.1">
+  <link rel="stylesheet" href="./styles.css?v=79.2">
   <script>
     // Register Native PMG Service Worker with immediate cache-bypassing update check
     if ('serviceWorker' in navigator) {
@@ -24,7 +24,7 @@
       window.addEventListener('load', function() {
         const isGhPages = window.location.hostname.includes("github.io");
         const swScope = isGhPages ? "/pmgareasales/" : "/";
-        navigator.serviceWorker.register('./sw.js?v=79.1', { scope: swScope, updateViaCache: 'none' })
+        navigator.serviceWorker.register('./sw.js?v=79.2', { scope: swScope, updateViaCache: 'none' })
           .then(function(reg) {
             console.log("Native PMG Service Worker active on scope:", reg.scope);
             try { reg.update(); } catch(e) {}
@@ -530,7 +530,7 @@
     <div id="lastUpdated" class="sync-status">Waiting for login...</div>
     <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
       <button class="btn-logout" id="pushNotifyBtn" style="background:#0284c7; display:flex; align-items:center; gap:5px;" onclick="openPushModal()">🔔 Alerts</button>
-      <button class="btn-logout" style="background:#0f766e;" onclick="forceUpdatePmgApp()">🔄 v79.1</button>
+      <button class="btn-logout" style="background:#0f766e;" onclick="forceUpdatePmgApp()">🔄 v79.2</button>
       <button class="btn-logout" id="installAppBtn" style="display:none; background:#2e7d32;" onclick="installPWA()">📲 Install App</button>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
@@ -719,42 +719,127 @@
     
     <!-- PERSONAL DASHBOARD -->
     <div class="card" id="personalDashboard" style="display:none; border-top: 4px solid #8e24aa;">
-      <h2 id="userNameHeader" style="color: #8e24aa;">👤 Personal Profile</h2>
-      
-      <div style="font-size:0.78rem; font-weight:800; color:var(--primary); margin-top:2px;">📅 TODAY'S PERFORMANCE:</div>
+      <div class="personal-header-row">
+        <h2 id="userNameHeader" style="color: #8e24aa; margin: 0;">👤 Personal Profile</h2>
+      </div>
+      <div id="personalRoleBadges" class="personal-role-badges"></div>
+
+      <!-- PERSONAL MTD SALES VS MONTHLY TARGETS -->
+      <div style="font-size:0.76rem; font-weight:800; color:#4a148c; margin-top:2px;">🎯 PERSONAL MONTHLY SALES &amp; TARGETS (MTD):</div>
+      <div class="personal-kpi-grid">
+        <div class="personal-kpi-card">
+          <div class="personal-kpi-top">
+            <span class="personal-kpi-label">Personal Total Sales</span>
+            <span class="personal-kpi-pct" id="valPersonalTsPct">0%</span>
+          </div>
+          <div class="personal-kpi-main" id="valMtdTS">RM 0.00</div>
+          <div class="personal-kpi-sub">
+            Target: <b id="valPersonalTsTarget">RM 0</b> &bull; Left: <b id="valPersonalTsLeft">RM 0</b>
+          </div>
+          <div class="personal-progress-bg">
+            <div class="personal-progress-fill" id="personalTsBar"></div>
+          </div>
+        </div>
+
+        <div class="personal-kpi-card hb-card">
+          <div class="personal-kpi-top">
+            <span class="personal-kpi-label">Personal House Brand</span>
+            <span class="personal-kpi-pct" id="valPersonalHbPct">0%</span>
+          </div>
+          <div class="personal-kpi-main" id="valMtdHB" style="color:#0f766e;">RM 0.00</div>
+          <div class="personal-kpi-sub">
+            Target: <b id="valPersonalHbTarget">RM 0</b> &bull; Left: <b id="valPersonalHbLeft">RM 0</b>
+          </div>
+          <div class="personal-progress-bg">
+            <div class="personal-progress-fill hb-fill" id="personalHbBar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SMART DAILY TARGET CALCULATOR (1.5 OFF DAYS/WK + ANNUAL LEAVE) -->
+      <div class="personal-al-card">
+        <div class="personal-al-header">
+          <div class="personal-al-title">🧮 Daily Target Calculator (Minus 1.5 Off-Days/Wk + AL)</div>
+          <span style="font-size:0.65rem; font-weight:800; color:#92400e; background:#fef3c7; border:1px solid #fcd34d; padding:2px 7px; border-radius:999px;">Auto-Saved Monthly</span>
+        </div>
+
+        <div class="personal-al-inputs">
+          <div class="personal-al-field">
+            <label for="personalAlMonthlyInput">Monthly AL Applied</label>
+            <div class="personal-al-input-wrap">
+              <input type="number" id="personalAlMonthlyInput" min="0" max="25" step="0.5" value="0" oninput="onPersonalAlInputChange('monthly')" onchange="onPersonalAlInputChange('monthly')">
+              <span class="personal-al-unit">days</span>
+            </div>
+          </div>
+          <div class="personal-al-field">
+            <label for="personalAlRemainingInput">Upcoming AL Left</label>
+            <div class="personal-al-input-wrap">
+              <input type="number" id="personalAlRemainingInput" min="0" max="25" step="0.5" value="0" oninput="onPersonalAlInputChange('remaining')" onchange="onPersonalAlInputChange('remaining')">
+              <span class="personal-al-unit">days</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="personal-daily-target-grid">
+          <div class="personal-daily-box">
+            <div class="dt-label">📈 Daily Total Sales Needed</div>
+            <div class="dt-val" id="valPersonalDailyTsNeeded">RM 0 / shift</div>
+            <div class="dt-quota" id="valPersonalDailyTsQuota">Monthly quota: RM 0/shift</div>
+          </div>
+          <div class="personal-daily-box hb-box">
+            <div class="dt-label">💊 Daily House Brand Needed</div>
+            <div class="dt-val" id="valPersonalDailyHbNeeded" style="color:#0f766e;">RM 0 / shift</div>
+            <div class="dt-quota" id="valPersonalDailyHbQuota">Monthly quota: RM 0/shift</div>
+          </div>
+        </div>
+
+        <div class="personal-workday-pill" id="valPersonalWorkDaysBreakdown">
+          Calculating working shifts (5.5 working days/week minus AL)...
+        </div>
+      </div>
+
+      <!-- TODAY & ADDITIONAL MTD SNAPSHOT -->
+      <div style="font-size:0.75rem; font-weight:800; color:var(--primary); margin-top:12px;">📅 LATEST SHIFT PERFORMANCE &amp; MTD EXTRAS:</div>
       <div class="metric-grid">
         <div class="metric-box"><div class="label">TODAY TS</div><div class="val" id="valTS">RM 0</div></div>
         <div class="metric-box"><div class="label">TODAY HB</div><div class="val" id="valHB">RM 0</div></div>
         <div class="metric-box"><div class="label">TODAY HM</div><div class="val" id="valHM">RM 0</div></div>
-        <div class="metric-box"><div class="label">CUSTOMERS</div><div class="val" id="valCust">0</div></div>
-      </div>
-
-      <div style="font-size:0.78rem; font-weight:800; color:#4a148c; margin-top:10px;">📊 YOUR MTD ACCUMULATED SALES:</div>
-      <div class="metric-grid">
-        <div class="metric-box" style="background:#f3e5f5;"><div class="label">MTD TOTAL SALES</div><div class="val" id="valMtdTS" style="color:var(--primary-dark);">RM 0</div></div>
-        <div class="metric-box" style="background:#f3e5f5;"><div class="label">MTD HOUSE BRAND</div><div class="val" id="valMtdHB" style="color:#00796b;">RM 0</div></div>
+        <div class="metric-box"><div class="label">TODAY PATIENTS</div><div class="val" id="valCust">0</div></div>
         <div class="metric-box" style="background:#f3e5f5;"><div class="label">MTD HIGH MARGIN</div><div class="val" id="valMtdHM">RM 0</div></div>
         <div class="metric-box" style="background:#f3e5f5;"><div class="label">MTD PATIENTS</div><div class="val" id="valMtdCust">0</div></div>
       </div>
 
-      <div class="gap-banner">
+      <div class="gap-banner" style="display:none;" id="legacyRemainingBanner">
         <b>🎯 Monthly Target Remaining (MTD):</b>
         <div id="valRemainingTarget" style="margin-top:4px;">Loading...</div>
       </div>
 
       <div class="commission-banner">
-        <div style="font-weight: 800; font-size: 0.88rem; margin-bottom: 6px; color: var(--primary-dark);">
+        <div style="font-weight: 800; font-size: 0.85rem; margin-bottom: 6px; color: var(--primary-dark);">
           💰 House Brand Commission Tracker (~3.5% Avg):
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           <div style="background: white; padding: 8px; border-radius: 10px; text-align: center; border: 1px solid #ce93d8;">
             <div style="font-size: 0.65rem; color: #7b1fa2; font-weight: 800;">TODAY'S EARNINGS</div>
-            <div style="font-size: 1.15rem; font-weight: 800; color: #00796b; margin-top: 2px;" id="valDailyCommission">RM 0.00</div>
+            <div style="font-size: 1.1rem; font-weight: 800; color: #00796b; margin-top: 2px;" id="valDailyCommission">RM 0.00</div>
           </div>
           <div style="background: white; padding: 8px; border-radius: 10px; text-align: center; border: 1px solid #ce93d8;">
             <div style="font-size: 0.65rem; color: #7b1fa2; font-weight: 800;">MTD ACCUMULATED</div>
-            <div style="font-size: 1.15rem; font-weight: 800; color: var(--primary); margin-top: 2px;" id="valMtdCommission">RM 0.00</div>
+            <div style="font-size: 1.1rem; font-weight: 800; color: var(--primary); margin-top: 2px;" id="valMtdCommission">RM 0.00</div>
           </div>
+        </div>
+      </div>
+
+      <!-- MY ASSIGNED LEADER & CORE ROLE JOBSCOPE (LIVE FROM FUTURE LEADERS & STAFF ROLES) -->
+      <div class="personal-jobscope-section">
+        <div class="personal-jobscope-header">
+          <div style="font-size:0.82rem; font-weight:800; color:#1e293b;">⭐ My Role &amp; Assigned Leadership Jobscope</div>
+          <button type="button" onclick="switchMainTab('leaders')" style="background:#fffbeb; color:#92400e; border:1px solid #fcd34d; border-radius:8px; padding:4px 9px; font-size:0.68rem; font-weight:800; cursor:pointer;">
+            👥 All Team Roles ↗
+          </button>
+        </div>
+        <div id="personalJobscopeContainer">
+          <div style="font-size:0.75rem; color:#64748b;">Loading assigned role responsibilities...</div>
         </div>
       </div>
     </div>
@@ -967,11 +1052,11 @@
   </div>
 
   <script src="./data/house_brands.js"></script>
-  <script src="./data/clinical_upsell_modules.js?v=79.1"></script>
-  <script src="./data/dpos_week1.js?v=79.1"></script>
-  <script src="./data/dpos_localized_quizzes.js?v=79.1"></script>
-  <script src="./data/dpos_catalog.js?v=79.1"></script>
-  <script src="./dpos.js?v=79.1"></script>
-  <script src="./app.js?v=79.1"></script>
+  <script src="./data/clinical_upsell_modules.js?v=79.2"></script>
+  <script src="./data/dpos_week1.js?v=79.2"></script>
+  <script src="./data/dpos_localized_quizzes.js?v=79.2"></script>
+  <script src="./data/dpos_catalog.js?v=79.2"></script>
+  <script src="./dpos.js?v=79.2"></script>
+  <script src="./app.js?v=79.2"></script>
 </body>
 </html>

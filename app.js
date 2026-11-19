@@ -763,14 +763,33 @@ function renderDashboard() {
   }
 
   document.getElementById("branchNameHeader").innerText = `🏥 PMG ${selectedBranch} Performance`;
-  
-  // Dynamic matching strictly for the logged-in teammate
-  const myStats = findStaffForUser(staff, currentUser);
+
+  // Calculate active MTD Pacing Day & total days in month (shared by Personal Card & Outlet Dashboard)
+  const daysInMonthTotal = Number(currentData.daysInMonth) || 30;
+  let activePacingDay = Number(currentData.currentDay) || 1;
+  if (Array.isArray(historyData) && historyData.length > 0) {
+    const lastHist = historyData[historyData.length - 1];
+    const parsedLast = lastHist && lastHist.date ? parseMytDate(lastHist.date) : null;
+    if (parsedLast && parsedLast.day) {
+      activePacingDay = parsedLast.day;
+    }
+  }
+  activePacingDay = Math.min(daysInMonthTotal, Math.max(1, activePacingDay));
+
+  // Dynamic matching strictly for the logged-in teammate (with safe fallback for newly onboarded staff)
+  const matchedStats = findStaffForUser(staff, currentUser);
+  const myStats = matchedStats || (currentUser ? {
+    name: currentUser.name || currentUser.username || 'Teammate',
+    role: currentUser.position || currentUser.role || 'Staff',
+    dailyTs: 0, dailyHb: 0, dailyHm: 0, dailyCust: 0,
+    octMtdTs: 0, octMtdHb: 0, octMtdHm: 0, octMtdCust: 0,
+    targetTs: 0, targetHb: 0, targetHm: 0
+  } : null);
 
   if (myStats) {
     document.getElementById("personalDashboard").style.display = "block";
     document.getElementById("userNameHeader").innerText = `👤 ${myStats.name} (${myStats.role || 'Staff'})`;
-    
+
     // Daily performance of latest recorded business day
     const dTs   = Number(myStats.dailyTs || 0);
     const dHb   = Number(myStats.dailyHb || 0);
@@ -784,35 +803,86 @@ function renderDashboard() {
     document.getElementById("valHB").innerHTML = `RM ${dHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}${prevNotice}`;
     document.getElementById("valHM").innerText = `RM ${dHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById("valCust").innerText = dCust;
-    
-    // Strict October 2026 MTD sales (isolated from September totals)
-    document.getElementById("valMtdTS").innerText = `RM ${myStats.octMtdTs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    let myHbPct = myStats.octMtdTs > 0 ? ((myStats.octMtdHb / myStats.octMtdTs) * 100).toFixed(1) : 0;
-    document.getElementById("valMtdHB").innerText = `RM ${myStats.octMtdHb.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${myHbPct}%)`;
-    document.getElementById("valMtdHM").innerText = `RM ${myStats.octMtdHm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    document.getElementById("valMtdCust").innerText = myStats.octMtdCust || 0;
 
-    const daysInMonth = currentData.daysInMonth || 31;
-    let fullTsTarget = (myStats.targetTs || 0) * daysInMonth;
-    let fullHbTarget = (myStats.targetHb || 0) * daysInMonth;
-    let fullHmTarget = (myStats.targetHm || 0) * daysInMonth;
+    // Personal MTD accumulated sales
+    const mtdTsPersonal = Number(myStats.octMtdTs || 0);
+    const mtdHbPersonal = Number(myStats.octMtdHb || 0);
+    const mtdHmPersonal = Number(myStats.octMtdHm || 0);
+    const mtdCustPersonal = Number(myStats.octMtdCust || 0);
 
-    let tsRem = Math.max(0, fullTsTarget - (myStats.octMtdTs || 0));
-    let hbRem = Math.max(0, fullHbTarget - (myStats.octMtdHb || 0));
-    let hmRem = Math.max(0, fullHmTarget - (myStats.octMtdHm || 0));
-    
-    document.getElementById("valRemainingTarget").innerHTML = `
-      • TS Target Left: <b>${formatRM(tsRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullTsTarget)})</span><br>
-      • HB Target Left: <b>${formatRM(hbRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullHbTarget)})</span><br>
-      • HM Target Left: <b>${formatRM(hmRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullHmTarget)})</span>
-    `;
+    document.getElementById("valMtdTS").innerText = `RM ${mtdTsPersonal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    let myHbPct = mtdTsPersonal > 0 ? ((mtdHbPersonal / mtdTsPersonal) * 100).toFixed(1) : '0.0';
+    document.getElementById("valMtdHB").innerHTML = `RM ${mtdHbPersonal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span style="font-size:0.74rem; font-weight:700; color:#0d9488;">(${myHbPct}% HB)</span>`;
+    document.getElementById("valMtdHM").innerText = `RM ${mtdHmPersonal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById("valMtdCust").innerText = mtdCustPersonal;
 
-    // Commission: Today's HB + strictly October 1st onwards MTD transactions
+    const daysInMonth = daysInMonthTotal;
+    let fullTsTarget = Math.round((myStats.targetTs || 0) * daysInMonth);
+    let fullHbTarget = Math.round((myStats.targetHb || 0) * daysInMonth);
+    let fullHmTarget = Math.round((myStats.targetHm || 0) * daysInMonth);
+
+    let tsRem = Math.max(0, fullTsTarget - mtdTsPersonal);
+    let hbRem = Math.max(0, fullHbTarget - mtdHbPersonal);
+    let hmRem = Math.max(0, fullHmTarget - mtdHmPersonal);
+
+    // Personal Monthly Target progress bars & percentages
+    const pTsPct = fullTsTarget > 0 ? Math.min(100, (mtdTsPersonal / fullTsTarget) * 100) : 0;
+    const pHbPct = fullHbTarget > 0 ? Math.min(100, (mtdHbPersonal / fullHbTarget) * 100) : 0;
+    const elTsTarget = document.getElementById("valPersonalTsTarget");
+    const elTsLeft = document.getElementById("valPersonalTsLeft");
+    const elTsPct = document.getElementById("valPersonalTsPct");
+    const elTsBar = document.getElementById("personalTsBar");
+    if (elTsTarget) elTsTarget.innerText = formatRM(fullTsTarget);
+    if (elTsLeft) elTsLeft.innerText = tsRem <= 0 && fullTsTarget > 0 ? "Achieved 🎉" : formatRM(tsRem);
+    if (elTsPct) elTsPct.innerText = `${pTsPct.toFixed(1)}%`;
+    if (elTsBar) elTsBar.style.width = `${pTsPct.toFixed(1)}%`;
+
+    const elHbTarget = document.getElementById("valPersonalHbTarget");
+    const elHbLeft = document.getElementById("valPersonalHbLeft");
+    const elHbPct = document.getElementById("valPersonalHbPct");
+    const elHbBar = document.getElementById("personalHbBar");
+    if (elHbTarget) elHbTarget.innerText = formatRM(fullHbTarget);
+    if (elHbLeft) elHbLeft.innerText = hbRem <= 0 && fullHbTarget > 0 ? "Achieved 🎉" : formatRM(hbRem);
+    if (elHbPct) elHbPct.innerText = `${pHbPct.toFixed(1)}%`;
+    if (elHbBar) elHbBar.style.width = `${pHbPct.toFixed(1)}%`;
+
+    const remTargetEl = document.getElementById("valRemainingTarget");
+    if (remTargetEl) {
+      remTargetEl.innerHTML = `
+        • TS Target Left: <b>${formatRM(tsRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullTsTarget)})</span><br>
+        • HB Target Left: <b>${formatRM(hbRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullHbTarget)})</span><br>
+        • HM Target Left: <b>${formatRM(hmRem)}</b> <span style="font-size:0.7rem; color:#666;">(Target: ${formatRM(fullHmTarget)})</span>
+      `;
+    }
+
+    // Store personal target context & render Smart Working-Day + AL Daily Target Calculator
+    activePersonalStatsContext = {
+      myStats,
+      daysInMonth,
+      activePacingDay,
+      fullTsTarget,
+      fullHbTarget,
+      fullHmTarget,
+      mtdTs: mtdTsPersonal,
+      mtdHb: mtdHbPersonal,
+      mtdHm: mtdHmPersonal
+    };
+    if (typeof renderPersonalDailyTargetCalculator === 'function') {
+      renderPersonalDailyTargetCalculator(true);
+    }
+
+    // Commission: Today's HB + MTD transactions
     let dailyComm = dHb * 0.035;
-    let mtdComm = myStats.octMtdHb * 0.035;
+    let mtdComm = mtdHbPersonal * 0.035;
     document.getElementById("valDailyCommission").innerText = `RM ${dailyComm.toFixed(2)}`;
     document.getElementById("valMtdCommission").innerText = `RM ${mtdComm.toFixed(2)}`;
+
+    // Live-Connected Core Role (PA/ABM/Pharmacist) & Assigned Leadership Jobscope
+    if (typeof renderPersonalJobscopeSection === 'function') {
+      renderPersonalJobscopeSection(myStats);
+    }
   } else {
+    activePersonalStatsContext = null;
     document.getElementById("personalDashboard").style.display = "none";
   }
 
@@ -829,17 +899,6 @@ function renderDashboard() {
   document.getElementById("outletHbProgressText").innerText = `RM ${mtdHbVal.toLocaleString()} / RM ${hbTargetVal.toLocaleString()} (${hbPct.toFixed(1)}%)`;
   document.getElementById("outletHbBar").style.width = hbPct + "%";
 
-  // Calculate active MTD Pacing Day & Expected MTD Target Now for both TS and HB bars
-  const daysInMonthTotal = Number(currentData.daysInMonth) || 30;
-  let activePacingDay = Number(currentData.currentDay) || 1;
-  if (Array.isArray(historyData) && historyData.length > 0) {
-    const lastHist = historyData[historyData.length - 1];
-    const parsedLast = lastHist && lastHist.date ? parseMytDate(lastHist.date) : null;
-    if (parsedLast && parsedLast.day) {
-      activePacingDay = parsedLast.day;
-    }
-  }
-  activePacingDay = Math.min(daysInMonthTotal, Math.max(1, activePacingDay));
   const expectedMtdPct = Math.min(100, (activePacingDay / daysInMonthTotal) * 100);
   const expectedMtdTs = Math.round((tsTargetVal / daysInMonthTotal) * activePacingDay);
   const expectedMtdHb = Math.round((hbTargetVal / daysInMonthTotal) * activePacingDay);
@@ -5089,6 +5148,9 @@ async function saveLeadersJobscopeFromModal() {
   } catch (e) {}
 
   renderLeadersView();
+  if (typeof renderPersonalJobscopeSection === 'function') {
+    renderPersonalJobscopeSection();
+  }
   closeLeadersEditModal();
 
   // 2. Background Save to Google Sheets
@@ -5112,6 +5174,444 @@ async function saveLeadersJobscopeFromModal() {
     alert("✅ Job scopes saved locally! (Cloud sync will complete in background)");
   }
 }
+
+// ─── PERSONAL DAILY TARGET CALCULATOR (1.5 OFF/WK + AL) & ROLE JOBSCOPE ──────
+var activePersonalStatsContext = null;
+
+function escapePersonalHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getPersonalAlStorageKey(staffName) {
+  let ymKey = '';
+  try {
+    const latestStr = (currentData && currentData.latestSalesDate) || '';
+    const parsed = latestStr ? parseMytDate(latestStr) : parseMytDate(new Date());
+    if (parsed) {
+      ymKey = `${parsed.year}-${String(parsed.month + 1).padStart(2, '0')}`;
+    }
+  } catch (e) {}
+  if (!ymKey) {
+    const now = new Date();
+    ymKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+  const cleanName = String(staffName || (currentUser && (currentUser.username || currentUser.name)) || 'staff')
+    .trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  return `pmg_personal_al_${ymKey}_${cleanName}`;
+}
+
+function loadPersonalAlState(staffName) {
+  const key = getPersonalAlStorageKey(staffName);
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        monthlyAl: Math.max(0, Number(parsed.monthlyAl) || 0),
+        upcomingAl: Math.max(0, Number(parsed.upcomingAl) || 0),
+        upcomingCustomized: Boolean(parsed.upcomingCustomized)
+      };
+    }
+  } catch (e) {}
+  return { monthlyAl: 0, upcomingAl: 0, upcomingCustomized: false };
+}
+
+function savePersonalAlState(staffName, state) {
+  const key = getPersonalAlStorageKey(staffName);
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      monthlyAl: Math.max(0, Number(state.monthlyAl) || 0),
+      upcomingAl: Math.max(0, Number(state.upcomingAl) || 0),
+      upcomingCustomized: Boolean(state.upcomingCustomized)
+    }));
+  } catch (e) {}
+}
+
+function calculatePersonalWorkingDays(daysInMonth, activePacingDay, monthlyAl = 0, upcomingAl = 0) {
+  const dMonth = Math.max(28, Number(daysInMonth) || 30);
+  const curDay = Math.min(dMonth, Math.max(1, Number(activePacingDay) || 1));
+  const mAl = Math.max(0, Math.min(dMonth, Number(monthlyAl) || 0));
+  const uAl = Math.max(0, Math.min(dMonth, Number(upcomingAl) || 0));
+
+  const weeklyOffRatio = 1.5 / 7; // 1.5 off days every 7 calendar days (5.5 working days/week)
+  const roundHalf = v => Math.round(v * 2) / 2;
+
+  const totalMonthOffDays = roundHalf(dMonth * weeklyOffRatio);
+  const baseMonthWorkDays = Math.max(1, dMonth - totalMonthOffDays);
+  const netMonthWorkDays = Math.max(0.5, baseMonthWorkDays - mAl);
+
+  const remCalDays = Math.max(0, dMonth - curDay);
+  const remOffDays = roundHalf(remCalDays * weeklyOffRatio);
+  const baseRemWorkDays = Math.max(0, remCalDays - remOffDays);
+  const netRemWorkDays = Math.max(0, baseRemWorkDays - uAl);
+
+  return {
+    daysInMonth: dMonth,
+    activePacingDay: curDay,
+    monthlyAl: mAl,
+    upcomingAl: uAl,
+    totalMonthOffDays,
+    baseMonthWorkDays,
+    netMonthWorkDays,
+    remCalDays,
+    remOffDays,
+    baseRemWorkDays,
+    netRemWorkDays
+  };
+}
+
+function renderPersonalDailyTargetCalculator(syncInputsFromStorage = false) {
+  const ctx = activePersonalStatsContext;
+  if (!ctx || !ctx.myStats) return;
+
+  const staffName = ctx.myStats.name || (currentUser && currentUser.username) || 'staff';
+  const monthlyInput = document.getElementById("personalAlMonthlyInput");
+  const remainingInput = document.getElementById("personalAlRemainingInput");
+
+  let alState = loadPersonalAlState(staffName);
+  if (syncInputsFromStorage) {
+    if (monthlyInput) monthlyInput.value = alState.monthlyAl;
+    if (remainingInput) remainingInput.value = alState.upcomingAl;
+  } else {
+    alState.monthlyAl = monthlyInput ? Math.max(0, parseFloat(monthlyInput.value) || 0) : alState.monthlyAl;
+    alState.upcomingAl = remainingInput ? Math.max(0, parseFloat(remainingInput.value) || 0) : alState.upcomingAl;
+  }
+
+  const wd = calculatePersonalWorkingDays(ctx.daysInMonth, ctx.activePacingDay, alState.monthlyAl, alState.upcomingAl);
+
+  const tsRem = Math.max(0, ctx.fullTsTarget - ctx.mtdTs);
+  const hbRem = Math.max(0, ctx.fullHbTarget - ctx.mtdHb);
+
+  const monthlyTsQuota = ctx.fullTsTarget > 0 ? Math.ceil(ctx.fullTsTarget / wd.netMonthWorkDays) : 0;
+  const monthlyHbQuota = ctx.fullHbTarget > 0 ? Math.ceil(ctx.fullHbTarget / wd.netMonthWorkDays) : 0;
+
+  const tsNeededEl = document.getElementById("valPersonalDailyTsNeeded");
+  const tsQuotaEl = document.getElementById("valPersonalDailyTsQuota");
+  const hbNeededEl = document.getElementById("valPersonalDailyHbNeeded");
+  const hbQuotaEl = document.getElementById("valPersonalDailyHbQuota");
+  const breakdownEl = document.getElementById("valPersonalWorkDaysBreakdown");
+
+  if (tsNeededEl) {
+    if (ctx.fullTsTarget <= 0) {
+      tsNeededEl.innerText = "Target Pending";
+      tsNeededEl.style.color = "#64748b";
+    } else if (tsRem <= 0) {
+      tsNeededEl.innerText = "🎉 Target Achieved!";
+      tsNeededEl.style.color = "#15803d";
+    } else if (wd.netRemWorkDays <= 0) {
+      tsNeededEl.innerText = `RM ${Math.ceil(tsRem).toLocaleString()} (Final Shift)`;
+      tsNeededEl.style.color = "#c2410c";
+    } else {
+      const dailyTsNeed = Math.ceil(tsRem / wd.netRemWorkDays);
+      tsNeededEl.innerText = `RM ${dailyTsNeed.toLocaleString()} / shift`;
+      tsNeededEl.style.color = "#0f172a";
+    }
+  }
+  if (tsQuotaEl) {
+    tsQuotaEl.innerText = ctx.fullTsTarget > 0
+      ? `Monthly quota: RM ${monthlyTsQuota.toLocaleString()}/shift (${wd.netMonthWorkDays} shifts)`
+      : "Awaiting monthly target allocation";
+  }
+
+  if (hbNeededEl) {
+    if (ctx.fullHbTarget <= 0) {
+      hbNeededEl.innerText = "Target Pending";
+      hbNeededEl.style.color = "#64748b";
+    } else if (hbRem <= 0) {
+      hbNeededEl.innerText = "🎉 Target Achieved!";
+      hbNeededEl.style.color = "#15803d";
+    } else if (wd.netRemWorkDays <= 0) {
+      hbNeededEl.innerText = `RM ${Math.ceil(hbRem).toLocaleString()} (Final Shift)`;
+      hbNeededEl.style.color = "#c2410c";
+    } else {
+      const dailyHbNeed = Math.ceil(hbRem / wd.netRemWorkDays);
+      hbNeededEl.innerText = `RM ${dailyHbNeed.toLocaleString()} / shift`;
+      hbNeededEl.style.color = "#0f766e";
+    }
+  }
+  if (hbQuotaEl) {
+    hbQuotaEl.innerText = ctx.fullHbTarget > 0
+      ? `Monthly quota: RM ${monthlyHbQuota.toLocaleString()}/shift (${wd.netMonthWorkDays} shifts)`
+      : "Awaiting monthly target allocation";
+  }
+
+  if (breakdownEl) {
+    breakdownEl.innerHTML = `
+      📅 <b>Remaining Shifts:</b> ${wd.remCalDays} calendar days left (Day ${wd.activePacingDay}/${wd.daysInMonth}) &minus; ${wd.remOffDays} off (1.5/wk) &minus; ${wd.upcomingAl} upcoming AL = <b>${wd.netRemWorkDays} work shifts left</b><br>
+      📆 <b>Full Month Basis:</b> ${wd.daysInMonth} days &minus; ${wd.totalMonthOffDays} off (1.5/wk) &minus; ${wd.monthlyAl} monthly AL = <b>${wd.netMonthWorkDays} total work shifts</b>
+    `;
+  }
+}
+
+function onPersonalAlInputChange(sourceField) {
+  const ctx = activePersonalStatsContext;
+  const staffName = (ctx && ctx.myStats && ctx.myStats.name) || (currentUser && currentUser.username) || 'staff';
+  const monthlyInput = document.getElementById("personalAlMonthlyInput");
+  const remainingInput = document.getElementById("personalAlRemainingInput");
+
+  let state = loadPersonalAlState(staffName);
+  const rawMonthly = monthlyInput ? parseFloat(monthlyInput.value) : state.monthlyAl;
+  const rawRemaining = remainingInput ? parseFloat(remainingInput.value) : state.upcomingAl;
+
+  const cleanMonthly = isNaN(rawMonthly) ? 0 : Math.max(0, Math.min(25, rawMonthly));
+  let cleanRemaining = isNaN(rawRemaining) ? 0 : Math.max(0, Math.min(25, rawRemaining));
+
+  if (sourceField === 'monthly') {
+    if (cleanMonthly === 0) {
+      cleanRemaining = 0;
+      state.upcomingCustomized = false;
+    } else if (!state.upcomingCustomized || cleanRemaining === state.monthlyAl) {
+      cleanRemaining = cleanMonthly;
+    } else if (cleanRemaining > cleanMonthly) {
+      cleanRemaining = cleanMonthly;
+    }
+    if (remainingInput) remainingInput.value = cleanRemaining;
+  } else if (sourceField === 'remaining') {
+    state.upcomingCustomized = true;
+    if (cleanRemaining > cleanMonthly) {
+      // Keep monthly AL at least equal to upcoming AL for logical consistency
+      if (monthlyInput) monthlyInput.value = cleanRemaining;
+      state.monthlyAl = cleanRemaining;
+      state.upcomingAl = cleanRemaining;
+      savePersonalAlState(staffName, state);
+      renderPersonalDailyTargetCalculator(false);
+      return;
+    }
+  }
+
+  state.monthlyAl = cleanMonthly;
+  state.upcomingAl = cleanRemaining;
+  savePersonalAlState(staffName, state);
+  renderPersonalDailyTargetCalculator(false);
+}
+
+function buildTeammateIdentityAliases(myStats, userObj) {
+  const rawNames = [
+    myStats && myStats.name,
+    userObj && userObj.name,
+    userObj && userObj.username
+  ].filter(Boolean).map(v => String(v).trim().toLowerCase());
+
+  const combined = rawNames.join(' ');
+  const aliases = new Set(rawNames);
+
+  const aliasGroups = [
+    { test: /chai|sian|william/i, list: ['chai yee sian', 'william chai', 'william', 'chai', 'yee sian'] },
+    { test: /haniesha|louna/i, list: ['haniesha louna', 'louna', 'haniesha'] },
+    { test: /jong|pei choo|penny/i, list: ['jong pei choo', 'pei choo', 'penny'] },
+    { test: /fiona/i, list: ['fiona', 'fiona fiena'] },
+    { test: /nurhafizah|fizah/i, list: ['nurhafizah', 'nurhafizah pauli', 'fizah'] },
+    { test: /christina/i, list: ['christina', 'christina lee', 'christina lee ying ying'] },
+    { test: /farizin/i, list: ['farizin', 'muhammad nur farizin'] },
+    { test: /vannesa|vanessa/i, list: ['vannesa', 'vanessa'] },
+    { test: /daniela/i, list: ['daniela'] }
+  ];
+
+  aliasGroups.forEach(group => {
+    if (group.test.test(combined)) {
+      group.list.forEach(a => aliases.add(a));
+    }
+  });
+
+  const stopWords = new Set([
+    'bin', 'binti', 'mohd', 'muhammad', 'mohammad', 'nur', 'lee', 'tan', 'lim', 'wong',
+    'all', 'staff', 'frontline', 'assistant', 'assistants', 'leader', 'manager', 'branch', 'pharmacist'
+  ]);
+  const tokens = new Set();
+  combined.split(/[^a-z0-9]+/i).forEach(tok => {
+    const t = tok.trim().toLowerCase();
+    if (t.length >= 4 && !stopWords.has(t)) {
+      tokens.add(t);
+    }
+  });
+
+  return { aliases: Array.from(aliases), tokens: Array.from(tokens) };
+}
+
+function isAssignedToTeammate(assignedStr, identity) {
+  const raw = String(assignedStr || '').trim().toLowerCase();
+  if (!raw || raw === 'pending assignment' || raw === 'tbd') return false;
+
+  const segments = raw.split(/[,/&+()]+/).map(s => s.trim()).filter(Boolean);
+
+  const wordBoundaryMatch = (text, phrase) => {
+    if (!phrase || phrase.length < 3) return false;
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i');
+    return re.test(text);
+  };
+
+  for (const alias of identity.aliases) {
+    if (segments.some(seg => seg === alias || wordBoundaryMatch(seg, alias))) {
+      return true;
+    }
+  }
+  for (const tok of identity.tokens) {
+    if (segments.some(seg => seg === tok || wordBoundaryMatch(seg, tok))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function matchPersonalJobscopes(myStats, userObj, allRolesList) {
+  const allRoles = Array.isArray(allRolesList) ? allRolesList : getActiveLeadersJobscope();
+  const identity = buildTeammateIdentityAliases(myStats, userObj);
+
+  const roleText = String((myStats && myStats.role) || (userObj && (userObj.position || userObj.role)) || 'Staff').trim();
+  const isABM = /assistant\s*branch\s*manager|\babm\b/i.test(roleText);
+  const isPharmacist = /pharmacist(?!\s*assistant)|\bprp\b|\bpic\b|in-charge/i.test(roleText);
+  const isPA = !isABM && !isPharmacist;
+
+  const portfolioMatches = [];
+  const coreMatches = [];
+  const seenRoleKeys = new Set();
+
+  const addUnique = (arr, item) => {
+    const key = String(item.role || '').trim().toLowerCase();
+    if (!key || seenRoleKeys.has(key)) return;
+    seenRoleKeys.add(key);
+    arr.push(item);
+  };
+
+  // 1. Match Assigned Leadership / Task Portfolios from Future Leaders & Staff Role
+  allRoles.forEach(item => {
+    if (!item || item.category === 'core') return;
+    if (isAssignedToTeammate(item.assigned, identity)) {
+      addUnique(portfolioMatches, item);
+    }
+  });
+
+  // 2. Match Core Position Jobscope (Guaranteed for PA, ABM, and Pharmacist/PRP)
+  allRoles.forEach(item => {
+    if (!item || item.category !== 'core') return;
+    const rTitle = String(item.role || '').toLowerCase();
+    const isCorePA = /pharmacist assistant|\bpa\b|frontline/.test(rTitle);
+    const isCoreABM = /assistant branch manager|\babm\b/.test(rTitle);
+    const isCorePharm = /pharmacist/.test(rTitle) && !isCorePA;
+
+    if ((isPA && isCorePA) || (isABM && isCoreABM) || (isPharmacist && isCorePharm)) {
+      addUnique(coreMatches, item);
+    } else if (isAssignedToTeammate(item.assigned, identity)) {
+      addUnique(coreMatches, item);
+    }
+  });
+
+  return {
+    portfolios: portfolioMatches,
+    cores: coreMatches,
+    roleSummary: isPharmacist ? 'Pharmacist / PIC' : (isABM ? 'Assistant Branch Manager (ABM)' : 'Pharmacist Assistant (PA)')
+  };
+}
+
+function togglePersonalJobscopeCard(cardId) {
+  const body = document.getElementById(`pjsBody_${cardId}`);
+  const chev = document.getElementById(`pjsChev_${cardId}`);
+  if (!body) return;
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  if (chev) chev.innerText = isHidden ? '▾' : '▸';
+}
+
+function renderPersonalJobscopeSection(myStatsParam) {
+  const container = document.getElementById("personalJobscopeContainer");
+  const badgesEl = document.getElementById("personalRoleBadges");
+  if (!container) return;
+
+  const statsObj = myStatsParam || (activePersonalStatsContext && activePersonalStatsContext.myStats) || (currentUser ? {
+    name: currentUser.name || currentUser.username || 'Teammate',
+    role: currentUser.position || currentUser.role || 'Staff'
+  } : null);
+
+  if (!statsObj) {
+    container.innerHTML = `<div style="font-size:0.75rem; color:#64748b;">Log in to view your assigned responsibilities.</div>`;
+    return;
+  }
+
+  const matched = matchPersonalJobscopes(statsObj, currentUser, getActiveLeadersJobscope());
+
+  // Render Role & Leader Badges at top of Personal Card
+  if (badgesEl) {
+    const chips = [];
+    matched.cores.forEach(c => {
+      chips.push(`
+        <span class="personal-role-chip" style="background:${c.bg || '#eff6ff'}; color:${c.color || '#1d4ed8'}; border-color:${c.border || '#bfdbfe'};">
+          ${c.icon || '👔'} Core: ${escapePersonalHtml(c.role)}
+        </span>
+      `);
+    });
+    matched.portfolios.forEach(p => {
+      chips.push(`
+        <span class="personal-role-chip" style="background:${p.bg || '#fffbeb'}; color:${p.color || '#d97706'}; border-color:${p.border || '#fde68a'};">
+          ${p.icon || '⭐'} Leader: ${escapePersonalHtml(p.role)}
+        </span>
+      `);
+    });
+    if (matched.portfolios.length === 0) {
+      chips.push(`
+        <span class="personal-role-chip" style="background:#f8fafc; color:#475569; border-color:#cbd5e1;">
+          ⭐ Portfolio: General Frontline Support
+        </span>
+      `);
+    }
+    badgesEl.innerHTML = chips.join('');
+  }
+
+  const orderedCards = [
+    ...matched.portfolios.map((item, i) => ({ item, type: 'portfolio', id: `port_${i}`, defaultOpen: true })),
+    ...matched.cores.map((item, i) => ({ item, type: 'core', id: `core_${i}`, defaultOpen: matched.portfolios.length === 0 }))
+  ];
+
+  if (orderedCards.length === 0) {
+    container.innerHTML = `
+      <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:10px; font-size:0.76rem; color:#475569;">
+        No role jobscope matched yet. Ask your PIC to assign your role inside <b>Future Leaders &amp; Staff Roles</b>.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = orderedCards.map(({ item, type, id, defaultOpen }) => {
+    const color = item.color || (type === 'portfolio' ? '#0f766e' : '#1d4ed8');
+    const bg = item.bg || (type === 'portfolio' ? '#f0fdfa' : '#eff6ff');
+    const border = item.border || (type === 'portfolio' ? '#99f6e4' : '#bfdbfe');
+    const icon = item.icon || (type === 'portfolio' ? '⭐' : '👔');
+    const tasks = Array.isArray(item.tasks) ? item.tasks : [];
+    const tagLabel = type === 'portfolio' ? '⭐ Assigned Leader' : '👔 Core Jobscope';
+
+    const tasksHtml = tasks.map(t => `<li>${escapePersonalHtml(t)}</li>`).join('');
+
+    return `
+      <div class="personal-jobscope-card" style="background:${bg}; border-color:${border};">
+        <button type="button" class="personal-jobscope-toggle" onclick="togglePersonalJobscopeCard('${id}')">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="font-size:0.84rem; font-weight:800; color:${color};">${icon} ${escapePersonalHtml(item.role)}</span>
+              <span style="font-size:0.62rem; font-weight:800; background:white; color:${color}; border:1px solid ${border}; padding:1px 6px; border-radius:999px;">${tagLabel}</span>
+            </div>
+            <div style="font-size:0.68rem; color:#475569; font-weight:600;">
+              ${tasks.length} key ${tasks.length === 1 ? 'responsibility' : 'responsibilities'} &bull; Tap to ${defaultOpen ? 'collapse' : 'expand'}
+            </div>
+          </div>
+          <span id="pjsChev_${id}" style="font-size:1rem; font-weight:900; color:${color};">${defaultOpen ? '▾' : '▸'}</span>
+        </button>
+        <div id="pjsBody_${id}" class="personal-jobscope-body" style="display:${defaultOpen ? 'block' : 'none'};">
+          <ol>${tasksHtml}</ol>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.onPersonalAlInputChange = onPersonalAlInputChange;
+window.togglePersonalJobscopeCard = togglePersonalJobscopeCard;
+window.calculatePersonalWorkingDays = calculatePersonalWorkingDays;
+window.matchPersonalJobscopes = matchPersonalJobscopes;
 
 // ─── 6S GONDOLA OPERATIONS & GOOGLE DRIVE PHOTO SYSTEM ───────────────────────
 let selected6sCompressedBase64 = null;
