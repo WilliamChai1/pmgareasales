@@ -4961,6 +4961,23 @@ const DEFAULT_LEADERS_JOBSCOPE = [
       "Promote and manage the 28th monthly free blood glucose test event.",
       "Mentor junior assistants on OTC-to-House Brand clinical pairing dialogues."
     ]
+  },
+  {
+    role: "Marketing Leader",
+    category: "portfolio",
+    quota: 1,
+    assigned: "Muhammad Nur Farizin",
+    icon: "📣",
+    color: "#e11d48",
+    bg: "#fff1f2",
+    border: "#fecdd3",
+    tasks: [
+      "Execute monthly HQ promotional campaigns, PWP (>RM20), GWP (RM250+), and seasonal display setups on time.",
+      "Coordinate branch social media content, Reels/posters, WhatsApp Broadcasts, and local community outreach promos.",
+      "Drive PMG Membership sign-ups, Senior Care Plus (SCP 55+) enrollments, and monthly 28th Free Blood Glucose Screening publicity.",
+      "Maintain attractive promo signage, wobblers, bunting, and front-counter promotional displays for high-margin & House Brand focus items.",
+      "Track branch promotional redemption momentum and share weekly customer feedback with PIC/ABM."
+    ]
   }
 ];
 
@@ -4992,16 +5009,29 @@ function switchLeadersFilter(category) {
   renderLeadersView();
 }
 
+function ensureDefaultLeaderPortfolios(list) {
+  if (!Array.isArray(list)) return DEFAULT_LEADERS_JOBSCOPE.slice();
+  const merged = list.slice();
+  const hasMarketing = merged.some(item => item && /marketing/i.test(String(item.role || '')));
+  if (!hasMarketing) {
+    const marketingDefault = DEFAULT_LEADERS_JOBSCOPE.find(item => /marketing/i.test(String(item.role || '')));
+    if (marketingDefault) {
+      merged.push({ ...marketingDefault, tasks: (marketingDefault.tasks || []).slice() });
+    }
+  }
+  return merged;
+}
+
 function getActiveLeadersJobscope() {
   const branchKey = (selectedBranch || DEFAULT_BRANCH).toUpperCase();
   if (currentData && currentData.leadersJobscope && Array.isArray(currentData.leadersJobscope) && currentData.leadersJobscope.length >= 8) {
-    return currentData.leadersJobscope;
+    return ensureDefaultLeaderPortfolios(currentData.leadersJobscope);
   }
   try {
     const local = localStorage.getItem("pmg_leaders_jobscope_" + branchKey);
     if (local) {
       const parsed = JSON.parse(local);
-      if (Array.isArray(parsed) && parsed.length >= 8) return parsed;
+      if (Array.isArray(parsed) && parsed.length >= 8) return ensureDefaultLeaderPortfolios(parsed);
     }
   } catch (e) {}
   return DEFAULT_LEADERS_JOBSCOPE;
@@ -5020,6 +5050,15 @@ function renderLeadersView() {
   }
 
   const allTasks = getActiveLeadersJobscope();
+  const coreCount = allTasks.filter(item => item && item.category === 'core').length;
+  const portCount = allTasks.filter(item => item && item.category !== 'core').length;
+  const btnAll = document.getElementById("btnFilterRoleAll");
+  const btnCore = document.getElementById("btnFilterRoleCore");
+  const btnPort = document.getElementById("btnFilterRolePortfolio");
+  if (btnAll) btnAll.innerText = `🌟 All Roles (${allTasks.length})`;
+  if (btnCore) btnCore.innerText = `👔 Core Positions: Pharmacist, ABM, PA (${coreCount})`;
+  if (btnPort) btnPort.innerText = `⭐ Task Portfolios: Admin, 6S, Aging, CN, DPOS, Marketing (${portCount})`;
+
   const tasks = allTasks.filter(item => {
     if (currentLeadersFilter === 'core') return item.category === 'core';
     if (currentLeadersFilter === 'portfolio') return item.category !== 'core';

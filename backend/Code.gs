@@ -2085,6 +2085,23 @@ function getDefaultLeadersJobscope() {
         "Promote and manage the 28th monthly free blood glucose test event.",
         "Mentor junior assistants on OTC-to-House Brand clinical pairing dialogues."
       ]
+    },
+    {
+      role: "Marketing Leader",
+      category: "portfolio",
+      quota: 1,
+      assigned: "Muhammad Nur Farizin",
+      icon: "📣",
+      color: "#e11d48",
+      bg: "#fff1f2",
+      border: "#fecdd3",
+      tasks: [
+        "Execute monthly HQ promotional campaigns, PWP (>RM20), GWP (RM250+), and seasonal display setups on time.",
+        "Coordinate branch social media content, Reels/posters, WhatsApp Broadcasts, and local community outreach promos.",
+        "Drive PMG Membership sign-ups, Senior Care Plus (SCP 55+) enrollments, and monthly 28th Free Blood Glucose Screening publicity.",
+        "Maintain attractive promo signage, wobblers, bunting, and front-counter promotional displays for high-margin & House Brand focus items.",
+        "Track branch promotional redemption momentum and share weekly customer feedback with PIC/ABM."
+      ]
     }
   ];
 }
