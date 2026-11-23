@@ -1,5 +1,245 @@
-// Auto-generated PMG House Brand Catalog from Jase Healthcare (2026-11-16T05:27:14.289Z)
+// Auto-generated PMG House Brand Catalog from Jase Healthcare (2026-11-23T06:27:46.484Z)
 window.PMG_HOUSE_BRANDS_CATALOG = [
+  {
+    "id": 2119,
+    "brand": "Mediwheel",
+    "title": "Mediwheel – MDL820-20 Standard Lightweight Wheelchair",
+    "slug": "mediwheel-mdl820-20-standard-lightweight-wheelchair",
+    "link": "https://jasehealthcare.com/product/mediwheel-mdl820-20-standard-lightweight-wheelchair/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2118,
+    "brand": "Mediwheel",
+    "title": "Mediwheel – MDL200-20 Steel Lightweight Wheelchair",
+    "slug": "mediwheel-mdl200-20-steel-lightweight-wheelchair",
+    "link": "https://jasehealthcare.com/product/mediwheel-mdl200-20-steel-lightweight-wheelchair/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2099,
+    "brand": "Medicplast",
+    "title": "Medicplast – Coldmax Spray",
+    "slug": "medicplast-coldmax-spray-2",
+    "link": "https://jasehealthcare.com/product/medicplast-coldmax-spray-2/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "Immunity & Respiratory"
+    ]
+  },
+  {
+    "id": 2098,
+    "brand": "Medicplast",
+    "title": "Medicplast – Mosway",
+    "slug": "medicplast-mosway",
+    "link": "https://jasehealthcare.com/product/medicplast-mosway/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2097,
+    "brand": "Medicplast",
+    "title": "Medicplast – Non Sterile Cotton Ball",
+    "slug": "medicplast-non-sterile-cotton-ball",
+    "link": "https://jasehealthcare.com/product/medicplast-non-sterile-cotton-ball/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2093,
+    "brand": "Medicplast",
+    "title": "Medicplast – Sterile Cotton Ball",
+    "slug": "medicplast-sterile-cotton-ball",
+    "link": "https://jasehealthcare.com/product/medicplast-sterile-cotton-ball/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2085,
+    "brand": "Lucentia",
+    "title": "Lucentia – Acne K+ Post Spot Gel",
+    "slug": "lucentia-acne-k-post-spot-gel",
+    "link": "https://jasehealthcare.com/product/lucentia-acne-k-post-spot-gel/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2084,
+    "brand": "Lucentia",
+    "title": "Lucentia – Acne K+ Spot Gel",
+    "slug": "lucentia-acne-k-spot-gel",
+    "link": "https://jasehealthcare.com/product/lucentia-acne-k-spot-gel/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2083,
+    "brand": "Lucentia",
+    "title": "Lucentia – Acne K+ Toner",
+    "slug": "lucentia-acne-k-toner",
+    "link": "https://jasehealthcare.com/product/lucentia-acne-k-toner/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2082,
+    "brand": "Lucentia",
+    "title": "Lucentia – Shella Shea Butter Light Hand Cream",
+    "slug": "lucentia-shella-shea-butter-light-hand-cream",
+    "link": "https://jasehealthcare.com/product/lucentia-shella-shea-butter-light-hand-cream/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2081,
+    "brand": "Lucentia",
+    "title": "Lucentia – HA Serum",
+    "slug": "lucentia-ha-serum",
+    "link": "https://jasehealthcare.com/product/lucentia-ha-serum/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2080,
+    "brand": "Lucentia",
+    "title": "Lucentia – Eye Gel",
+    "slug": "lucentia-eye-gel",
+    "link": "https://jasehealthcare.com/product/lucentia-eye-gel/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2079,
+    "brand": "Lucentia",
+    "title": "Lucentia – Anti-aging Cream",
+    "slug": "lucentia-anti-aging-cream",
+    "link": "https://jasehealthcare.com/product/lucentia-anti-aging-cream/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2078,
+    "brand": "Lucentia",
+    "title": "Lucentia – Overnight Mask",
+    "slug": "lucentia-overnight-mask",
+    "link": "https://jasehealthcare.com/product/lucentia-overnight-mask/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2077,
+    "brand": "Lucentia",
+    "title": "Lucentia – Cherry Brightening Mask",
+    "slug": "lucentia-cherry-brightening-mask",
+    "link": "https://jasehealthcare.com/product/lucentia-cherry-brightening-mask/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "General Health"
+    ]
+  },
+  {
+    "id": 2065,
+    "brand": "Lucentia",
+    "title": "Lucentia – Shea Butter Moisturizing Mask",
+    "slug": "lucentia-shea-butter-moisturizing-mask",
+    "link": "https://jasehealthcare.com/product/lucentia-shea-butter-moisturizing-mask/",
+    "summary": "High-quality PMG House Brand formulation.",
+    "ingredients": "",
+    "clinicalIndication": "",
+    "packSize": "",
+    "mal": "",
+    "tags": [
+      "Dermatology & Skin"
+    ]
+  },
   {
     "id": 1580,
     "brand": "Nutribridge",
@@ -9,7 +249,7 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "summary": "Nutribridge® Sheep Placenta is a premium beauty and vitality supplement formulated with 600 mg Sheep Placenta Extract (50:1) and Grape Seed Extract. It is designed to support skin hydration, elasticity and renewal, while providing antioxidant support to help maintain youthfulness, energy and overall well-being.",
     "ingredients": "Ovine Placenta Concentrate – 600mg Vitis Vinifera (Grape) Seed Extract – 50mg",
     "clinicalIndication": "Used as a health supplement.",
-    "packSize": "30 enteric-coated softgels",
+    "packSize": "30 enteric-coated softgels, 90 enteric-coated softgels/box",
     "mal": "MAL20086050NCR",
     "tags": [
       "Blood Circulation & BP",
@@ -151,7 +391,7 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
   {
     "id": 1476,
     "brand": "VK Dermsolve",
-    "title": "Dermsolve by VK – Body Lotion",
+    "title": "Dermsolve by VK – Moisturizing Lotion",
     "slug": "dermsolve-by-vk-body-lotion",
     "link": "https://jasehealthcare.com/product/dermsolve-by-vk-body-lotion/",
     "summary": "High-quality PMG House Brand formulation.",
@@ -160,13 +400,13 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "packSize": "",
     "mal": "",
     "tags": [
-      "General Health"
+      "Dermatology & Skin"
     ]
   },
   {
     "id": 1475,
     "brand": "VK Dermsolve",
-    "title": "Dermsolve by VK – Hair Shampoo",
+    "title": "Dermsolve by VK – Scalp Care Shampoo",
     "slug": "dermsolve-by-vk-hair-shampoo",
     "link": "https://jasehealthcare.com/product/dermsolve-by-vk-hair-shampoo/",
     "summary": "High-quality PMG House Brand formulation.",
@@ -650,10 +890,10 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Omma – Chia Seed",
     "slug": "omma-chia-seed",
     "link": "https://jasehealthcare.com/product/omma-chia-seed/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "Fuel your day with the natural goodness of 100% Organic Chia Seeds! Packed with fibre and essential nutrients, they support healthy digestion, heart health, and everyday energy. A simple, nutritious addition to your meals for a healthier, more balanced lifestyle.",
+    "ingredients": "100% Organic Chia Seeds",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "200g",
     "mal": "",
     "tags": [
       "General Health"
@@ -697,10 +937,10 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Omma – Honey Flavour Apple Cider",
     "slug": "omma-honey-flavour-apple-cider",
     "link": "https://jasehealthcare.com/product/omma-honey-flavour-apple-cider/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "Add a refreshing twist to your daily wellness routine with Omma Apple Cider Vinegar, perfectly blended with Acacia Honey for a naturally balanced taste! Rich in antioxidants, it helps support healthy digestion and everyday vitality, making wellness a little sweeter and easier to enjoy.",
+    "ingredients": "Water, Acacia Honey, Apple Concentrate Powder & Vinegar, Potassium Sorbate. Contains permitted flavouring.",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "500ml",
     "mal": "",
     "tags": [
       "General Health"
@@ -712,10 +952,10 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Omma – Original Flavour Apple Cider",
     "slug": "omma-original-flavour-apple-cider",
     "link": "https://jasehealthcare.com/product/omma-original-flavour-apple-cider/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "Bring a little natural goodness into your daily routine with 100% Organic Apple Cider Vinegar! Made from organically grown apples and naturally fermented with the “Mother”, it’s a simple addition to your wellness journey that may help support healthy digestion and overall well-being.",
+    "ingredients": "Organic apple cider vinegar, Water.",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "500ml",
     "mal": "",
     "tags": [
       "General Health"
@@ -754,7 +994,7 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
   {
     "id": 1325,
     "brand": "NutriXlim",
-    "title": "NutriXlim – Protein Shake",
+    "title": "NutriXlim – Protein Shake (Banana Flavour)",
     "slug": "nutrixlim-protein-shake",
     "link": "https://jasehealthcare.com/product/nutrixlim-protein-shake/",
     "summary": "High-quality PMG House Brand formulation.",
@@ -769,13 +1009,13 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
   {
     "id": 1321,
     "brand": "NANOFINE",
-    "title": "NANOFINE – PEN NEEDLES",
+    "title": "NANOFINE – Pen Needles",
     "slug": "nanofine-pen-needles",
     "link": "https://jasehealthcare.com/product/nanofine-pen-needles/",
-    "summary": "High-quality PMG House Brand formulation.",
+    "summary": "Designed for precision and comfort, these insulin pen needles feature an ultra-fine 33G needle for a smoother injection experience. Engineered for reliable insulin delivery, they offer ease of use and convenience to support your daily diabetes management with confidence.",
     "ingredients": "",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "100 pieces",
     "mal": "",
     "tags": [
       "General Health"
@@ -787,10 +1027,10 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Mr. Throat – Extra Mint & Cool",
     "slug": "mr-throat-extra-mint-cool",
     "link": "https://jasehealthcare.com/product/mr-throat-extra-mint-cool/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "A deliciously refreshing candy bursting with fruity passion fruit flavour and a cooling menthol twist! Blended with pink rock salt, each candy delivers a soothing sensation for your throat while keeping your breath fresh. A little sweetness, a little coolness, and a whole lot of refreshment!",
+    "ingredients": "Sucrose, Glucose Syrup, Citric Acid (E330), Pink Rock Salt, Menthol Crystal, and Passion Fruit Juice.",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "10 Drops/pack, 12 packs/box",
     "mal": "",
     "tags": [
       "Immunity & Respiratory"
@@ -802,10 +1042,10 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Mr. Throat – Extra Strong & Sugar Free",
     "slug": "mr-throat-extra-strong-sugar-free",
     "link": "https://jasehealthcare.com/product/mr-throat-extra-strong-sugar-free/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "Indulge in the comforting sweetness of honey with a refreshing hint of menthol! Crafted with pink rock salt and a sugar-free formulation, this delightful candy offers a gentle cooling sensation to comfort your throat while satisfying your sweet cravings. Sweet comfort in every candy!",
+    "ingredients": "Isomaltitol, Pink Rock Salt, Honey, Honey Powder, Menthol Crystal, Stevia",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "10 Drops/pack, 12 packs/box",
     "mal": "",
     "tags": [
       "Immunity & Respiratory"
@@ -979,7 +1219,7 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
   {
     "id": 1297,
     "brand": "Medicplast",
-    "title": "Medicplast Terracool – Fever Cooling Patch",
+    "title": "Medicplast Terracool – Fever Cooling Patch (Children & Adults)",
     "slug": "medicplast-terracool-fever-cooling-patch",
     "link": "https://jasehealthcare.com/product/medicplast-terracool-fever-cooling-patch/",
     "summary": "High-quality PMG House Brand formulation.",
@@ -988,6 +1228,7 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "packSize": "",
     "mal": "",
     "tags": [
+      "Pediatric",
       "Pain Relief & Plaster"
     ]
   },
@@ -1075,13 +1316,15 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Lunéa – Shinea",
     "slug": "lunea-shinea",
     "link": "https://jasehealthcare.com/product/lunea-shinea/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "A refreshing pomegranate-flavoured beauty drink formulated with Florabella® Sakura Extract, Acerola Cherry, Bird’s Nest Extract, Korean Red Ginseng and 18 vitamins &amp; minerals. Specially designed to support skin radiance, hydration, even-looking skin tone and antioxidant protection. A convenient daily beauty boost to nourish your skin and promote a healthy, natural glow from within!",
+    "ingredients": "Pomegranate Juice Powder (48.7%), Maltodextrin, Acerola Powder (3.3%), Vitamins And Minerals Premix (Vitamin A, Vitamin D3, Vitamin B7, Vitamin B9, Vitamin B3, Vitamin B5, Vitamin B1, Vitamin B12, Vitamin B2, Vitamin B6, Vitamin C, Calcium, Iodine, Iron, Magnesium, Phosphorus, Selenium, Zinc), Sakura Extract (0.3%), Bird's Nest Extract (0.1%), And Korean Red Ginseng Extract (0.1%).",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "15g x 24 sachets",
     "mal": "",
     "tags": [
-      "General Health"
+      "Nerve Health",
+      "Dermatology & Skin",
+      "Immunity & Respiratory"
     ]
   },
   {
@@ -1090,10 +1333,10 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Lunéa – Slimea",
     "slug": "lunea-slimea",
     "link": "https://jasehealthcare.com/product/lunea-slimea/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "A refreshing tropical mixed fruit-flavoured wellness drink formulated with Garcitrin® Garcinia Cambogia, Cactus Extract, Mulberry Leaf Extract and Lemon Extract. Specially designed to support healthy weight management, appetite control and digestive wellness as part of a balanced lifestyle. A convenient daily wellness boost to complement your health and fitness goals!",
+    "ingredients": "Tropical Fruits Juice Powder (Passionfruit, Pineapple, Mango) (53.3%), Maltodextrin, Garcinia Cambogia Extract (3.3%), Mulberry Extract (0.1%), Lemon Extract, And Cactus Extract (0.1%).",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "15g x 15 sachets",
     "mal": "",
     "tags": [
       "General Health"
@@ -1546,23 +1789,6 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "mal": "MAL22056093NC",
     "tags": [
       "Nerve Health"
-    ]
-  },
-  {
-    "id": 1175,
-    "brand": "Livemore",
-    "title": "Livemore – Lipi-K",
-    "slug": "livemore-lipi-k",
-    "link": "https://jasehealthcare.com/product/livemore-lipi-k/",
-    "summary": "Livemore® Lipi-K is a heart-health supplement combining Red Yeast Rice Extract, Olive Fruit Extract and Coenzyme Q10 to support healthy cholesterol levels and overall cardiovascular wellness. It is designed for adults seeking convenient daily support for maintaining a healthy lipid profile and heart function.",
-    "ingredients": "Red Yeast Rice Extract (Monascus Purpureus) – 500mg Olive Fruit Extract (Olea Europaea) – 50mg Coenzyme Q10 (Ubidecarenone) – 20mg",
-    "clinicalIndication": "Used as health supplement",
-    "packSize": "60 vegecaps",
-    "mal": "MAL26076120NC",
-    "tags": [
-      "Cholesterol & Lipid",
-      "Blood Circulation & BP",
-      "Digestive & Gut"
     ]
   },
   {
@@ -2837,13 +3063,13 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Biowell – Btaminz Syrup",
     "slug": "biowell-btaminz-syrup-120ml",
     "link": "https://jasehealthcare.com/product/biowell-btaminz-syrup-120ml/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
-    "clinicalIndication": "",
-    "packSize": "",
-    "mal": "",
+    "summary": "A daily multivitamin syrup enriched with essential vitamins and L-Lysine to support your little one’s healthy growth, appetite and everyday energy. Made for growing kids, helping them stay nourished, active and ready for every little adventure!",
+    "ingredients": "Vitamin A – 1000 IU Vitamin D3 – 200 IU Vitamin E – 5 IU Vitamin B1 – 0.5 mg Vitamin B2 – 0.5 mg Vitamin B3 – 6 mg Vitamin B5 – 2 mg Vitamin B6 – 0.5 mg L-Lysine Monohydrochloride – 99.952 mg (Providing 80mg L-Lysine)",
+    "clinicalIndication": "As a health supplement.",
+    "packSize": "120ml",
+    "mal": "MAL26026078NC",
     "tags": [
-      "General Health"
+      "Pediatric"
     ]
   },
   {
@@ -2867,13 +3093,14 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Biowell – BBzine Cream 15g",
     "slug": "biowell-bbzine-cream-15g",
     "link": "https://jasehealthcare.com/product/biowell-bbzine-cream-15g/",
-    "summary": "High-quality PMG House Brand formulation.",
+    "summary": "A soothing calamine lotion enriched with Zinc Oxide to help relieve itching and discomfort caused by minor skin irritations, insect bites and sunburn. Gentle on skin, it provides comforting relief when your skin needs a little extra care.",
     "ingredients": "",
     "clinicalIndication": "",
-    "packSize": "",
-    "mal": "",
+    "packSize": "15g",
+    "mal": "MAL24116004XZ",
     "tags": [
-      "General Health"
+      "Dermatology & Skin",
+      "Pediatric"
     ]
   },
   {
@@ -2898,13 +3125,16 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Bionz – Sacha Inchi Softgel",
     "slug": "bionz-sacha-inchi-softgel",
     "link": "https://jasehealthcare.com/product/bionz-sacha-inchi-softgel/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
-    "clinicalIndication": "",
-    "packSize": "",
-    "mal": "",
+    "summary": "Give your body the goodness it deserves with Sacha Inchi Oil, naturally rich in Omega 3, 6 &amp; 9 to support heart health, brain function, and healthy-looking skin. A plant-based boost to nourish your body and keep you feeling your best, inside and out.",
+    "ingredients": "Sacha Inchi – 500mg (Semen Plukenetia Volubilis Extract)",
+    "clinicalIndication": "Traditionally used for general health.",
+    "packSize": "60 softgel capsules",
+    "mal": "MAL23126104T",
     "tags": [
-      "General Health"
+      "Joint & Bone",
+      "Cholesterol & Lipid",
+      "Omega & Heart Support",
+      "Dermatology & Skin"
     ]
   },
   {
@@ -2913,13 +3143,13 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Bionz – Pumpkin Seed Oil Softgel",
     "slug": "bionz-pumpkin-seed-oil-softgel",
     "link": "https://jasehealthcare.com/product/bionz-pumpkin-seed-oil-softgel/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
-    "clinicalIndication": "",
-    "packSize": "",
-    "mal": "",
+    "summary": "Discover the natural goodness of pumpkin seed oil, rich in plant-based nutrients and antioxidants to support urinary health, prostate wellness, and everyday vitality. A gentle daily boost to help you feel comfortable, confident, and at your best.",
+    "ingredients": "Pumpkin Seed Oil – 500mg (Semen Cucurbita Pepo Extract)",
+    "clinicalIndication": "Traditionally used for general health.",
+    "packSize": "60 softgel capsules",
+    "mal": "MAL23126101T",
     "tags": [
-      "General Health"
+      "Cholesterol & Lipid"
     ]
   },
   {
@@ -2928,28 +3158,13 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Bionz – Olive Oil Softgel",
     "slug": "bionz-olive-oil-softgel",
     "link": "https://jasehealthcare.com/product/bionz-olive-oil-softgel/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
-    "clinicalIndication": "",
-    "packSize": "",
-    "mal": "",
+    "summary": "Discover the natural goodness of virgin olive oil, rich in antioxidants to support heart health and everyday wellness. A simple daily boost to help you feel your best, from the inside out.",
+    "ingredients": "Virgin Olive Oil – 500mg (Olea Europaea Fructus Extract)",
+    "clinicalIndication": "Traditionally used for general health.",
+    "packSize": "60 softgel capsules",
+    "mal": "MAL23126102T",
     "tags": [
-      "General Health"
-    ]
-  },
-  {
-    "id": 753,
-    "brand": "Bionz",
-    "title": "Bionz – Coconut Oil Softgel",
-    "slug": "bionz-coconut-oil-softgel",
-    "link": "https://jasehealthcare.com/product/bionz-coconut-oil-softgel/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
-    "clinicalIndication": "",
-    "packSize": "",
-    "mal": "",
-    "tags": [
-      "General Health"
+      "Cholesterol & Lipid"
     ]
   },
   {
@@ -3046,7 +3261,7 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
   {
     "id": 738,
     "brand": "Axon",
-    "title": "Axon – AX-BP121 Blood Pressure Machine",
+    "title": "Axon – AX-BP121 Blood Pressure Monitor",
     "slug": "axon-ax-bp121-blood-pressure-machine",
     "link": "https://jasehealthcare.com/product/axon-ax-bp121-blood-pressure-machine/",
     "summary": "Monitor your blood pressure with confidence and convenience using the AXON BP-121. Designed for effortless one-touch operation, it features a large easy-to-read display, arrhythmia detection, WHO blood pressure classification, and memory storage for two users with up to 120 readings each. Complete with a comfortable wide-range arm cuff, the BP-121 delivers a simple, reliable solution for everyday blood pressure monitoring at home.",
@@ -3139,13 +3354,14 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Athomer – Hypertonic Nasal Spray 100ml",
     "slug": "athomer-hypertonic-nasal-spray-100ml",
     "link": "https://jasehealthcare.com/product/athomer-hypertonic-nasal-spray-100ml/",
-    "summary": "High-quality PMG House Brand formulation.",
+    "summary": "A gentle yet effective sterile hypertonic seawater nasal spray formulated with 2.5% Sodium Chloride (NaCl), naturally rich in marine minerals and trace elements. Specially designed to help relieve nasal congestion, clear excess mucus and support easier breathing. Suitable for adults and children aged 6 and above, providing convenient daily nasal care.",
     "ingredients": "",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "100ml",
     "mal": "",
     "tags": [
-      "General Health"
+      "Immunity & Respiratory",
+      "Pediatric"
     ]
   },
   {
@@ -3154,13 +3370,14 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Athomer – Moisturizing Nasal Spray",
     "slug": "athomer-moisturizing-nasal-spray",
     "link": "https://jasehealthcare.com/product/athomer-moisturizing-nasal-spray/",
-    "summary": "High-quality PMG House Brand formulation.",
+    "summary": "A gentle and refreshing sterile isotonic seawater nasal spray, naturally rich in marine minerals and trace elements, including Calcium, Potassium, Magnesium and Sodium. Specially formulated to cleanse nasal passages, moisturise dry nasal cavities and help clear excess mucus, supporting easier breathing and daily nasal comfort. Suitable for adults and children of all ages for gentle everyday nasal care.",
     "ingredients": "",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "35ml, 100ml",
     "mal": "",
     "tags": [
-      "Dermatology & Skin"
+      "Dermatology & Skin",
+      "Pediatric"
     ]
   },
   {
@@ -3169,13 +3386,15 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Athomer – Propolis Nasal Spray",
     "slug": "athomer-propolis-nasal-spray",
     "link": "https://jasehealthcare.com/product/athomer-propolis-nasal-spray/",
-    "summary": "High-quality PMG House Brand formulation.",
+    "summary": "A gentle and refreshing sterile isotonic seawater nasal spray enriched with Propolis Extract, marine minerals and trace elements. Specially formulated to cleanse nasal passages, moisturise dry nasal cavities and soothe nasal irritation, helping maintain daily nasal comfort and hygiene. Suitable for adults and children aged 12 months and above, providing gentle everyday nasal care.",
     "ingredients": "",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "35ml, 100ml",
     "mal": "",
     "tags": [
-      "Immunity & Respiratory"
+      "Dermatology & Skin",
+      "Immunity & Respiratory",
+      "Pediatric"
     ]
   },
   {
@@ -3184,12 +3403,15 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Kiddypops – Gromates",
     "slug": "kiddypops-gromates",
     "link": "https://jasehealthcare.com/product/kiddypops-gromates/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "A delicious strawberry-flavoured popping granule formula specially designed for kids aged 2 and above. Enriched with L-Lysine, Probiotics, Vitamin B Complex, Vitamin C and Zinc to support healthy appetite, growth, digestion and immune health. No water needed—just pour, pop and enjoy!",
+    "ingredients": "Strawberry Juice Granules (79.3%), L-Lysine HCL (8.7%), Inulin, Ascorbic Acid, Vitamin B Complex (Vitamin B3, Vitamin B5, Vitamin B6, Vitamin B2, Vitamin B1, Biotin, Folic Acid, Vitamin B12), Probiotic Blend ( Bifidobacterium breve M-16V, Lactobacillus acidophilus NCFM), And Zinc Gluconate.",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "1.5g x 30 sachets",
     "mal": "",
     "tags": [
+      "Nerve Health",
+      "Digestive & Gut",
+      "Immunity & Respiratory",
       "Pediatric"
     ]
   },
@@ -3199,13 +3421,16 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Kiddypops – Breezo",
     "slug": "kiddypops-breezo",
     "link": "https://jasehealthcare.com/product/kiddypops-breezo/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "A fun and easy-to-take popping granule formula specially designed for kids aged 2 and above. Enriched with Tiger Milk Mushroom, Vitamin C, Inulin and Probiotics to support respiratory comfort, immune health and gut balance. No water needed—just pour, pop and enjoy!",
+    "ingredients": "Grape Juice Granules (81.8%), Tiger Milk Mushroom Powder (6.7%), Inulin, Ascorbic Acid, Ivy Leaf Extract, Chamomile Extract, And Bifidobacterium lactis Bl-04.",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "1.5g x 30 sachets",
     "mal": "",
     "tags": [
-      "Pediatric"
+      "Digestive & Gut",
+      "Immunity & Respiratory",
+      "Pediatric",
+      "Nutrition & Specialty Milk"
     ]
   },
   {
@@ -3214,12 +3439,13 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Kiddypops – OptiMind",
     "slug": "kiddypops-optimind",
     "link": "https://jasehealthcare.com/product/kiddypops-optimind/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "A delicious mixed fruit-flavoured popping granule formula specially designed for kids aged 2 and above. Enriched with Marigold Extract, Choline, Blackcurrant, Maqui Berry and Vitamin B12 to support eye health, visual comfort, focus and brain function. No water needed—just pour, pop and enjoy!",
+    "ingredients": "Mixed Fruits Juice Granules (Blackcurrant, Green Apple, Strawberry, Pineapple, Orange, Grape) (86.6%), Choline Bitartrate, Marigold Extract (3.3%), Blackcurrant Extract, Maqui Berry Extract, And Vitamin B12.",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "1.5g x 30 sachets",
     "mal": "",
     "tags": [
+      "Nerve Health",
       "Pediatric"
     ]
   },
@@ -3229,12 +3455,14 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Kiddypops – SafeGuardz",
     "slug": "kiddypops-safeguardz",
     "link": "https://jasehealthcare.com/product/kiddypops-safeguardz/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
+    "summary": "A delicious yoghurt-flavoured popping granule formula specially designed for kids aged 2 and above. Enriched with Elderberry Extract, Vitamin C, Zinc, 2&#8242;-FL, Olive Leaf Extract and Probiotics to support immune health, gut balance and antioxidant protection. No water needed—just pour, pop and enjoy!",
+    "ingredients": "Yoghurt Powder Granules (85.9%), Elderberry Extract (6.7%), Ascorbic Acid, 2&#8242;-Fucosyllactose (2&#8242;-FL), Olive Leaf Extract, Zinc Gluconate, And Probiotic Blend ( Bifidobacterium breve M-16V, Lactobacillus acidophilus NCFM).",
     "clinicalIndication": "",
-    "packSize": "",
+    "packSize": "1.5g x 30 sachets",
     "mal": "",
     "tags": [
+      "Digestive & Gut",
+      "Immunity & Respiratory",
       "Pediatric"
     ]
   },
@@ -3244,13 +3472,15 @@ window.PMG_HOUSE_BRANDS_CATALOG = [
     "title": "Bionz – Habbatus Sawda Softgel",
     "slug": "bionz-habbatus-sawda-500mg-softgel",
     "link": "https://jasehealthcare.com/product/bionz-habbatus-sawda-500mg-softgel/",
-    "summary": "High-quality PMG House Brand formulation.",
-    "ingredients": "",
-    "clinicalIndication": "",
-    "packSize": "",
-    "mal": "",
+    "summary": "A natural daily wellness supplement formulated with 500mg Nigella Sativa (Black Seed) Oil, rich in thymoquinone and essential fatty acids. Specially formulated to support immune health, antioxidant protection and digestive wellness. A convenient daily supplement to help maintain overall health and wellbeing.",
+    "ingredients": "Nigella Sativa Semen Oil – 500mg",
+    "clinicalIndication": "Traditionally used for general health.",
+    "packSize": "60 softgel capsules",
+    "mal": "MAL23126103T",
     "tags": [
-      "General Health"
+      "Cholesterol & Lipid",
+      "Dermatology & Skin",
+      "Immunity & Respiratory"
     ]
   },
   {
